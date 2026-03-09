@@ -54,6 +54,7 @@ do_start() {
   local timestamp
   local log_dir
   local pid_file
+  local bootstrap_log
 
   timestamp="$(date +"%Y%m%d-%H%M%S")"
   log_dir="$LOG_ROOT/$timestamp"
@@ -64,6 +65,10 @@ do_start() {
 
   LOG_DIR="$log_dir"
   PID_FILE="$pid_file"
+  bootstrap_log="$LOG_DIR/bootstrap.log"
+
+  echo "Preparing backend (migrate + tenant migrate + seed)..."
+  bash -lc "cd '$BACKEND_DIR' && php artisan migrate --force && php artisan tenants:migrate --force && php artisan db:seed --force" >"$bootstrap_log" 2>&1
 
   echo "Starting platform services..."
 
@@ -80,6 +85,7 @@ do_start() {
   echo "- Backend API: $LOG_DIR/backend-server.log"
   echo "- Queue Worker: $LOG_DIR/queue-worker.log"
   echo "- Frontend Dev: $LOG_DIR/frontend-dev.log"
+  echo "- Bootstrap (migrate/seed): $LOG_DIR/bootstrap.log"
   echo
   echo "Access URLs:"
   echo "- Local frontend: http://127.0.0.1:$FRONTEND_PORT"

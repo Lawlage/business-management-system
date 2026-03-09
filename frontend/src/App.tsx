@@ -632,6 +632,13 @@ function App() {
     }, 'Tenant suspended.')
   }
 
+  const unsuspendTenant = async (tenantId: string) => {
+    await withNotice(async () => {
+      await authedFetch('/api/superadmin/tenants/' + tenantId + '/unsuspend', { method: 'POST' })
+      await loadSuperTenants()
+    }, 'Tenant unsuspended.')
+  }
+
   const deleteTenant = async (tenantId: string) => {
     await withNotice(async () => {
       await authedFetch('/api/superadmin/tenants/' + tenantId, { method: 'DELETE' })
@@ -805,7 +812,7 @@ function App() {
             <Route path="/app/admin/tenant-settings" element={canManageTenantAdminPages ? <TenantSettingsPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} setTimezone={setTenantTimezone} save={updateTenantSettings} /> : <Navigate to="/app" replace />} />
             <Route path="/app/admin/audit" element={canManageTenantAdminPages ? <TenantAuditPage surface={surface} timezone={tenantTimezone} data={tenantAudit} reload={loadTenantAuditLogs} /> : <Navigate to="/app" replace />} />
 
-            <Route path="/superadmin" element={role === 'global_superadmin' ? <SuperadminTenantsPage surface={surface} tenants={superTenants} tenantForm={newTenant} setTenantForm={setNewTenant} tenantAdminForm={newTenantAdmin} setTenantAdminForm={setNewTenantAdmin} onCreate={createTenant} onSuspend={suspendTenant} onDelete={deleteTenant} reload={loadSuperTenants} /> : <Navigate to="/app" replace />} />
+            <Route path="/superadmin" element={role === 'global_superadmin' ? <SuperadminTenantsPage surface={surface} tenants={superTenants} tenantForm={newTenant} setTenantForm={setNewTenant} tenantAdminForm={newTenantAdmin} setTenantAdminForm={setNewTenantAdmin} onCreate={createTenant} onSuspend={suspendTenant} onUnsuspend={unsuspendTenant} onDelete={deleteTenant} reload={loadSuperTenants} /> : <Navigate to="/app" replace />} />
             <Route path="/superadmin/audit" element={role === 'global_superadmin' ? <GlobalAuditPage surface={surface} logs={globalAudit} reload={loadGlobalAuditLogs} /> : <Navigate to="/app" replace />} />
             <Route path="/superadmin/access" element={role === 'global_superadmin' ? <SuperadminTenantAccessPage surface={surface} textMuted={textMuted} tenants={superTenants} selectedTenantId={selectedTenantId} setSelectedTenantId={(tenantId) => { setSelectedTenantId(tenantId); setIsSuperadminTenantWorkspace(false); setBreakGlassToken('') }} breakGlassReason={breakGlassReason} setBreakGlassReason={setBreakGlassReason} breakGlassConfirmed={breakGlassConfirmed} setBreakGlassConfirmed={setBreakGlassConfirmed} breakGlassToken={breakGlassToken} startBreakGlass={startBreakGlass} stopBreakGlass={stopBreakGlass} enterWorkspace={() => { if (!selectedTenantId) { setNotice('Select a tenant before entering workspace.'); return; } if (!breakGlassToken) { setNotice('Start break-glass access before entering tenant workspace.'); return; } setIsSuperadminTenantWorkspace(true); }} /> : <Navigate to="/app" replace />} />
           </Routes>
@@ -1071,7 +1078,7 @@ function TenantAuditPage({ surface, timezone, data, reload }: { surface: string;
   )
 }
 
-function SuperadminTenantsPage({ surface, tenants, tenantForm, setTenantForm, tenantAdminForm, setTenantAdminForm, onCreate, onSuspend, onDelete, reload }: { surface: string; tenants: Tenant[]; tenantForm: { name: string; slug: string }; setTenantForm: (value: { name: string; slug: string }) => void; tenantAdminForm: { name: string; email: string; password: string }; setTenantAdminForm: (value: { name: string; email: string; password: string }) => void; onCreate: () => Promise<void>; onSuspend: (tenantId: string) => Promise<void>; onDelete: (tenantId: string) => Promise<void>; reload: () => Promise<void> }) {
+function SuperadminTenantsPage({ surface, tenants, tenantForm, setTenantForm, tenantAdminForm, setTenantAdminForm, onCreate, onSuspend, onUnsuspend, onDelete, reload }: { surface: string; tenants: Tenant[]; tenantForm: { name: string; slug: string }; setTenantForm: (value: { name: string; slug: string }) => void; tenantAdminForm: { name: string; email: string; password: string }; setTenantAdminForm: (value: { name: string; email: string; password: string }) => void; onCreate: () => Promise<void>; onSuspend: (tenantId: string) => Promise<void>; onUnsuspend: (tenantId: string) => Promise<void>; onDelete: (tenantId: string) => Promise<void>; reload: () => Promise<void> }) {
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <div className="mb-3 flex items-center justify-between">
@@ -1102,7 +1109,11 @@ function SuperadminTenantsPage({ surface, tenants, tenantForm, setTenantForm, te
               <p className="text-sm">Status: {tenant.status}</p>
             </div>
             <div className="flex gap-2">
-              <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onSuspend(tenant.id)}>Suspend</button>
+              {tenant.status === 'suspended' ? (
+                <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onUnsuspend(tenant.id)}>Unsuspend</button>
+              ) : (
+                <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onSuspend(tenant.id)}>Suspend</button>
+              )}
               <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onDelete(tenant.id)}>Delete</button>
             </div>
           </div>

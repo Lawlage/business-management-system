@@ -11,7 +11,6 @@ use App\Services\AuditLogger;
 use App\Enums\TenantRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -46,32 +45,30 @@ class SuperAdminTenantController extends Controller
             'tenant_admin.password' => ['required', 'string', 'min:12'],
         ]);
 
-        [$tenant, $tenantAdmin] = DB::transaction(function () use ($payload, $request): array {
-            $tenant = Tenant::query()->create([
-                'id' => (string) Str::uuid(),
-                'name' => $payload['name'],
-                'slug' => $payload['slug'],
-                'status' => 'active',
-                'created_by' => $request->user()?->id,
-                'data' => ['timezone' => 'UTC'],
-            ]);
+        // Tenant creation triggers tenancy provisioning listeners. We keep this
+        // outside an explicit DB transaction to avoid transaction state conflicts.
+        $tenant = Tenant::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => $payload['name'],
+            'slug' => $payload['slug'],
+            'status' => 'active',
+            'created_by' => $request->user()?->id,
+            'data' => ['timezone' => 'UTC'],
+        ]);
 
-            $tenantAdmin = User::query()->create([
-                'name' => $payload['tenant_admin']['name'],
-                'email' => $payload['tenant_admin']['email'],
-                'password' => Hash::make($payload['tenant_admin']['password']),
-                'is_global_superadmin' => false,
-            ]);
+        $tenantAdmin = User::query()->create([
+            'name' => $payload['tenant_admin']['name'],
+            'email' => $payload['tenant_admin']['email'],
+            'password' => Hash::make($payload['tenant_admin']['password']),
+            'is_global_superadmin' => false,
+        ]);
 
-            TenantMembership::query()->create([
-                'tenant_id' => $tenant->id,
-                'user_id' => $tenantAdmin->id,
-                'role' => TenantRole::TenantAdmin->value,
-                'can_edit' => true,
-            ]);
-
-            return [$tenant, $tenantAdmin];
-        });
+        TenantMembership::query()->create([
+            'tenant_id' => $tenant->id,
+            'user_id' => $tenantAdmin->id,
+            'role' => TenantRole::TenantAdmin->value,
+            'can_edit' => true,
+        ]);
 
         $this->auditLogger->global($request, 'tenant.created', $request->user(), $tenant->id, [
             'entity_type' => 'tenant',
@@ -128,6 +125,22 @@ class SuperAdminTenantController extends Controller
         ]);
 
         return new JsonResponse(['message' => 'Tenant suspended.']);
+    }
+
+    public function unsuspend(Request $request, string $tenantId): JsonResponse
+    {
+        $tenant = Tenant::query()->findOrFail($tenantId);
+        $tenant->update([
+            'status' => 'active',
+            'suspended_at' => null,
+        ]);
+
+        $this->auditLogger->global($request, 'tenant.unsuspended', $request->user(), $tenantId, [
+            'entity_type' => 'tenant',
+            'entity_id' => $tenantId,
+        ]);
+
+        return new JsonResponse(['message' => 'Tenant unsuspended.']);
     }
 
     public function assignTenantAdmin(Request $request, string $tenantId): JsonResponse

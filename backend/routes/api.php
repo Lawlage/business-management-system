@@ -35,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/tenants', [SuperAdminTenantController::class, 'store']);
         Route::delete('/tenants/{tenantId}', [SuperAdminTenantController::class, 'destroy']);
         Route::post('/tenants/{tenantId}/suspend', [SuperAdminTenantController::class, 'suspend']);
+        Route::post('/tenants/{tenantId}/unsuspend', [SuperAdminTenantController::class, 'unsuspend']);
         Route::post('/tenants/{tenantId}/assign-tenant-admin', [SuperAdminTenantController::class, 'assignTenantAdmin']);
         Route::post('/tenants/{tenantId}/break-glass', [BreakGlassController::class, 'start']);
         Route::post('/tenants/{tenantId}/break-glass/{token}/stop', [BreakGlassController::class, 'stop']);

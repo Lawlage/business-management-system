@@ -65,6 +65,12 @@ Use the root platform control script to start/stop all services with logs:
 
 Runtime logs are written to `logs/startup/<timestamp>/` and linked via `logs/startup/latest/`.
 
+By default, `./platform.sh start` (and `restart`) runs backend bootstrapping before services start:
+
+- `php artisan migrate --force`
+- `php artisan tenants:migrate --force`
+- `php artisan db:seed --force`
+
 ## Interactive UI Coverage
 
 The frontend now includes working actions (API-backed buttons/forms) for:
