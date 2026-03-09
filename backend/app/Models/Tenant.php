@@ -1,0 +1,24 @@
+<?php
+
+namespace App\Models;
+
+use Stancl\Tenancy\Contracts\TenantWithDatabase;
+use Stancl\Tenancy\Database\Concerns\HasDatabase;
+use Stancl\Tenancy\Database\Concerns\HasDomains;
+use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
+
+class Tenant extends BaseTenant implements TenantWithDatabase
+{
+    use HasDatabase;
+    use HasDomains;
+
+    protected $fillable = [
+        'id',
+        'name',
+        'slug',
+        'status',
+        'suspended_at',
+        'created_by',
+        'data',
+    ];
+}
