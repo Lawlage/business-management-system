@@ -6,6 +6,10 @@ This repository contains a production-oriented foundation for a multi-tenant pla
 - React + Tailwind frontend (`frontend`)
 - MySQL-based database-per-tenant model using `stancl/tenancy`
 
+## AI Agent Requirements
+
+For AI coding tools working in this repository, use `agents.md` as the source-of-truth requirements and delivery constraints document.
+
 ## Architecture Highlights
 
 - Database-per-tenant provisioning through superadmin tenant creation.
@@ -49,6 +53,16 @@ For automatic tenant DB creation, the DB user used by tenancy jobs must be allow
 2. Start app:
    - `npm run dev`
 
+## Platform Script
+
+Use the root platform control script to start/stop all services with logs:
+
+- Start: `./platform.sh start`
+- Stop: `./platform.sh stop`
+- Status: `./platform.sh status`
+
+Runtime logs are written to `logs/startup/<timestamp>/` and linked via `logs/startup/latest/`.
+
 ## Demo Credentials
 
 - Superadmin: `superadmin@example.com` / `Superadmin123!`
@@ -67,7 +81,7 @@ Frontend:
 - Build: `cd frontend && npm run build`
 - E2E tests: `cd frontend && npm run test:e2e`
 
-Note: Full backend feature tests require a working PHP database driver in your runtime.
+Note: backend tests use your configured MySQL test/runtime connection from `.env` or `.env.testing`.
 
 ## Key Extension Points
 

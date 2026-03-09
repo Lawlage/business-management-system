@@ -31,3 +31,6 @@ auth.json
 
 # Local planning artifacts
 tasks/
+
+# Local runtime logs
+logs/
