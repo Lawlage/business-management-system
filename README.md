@@ -36,6 +36,7 @@ For AI coding tools working in this repository, use `agents.md` as the source-of
    - Set central MySQL connection (`DB_*`).
 3. Run central migrations:
    - `php artisan migrate`
+   - `php artisan tenants:migrate`
 4. Seed demo data:
    - `php artisan db:seed`
 5. Start API:
@@ -70,9 +71,12 @@ The frontend now includes working actions (API-backed buttons/forms) for:
 
 - Dashboard refresh with renewal and low-stock widgets
 - Renewal create/list/delete
+- Renewal workflow status tracking (auto status + user-entered workflow status)
+- Renewal auto-renew checkbox on create/edit
 - Inventory create/list/check-in/check-out/delete
+- Click-to-open foreground edit modals for renewal/inventory records
 - Recycle bin list and restore
-- Tenant admin: tenant users, edit permission toggles, custom fields, tenant audit logs
+- Tenant admin: tenant users, edit permission toggles, custom fields, tenant settings (timezone), tenant audit logs
 - Superadmin: tenant create/suspend/delete (tenant creation includes new tenant-admin creation), global audit logs, break-glass session controls
 
 ## Demo Credentials
@@ -86,6 +90,7 @@ Backend:
 
 - Unit tests: `cd backend && php artisan test --testsuite=Unit`
 - Full tests: `cd backend && php artisan test`
+- Tenant schema updates: `cd backend && php artisan tenants:migrate`
 
 Frontend:
 

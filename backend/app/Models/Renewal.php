@@ -20,6 +20,8 @@ class Renewal extends Model
         'renewal_date',
         'expiration_date',
         'status',
+        'workflow_status',
+        'auto_renews',
         'notes',
         'created_by',
         'updated_by',
@@ -29,5 +31,6 @@ class Renewal extends Model
         'start_date' => 'date',
         'renewal_date' => 'date',
         'expiration_date' => 'date',
+        'auto_renews' => 'boolean',
     ];
 }

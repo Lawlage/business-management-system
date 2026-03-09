@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\RecycleBinController;
 use App\Http\Controllers\Api\RenewalController;
 use App\Http\Controllers\Api\SuperAdminTenantController;
+use App\Http\Controllers\Api\TenantSettingsController;
 use App\Http\Controllers\Api\TenantUserController;
 use Illuminate\Support\Facades\Route;
 
@@ -64,6 +65,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/custom-fields', [CustomFieldController::class, 'index']);
         Route::post('/custom-fields', [CustomFieldController::class, 'store'])->middleware('tenant.permission:manage_custom_fields');
         Route::delete('/custom-fields/{id}', [CustomFieldController::class, 'destroy'])->middleware('tenant.permission:manage_custom_fields');
+
+        Route::get('/tenant-settings', [TenantSettingsController::class, 'show'])->middleware('tenant.permission:manage_users');
+        Route::put('/tenant-settings', [TenantSettingsController::class, 'update'])->middleware('tenant.permission:manage_users');
 
         Route::get('/recycle-bin', [RecycleBinController::class, 'index'])->middleware('tenant.permission:view_audit_logs');
         Route::post('/recycle-bin/{entityType}/{id}/restore', [RecycleBinController::class, 'restore'])->middleware('tenant.permission:delete_record');

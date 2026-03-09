@@ -43,4 +43,25 @@ class AuthAndSuperadminTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_superadmin_tenant_creation_requires_tenant_admin_payload(): void
+    {
+        $superadmin = User::query()->create([
+            'name' => 'Superadmin User',
+            'email' => 'super@example.com',
+            'password' => Hash::make('Password123!'),
+            'is_global_superadmin' => true,
+        ]);
+
+        $response = $this->actingAs($superadmin)->postJson('/api/superadmin/tenants', [
+            'name' => 'Tenant 1',
+            'slug' => 'tenant-1',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors([
+            'tenant_admin.name',
+            'tenant_admin.email',
+            'tenant_admin.password',
+        ]);
+    }
 }

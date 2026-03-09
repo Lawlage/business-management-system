@@ -9,6 +9,9 @@ type Tenant = {
   name: string
   slug: string
   status: string
+  data?: {
+    timezone?: string
+  }
 }
 
 type TenantMembership = {
@@ -29,8 +32,12 @@ type Renewal = {
   id: number
   title: string
   status: string
+  workflow_status?: string | null
+  auto_renews?: boolean
   category: string
   expiration_date: string
+  notes?: string | null
+  created_at?: string
 }
 
 type InventoryItem = {
@@ -39,6 +46,11 @@ type InventoryItem = {
   sku: string
   quantity_on_hand: number
   minimum_on_hand: number
+  location?: string | null
+  vendor?: string | null
+  purchase_date?: string | null
+  notes?: string | null
+  created_at?: string
 }
 
 type CustomField = {
@@ -71,6 +83,9 @@ const renewalDefaults = {
   title: '',
   category: 'contract',
   expiration_date: '',
+  workflow_status: '',
+  auto_renews: false,
+  notes: '',
 }
 
 const renewalCategoryOptions = [
@@ -85,6 +100,57 @@ const renewalCategoryOptions = [
   { value: 'maintenance', label: 'Maintenance Agreement' },
   { value: 'other', label: 'Other' },
 ]
+
+const renewalWorkflowOptions = [
+  'Active - paid and in force',
+  'Client contacted',
+  'Discovery in progress',
+  'Drafting quote',
+  'Quote sent',
+  'Negotiation',
+  'Legal review',
+  'Awaiting signature',
+  'Approved for renewal',
+  'Deferred',
+  'Closed',
+]
+
+const tenantTimezoneOptions = typeof Intl.supportedValuesOf === 'function'
+  ? Intl.supportedValuesOf('timeZone')
+  : ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin', 'Asia/Singapore', 'Australia/Sydney']
+
+function formatDateTime(value?: string | null, timezone = 'UTC'): string {
+  if (!value) {
+    return 'N/A'
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('en-NZ', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: timezone,
+  }).format(date)
+}
+
+function formatRenewalCategory(value?: string | null): string {
+  if (!value) {
+    return 'Uncategorized'
+  }
+
+  const option = renewalCategoryOptions.find((entry) => entry.value === value)
+  if (option) {
+    return option.label
+  }
+
+  return value
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
 
 const inventoryDefaults = {
   name: '',
@@ -109,6 +175,7 @@ function App() {
   const [breakGlassToken, setBreakGlassToken] = useState('')
   const [breakGlassReason, setBreakGlassReason] = useState('')
   const [breakGlassConfirmed, setBreakGlassConfirmed] = useState(false)
+  const [tenantTimezone, setTenantTimezone] = useState('UTC')
   const [notice, setNotice] = useState('')
 
   const [dashboard, setDashboard] = useState<{ important_renewals: Renewal[]; critical_renewals: Renewal[]; low_stock_items: InventoryItem[] } | null>(null)
@@ -128,6 +195,8 @@ function App() {
   const [newCustomField, setNewCustomField] = useState({ entity_type: 'renewal' as 'renewal' | 'inventory', name: '', key: '', field_type: 'text' })
   const [newTenant, setNewTenant] = useState({ name: '', slug: '' })
   const [newTenantAdmin, setNewTenantAdmin] = useState({ name: '', email: '', password: '' })
+  const [selectedRenewal, setSelectedRenewal] = useState<Renewal | null>(null)
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null)
 
   const role = useMemo(() => {
     if (!user) {
@@ -171,7 +240,15 @@ function App() {
     }
 
     void Promise.all([loadDashboard(), loadRenewals(), loadInventory()])
+    if (role === 'tenant_admin' || role === 'global_superadmin') {
+      void loadTenantSettings()
+    }
+
     if (role === 'tenant_admin') {
+      void Promise.all([loadTenantUsers(), loadCustomFields(), loadTenantAuditLogs()])
+    }
+
+    if (role === 'global_superadmin' && isSuperadminTenantWorkspace) {
       void Promise.all([loadTenantUsers(), loadCustomFields(), loadTenantAuditLogs()])
     }
   }, [isAuthenticated, selectedTenantId, breakGlassToken, role, isSuperadminTenantWorkspace])
@@ -356,6 +433,20 @@ function App() {
     setTenantAudit(data)
   }
 
+  const loadTenantSettings = async () => {
+    const data = await authedFetch<{ timezone: string }>('/api/tenant-settings', undefined, true)
+    setTenantTimezone(data.timezone || 'UTC')
+  }
+
+  const updateTenantSettings = async () => {
+    await withNotice(async () => {
+      await authedFetch('/api/tenant-settings', {
+        method: 'PUT',
+        body: JSON.stringify({ timezone: tenantTimezone }),
+      }, true)
+    }, 'Tenant settings updated.')
+  }
+
   const loadSuperTenants = async () => {
     const data = await authedFetch<Tenant[]>('/api/superadmin/tenants')
     setSuperTenants(data)
@@ -403,6 +494,28 @@ function App() {
     }, 'Renewal moved to recycle bin.')
   }
 
+  const updateRenewal = async () => {
+    if (!selectedRenewal) {
+      return
+    }
+
+    await withNotice(async () => {
+      await authedFetch('/api/renewals/' + selectedRenewal.id, {
+        method: 'PUT',
+        body: JSON.stringify({
+          title: selectedRenewal.title,
+          category: selectedRenewal.category,
+          expiration_date: selectedRenewal.expiration_date,
+          workflow_status: selectedRenewal.workflow_status,
+          auto_renews: selectedRenewal.auto_renews ?? false,
+          notes: selectedRenewal.notes,
+        }),
+      }, true)
+      setSelectedRenewal(null)
+      await Promise.all([loadRenewals(), loadDashboard()])
+    }, 'Renewal updated.')
+  }
+
   const createInventory = async () => {
     await withNotice(async () => {
       await authedFetch('/api/inventory', { method: 'POST', body: JSON.stringify(newInventory) }, true)
@@ -416,6 +529,28 @@ function App() {
       await authedFetch('/api/inventory/' + id, { method: 'DELETE' }, true)
       await Promise.all([loadInventory(), loadDashboard()])
     }, 'Inventory item moved to recycle bin.')
+  }
+
+  const updateInventoryItem = async () => {
+    if (!selectedInventoryItem) {
+      return
+    }
+
+    await withNotice(async () => {
+      await authedFetch('/api/inventory/' + selectedInventoryItem.id, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: selectedInventoryItem.name,
+          quantity_on_hand: selectedInventoryItem.quantity_on_hand,
+          minimum_on_hand: selectedInventoryItem.minimum_on_hand,
+          location: selectedInventoryItem.location,
+          vendor: selectedInventoryItem.vendor,
+          notes: selectedInventoryItem.notes,
+        }),
+      }, true)
+      setSelectedInventoryItem(null)
+      await Promise.all([loadInventory(), loadDashboard()])
+    }, 'Inventory item updated.')
   }
 
   const adjustStock = async (id: number, type: 'check_in' | 'check_out') => {
@@ -528,9 +663,12 @@ function App() {
     ? [
         { to: '/app/admin/users', label: 'User Management' },
         { to: '/app/admin/custom-fields', label: 'Custom Fields' },
+        { to: '/app/admin/tenant-settings', label: 'Tenant Settings' },
         { to: '/app/admin/audit', label: 'Tenant Audit' },
       ]
     : []
+
+  const canManageTenantAdminPages = role === 'tenant_admin' || (role === 'global_superadmin' && isSuperadminTenantWorkspace)
 
   const selectedTenant = useMemo(() => {
     if (!selectedTenantId) {
@@ -543,6 +681,12 @@ function App() {
 
     return user?.tenant_memberships.find((membership) => membership.tenant_id === selectedTenantId)?.tenant ?? null
   }, [selectedTenantId, role, superTenants, user])
+
+  useEffect(() => {
+    if (selectedTenant?.data?.timezone) {
+      setTenantTimezone(selectedTenant.data.timezone)
+    }
+  }, [selectedTenant])
 
   const headerTitle = useMemo(() => {
     if (role === 'global_superadmin' && !isSuperadminTenantWorkspace) {
@@ -652,18 +796,22 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to={role === 'global_superadmin' ? '/superadmin' : '/app'} replace />} />
             <Route path="/app" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <DashboardPage surface={surface} textMuted={textMuted} dashboard={dashboard} reload={loadDashboard} />} />
-            <Route path="/app/renewals" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RenewalsPage surface={surface} textMuted={textMuted} renewals={renewals} form={newRenewal} setForm={setNewRenewal} onCreate={createRenewal} onDelete={deleteRenewal} canCreate={role !== 'standard_user'} canDelete={role === 'tenant_admin' || role === 'global_superadmin'} />} />
-            <Route path="/app/inventory" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <InventoryPage surface={surface} textMuted={textMuted} items={inventory} form={newInventory} setForm={setNewInventory} onCreate={createInventory} onDelete={deleteInventory} onAdjust={adjustStock} canCreate={role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'} canDelete={role === 'tenant_admin' || role === 'global_superadmin'} />} />
+            <Route path="/app/renewals" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RenewalsPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} renewals={renewals} form={newRenewal} setForm={setNewRenewal} onCreate={createRenewal} onDelete={deleteRenewal} onSelect={setSelectedRenewal} canCreate={role !== 'standard_user'} canDelete={role === 'tenant_admin' || role === 'global_superadmin'} />} />
+            <Route path="/app/inventory" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <InventoryPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} items={inventory} form={newInventory} setForm={setNewInventory} onCreate={createInventory} onDelete={deleteInventory} onAdjust={adjustStock} onSelect={setSelectedInventoryItem} canCreate={role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'} canDelete={role === 'tenant_admin' || role === 'global_superadmin'} />} />
             <Route path="/app/recycle-bin" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RecycleBinPage surface={surface} textMuted={textMuted} data={recycleBin} reload={loadRecycleBin} onRestore={restoreEntity} />} />
 
-            <Route path="/app/admin/users" element={role === 'tenant_admin' ? <TenantUsersPage surface={surface} users={tenantUsers} form={newTenantUser} setForm={setNewTenantUser} onCreate={createTenantUser} onRemove={removeTenantUser} onToggleEdit={toggleTenantUserEdit} reload={loadTenantUsers} /> : <Navigate to="/app" replace />} />
-            <Route path="/app/admin/custom-fields" element={role === 'tenant_admin' ? <CustomFieldsPage surface={surface} fields={customFields} form={newCustomField} setForm={setNewCustomField} onCreate={createCustomField} onDelete={deleteCustomField} reload={loadCustomFields} /> : <Navigate to="/app" replace />} />
-            <Route path="/app/admin/audit" element={role === 'tenant_admin' ? <TenantAuditPage surface={surface} data={tenantAudit} reload={loadTenantAuditLogs} /> : <Navigate to="/app" replace />} />
+            <Route path="/app/admin/users" element={canManageTenantAdminPages ? <TenantUsersPage surface={surface} users={tenantUsers} form={newTenantUser} setForm={setNewTenantUser} onCreate={createTenantUser} onRemove={removeTenantUser} onToggleEdit={toggleTenantUserEdit} reload={loadTenantUsers} /> : <Navigate to="/app" replace />} />
+            <Route path="/app/admin/custom-fields" element={canManageTenantAdminPages ? <CustomFieldsPage surface={surface} fields={customFields} form={newCustomField} setForm={setNewCustomField} onCreate={createCustomField} onDelete={deleteCustomField} reload={loadCustomFields} /> : <Navigate to="/app" replace />} />
+            <Route path="/app/admin/tenant-settings" element={canManageTenantAdminPages ? <TenantSettingsPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} setTimezone={setTenantTimezone} save={updateTenantSettings} /> : <Navigate to="/app" replace />} />
+            <Route path="/app/admin/audit" element={canManageTenantAdminPages ? <TenantAuditPage surface={surface} timezone={tenantTimezone} data={tenantAudit} reload={loadTenantAuditLogs} /> : <Navigate to="/app" replace />} />
 
             <Route path="/superadmin" element={role === 'global_superadmin' ? <SuperadminTenantsPage surface={surface} tenants={superTenants} tenantForm={newTenant} setTenantForm={setNewTenant} tenantAdminForm={newTenantAdmin} setTenantAdminForm={setNewTenantAdmin} onCreate={createTenant} onSuspend={suspendTenant} onDelete={deleteTenant} reload={loadSuperTenants} /> : <Navigate to="/app" replace />} />
             <Route path="/superadmin/audit" element={role === 'global_superadmin' ? <GlobalAuditPage surface={surface} logs={globalAudit} reload={loadGlobalAuditLogs} /> : <Navigate to="/app" replace />} />
             <Route path="/superadmin/access" element={role === 'global_superadmin' ? <SuperadminTenantAccessPage surface={surface} textMuted={textMuted} tenants={superTenants} selectedTenantId={selectedTenantId} setSelectedTenantId={(tenantId) => { setSelectedTenantId(tenantId); setIsSuperadminTenantWorkspace(false); setBreakGlassToken('') }} breakGlassReason={breakGlassReason} setBreakGlassReason={setBreakGlassReason} breakGlassConfirmed={breakGlassConfirmed} setBreakGlassConfirmed={setBreakGlassConfirmed} breakGlassToken={breakGlassToken} startBreakGlass={startBreakGlass} stopBreakGlass={stopBreakGlass} enterWorkspace={() => { if (!selectedTenantId) { setNotice('Select a tenant before entering workspace.'); return; } if (!breakGlassToken) { setNotice('Start break-glass access before entering tenant workspace.'); return; } setIsSuperadminTenantWorkspace(true); }} /> : <Navigate to="/app" replace />} />
           </Routes>
+
+          {selectedRenewal ? <RenewalModal surface={surface} textMuted={textMuted} renewal={selectedRenewal} setRenewal={setSelectedRenewal} onSave={updateRenewal} onClose={() => setSelectedRenewal(null)} /> : null}
+          {selectedInventoryItem ? <InventoryModal surface={surface} textMuted={textMuted} item={selectedInventoryItem} setItem={setSelectedInventoryItem} onSave={updateInventoryItem} onClose={() => setSelectedInventoryItem(null)} /> : null}
         </main>
       </div>
     </div>
@@ -686,12 +834,12 @@ function DashboardPage({ surface, textMuted, dashboard, reload }: { surface: str
   )
 }
 
-function RenewalsPage({ surface, textMuted, renewals, form, setForm, onCreate, onDelete, canCreate, canDelete }: { surface: string; textMuted: string; renewals: Renewal[]; form: { title: string; category: string; expiration_date: string }; setForm: (value: { title: string; category: string; expiration_date: string }) => void; onCreate: () => Promise<void>; onDelete: (id: number) => Promise<void>; canCreate: boolean; canDelete: boolean }) {
+function RenewalsPage({ surface, textMuted, timezone, renewals, form, setForm, onCreate, onDelete, onSelect, canCreate, canDelete }: { surface: string; textMuted: string; timezone: string; renewals: Renewal[]; form: { title: string; category: string; expiration_date: string; workflow_status: string; auto_renews: boolean; notes: string }; setForm: (value: { title: string; category: string; expiration_date: string; workflow_status: string; auto_renews: boolean; notes: string }) => void; onCreate: () => Promise<void>; onDelete: (id: number) => Promise<void>; onSelect: (renewal: Renewal) => void; canCreate: boolean; canDelete: boolean }) {
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <h2 className="text-lg font-semibold">Renewals</h2>
       {canCreate ? (
-        <div className="mt-3 grid gap-2 md:grid-cols-4">
+        <div className="mt-3 grid gap-2 md:grid-cols-6">
           <div>
             <label className={`mb-1 block text-xs ${textMuted}`}>Title</label>
             <input placeholder="Title" className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
@@ -708,6 +856,21 @@ function RenewalsPage({ surface, textMuted, renewals, form, setForm, onCreate, o
             <label className={`mb-1 block text-xs ${textMuted}`}>Expiration Date</label>
             <input type="date" className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={form.expiration_date} onChange={(event) => setForm({ ...form, expiration_date: event.target.value })} />
           </div>
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>Workflow Status</label>
+            <select className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={form.workflow_status} onChange={(event) => setForm({ ...form, workflow_status: event.target.value })}>
+              <option value="">Select status</option>
+              {renewalWorkflowOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-end">
+            <label className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-sm ${surface}`}>
+              <input type="checkbox" checked={form.auto_renews} onChange={(event) => setForm({ ...form, auto_renews: event.target.checked })} />
+              Auto-renews
+            </label>
+          </div>
           <div className="flex items-end">
             <button className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onCreate()}>Create Renewal</button>
           </div>
@@ -719,9 +882,15 @@ function RenewalsPage({ surface, textMuted, renewals, form, setForm, onCreate, o
           <div key={renewal.id} className={`flex items-center justify-between rounded-md border p-3 ${surface}`}>
             <div>
               <p className="font-medium">{renewal.title}</p>
-              <p className={`text-sm ${textMuted}`}>{renewal.category} - {renewal.status} - {renewal.expiration_date}</p>
+              <p className={`text-sm ${textMuted}`}>{formatRenewalCategory(renewal.category)} - Auto: {renewal.status}</p>
+              <p className={`text-sm ${textMuted}`}>Workflow: {renewal.workflow_status || 'Not set'}</p>
+              <p className={`text-sm ${textMuted}`}>Auto-renew: {renewal.auto_renews ? 'Yes' : 'No'}</p>
+              <p className={`text-sm ${textMuted}`}>Expires: {formatDateTime(renewal.expiration_date, timezone)}</p>
             </div>
-            {canDelete ? <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onDelete(renewal.id)}>Delete</button> : null}
+            <div className="flex gap-2">
+              <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => onSelect(renewal)}>Open</button>
+              {canDelete ? <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onDelete(renewal.id)}>Delete</button> : null}
+            </div>
           </div>
         ))}
       </div>
@@ -729,7 +898,7 @@ function RenewalsPage({ surface, textMuted, renewals, form, setForm, onCreate, o
   )
 }
 
-function InventoryPage({ surface, textMuted, items, form, setForm, onCreate, onDelete, onAdjust, canCreate, canDelete }: { surface: string; textMuted: string; items: InventoryItem[]; form: { name: string; sku: string; quantity_on_hand: number; minimum_on_hand: number }; setForm: (value: { name: string; sku: string; quantity_on_hand: number; minimum_on_hand: number }) => void; onCreate: () => Promise<void>; onDelete: (id: number) => Promise<void>; onAdjust: (id: number, type: 'check_in' | 'check_out') => Promise<void>; canCreate: boolean; canDelete: boolean }) {
+function InventoryPage({ surface, textMuted, timezone, items, form, setForm, onCreate, onDelete, onAdjust, onSelect, canCreate, canDelete }: { surface: string; textMuted: string; timezone: string; items: InventoryItem[]; form: { name: string; sku: string; quantity_on_hand: number; minimum_on_hand: number }; setForm: (value: { name: string; sku: string; quantity_on_hand: number; minimum_on_hand: number }) => void; onCreate: () => Promise<void>; onDelete: (id: number) => Promise<void>; onAdjust: (id: number, type: 'check_in' | 'check_out') => Promise<void>; onSelect: (item: InventoryItem) => void; canCreate: boolean; canDelete: boolean }) {
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <h2 className="text-lg font-semibold">Inventory</h2>
@@ -763,8 +932,10 @@ function InventoryPage({ surface, textMuted, items, form, setForm, onCreate, onD
             <div>
               <p className="font-medium">{item.name} ({item.sku})</p>
               <p className={`text-sm ${textMuted}`}>On hand: {item.quantity_on_hand} / Min: {item.minimum_on_hand}</p>
+              <p className={`text-sm ${textMuted}`}>Created: {formatDateTime(item.created_at, timezone)}</p>
             </div>
             <div className="flex gap-2">
+              <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => onSelect(item)}>Open</button>
               <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_out')}>Check Out</button>
               <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_in')}>Check In</button>
               {canDelete ? <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onDelete(item.id)}>Delete</button> : null}
@@ -885,7 +1056,7 @@ function CustomFieldsPage({ surface, fields, form, setForm, onCreate, onDelete, 
   )
 }
 
-function TenantAuditPage({ surface, data, reload }: { surface: string; data: { tenant_logs: Array<{ id: number; event: string; created_at: string }>; break_glass_logs: Array<{ id: number; event: string; created_at: string }> } | null; reload: () => Promise<void> }) {
+function TenantAuditPage({ surface, timezone, data, reload }: { surface: string; timezone: string; data: { tenant_logs: Array<{ id: number; event: string; created_at: string }>; break_glass_logs: Array<{ id: number; event: string; created_at: string }> } | null; reload: () => Promise<void> }) {
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <div className="mb-3 flex items-center justify-between">
@@ -893,8 +1064,8 @@ function TenantAuditPage({ surface, data, reload }: { surface: string; data: { t
         <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void reload()}>Refresh</button>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <CardList title="Tenant Events" textMuted="" items={(data?.tenant_logs ?? []).map((log) => `${log.event} (${log.created_at})`)} />
-        <CardList title="Break-Glass Events" textMuted="" items={(data?.break_glass_logs ?? []).map((log) => `${log.event} (${log.created_at})`)} />
+        <CardList title="Tenant Events" textMuted="" items={(data?.tenant_logs ?? []).map((log) => `${log.event} (${formatDateTime(log.created_at, timezone)})`)} />
+        <CardList title="Break-Glass Events" textMuted="" items={(data?.break_glass_logs ?? []).map((log) => `${log.event} (${formatDateTime(log.created_at, timezone)})`)} />
       </div>
     </section>
   )
@@ -1024,10 +1195,126 @@ function GlobalAuditPage({ surface, logs, reload }: { surface: string; logs: Arr
       </div>
       <div className="space-y-2">
         {logs.map((log) => (
-          <div key={log.id} className={`rounded-md border p-3 text-sm ${surface}`}>{log.event} - {log.created_at}</div>
+          <div key={log.id} className={`rounded-md border p-3 text-sm ${surface}`}>{log.event} - {formatDateTime(log.created_at, 'UTC')}</div>
         ))}
       </div>
     </section>
+  )
+}
+
+function TenantSettingsPage({ surface, textMuted, timezone, setTimezone, save }: { surface: string; textMuted: string; timezone: string; setTimezone: (value: string) => void; save: () => Promise<void> }) {
+  return (
+    <section className={`rounded-xl border p-4 ${surface}`}>
+      <h2 className="text-lg font-semibold">Tenant Settings</h2>
+      <p className={`mt-2 text-sm ${textMuted}`}>Set the tenant timezone used for date and time display.</p>
+      <div className="mt-4 grid gap-2 md:grid-cols-[1fr_auto]">
+        <select className={`rounded-md border px-3 py-2 text-sm ${surface}`} value={timezone} onChange={(event) => setTimezone(event.target.value)}>
+          {tenantTimezoneOptions.map((zone) => (
+            <option key={zone} value={zone}>{zone}</option>
+          ))}
+        </select>
+        <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void save()}>Save Timezone</button>
+      </div>
+    </section>
+  )
+}
+
+function RenewalModal({ surface, textMuted, renewal, setRenewal, onSave, onClose }: { surface: string; textMuted: string; renewal: Renewal; setRenewal: (value: Renewal | null) => void; onSave: () => Promise<void>; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className={`w-full max-w-2xl rounded-xl border p-4 shadow-lg ${surface}`}>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Renewal Detail</h3>
+          <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={onClose}>Close</button>
+        </div>
+        <div className="grid gap-2 md:grid-cols-2">
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>Title</label>
+            <input className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={renewal.title} onChange={(event) => setRenewal({ ...renewal, title: event.target.value })} />
+          </div>
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>Type</label>
+            <select className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={renewal.category} onChange={(event) => setRenewal({ ...renewal, category: event.target.value })}>
+              {renewalCategoryOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>Expiration Date</label>
+            <input type="date" className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={renewal.expiration_date?.slice(0, 10) ?? ''} onChange={(event) => setRenewal({ ...renewal, expiration_date: event.target.value })} />
+          </div>
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>Workflow Status</label>
+            <select className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={renewal.workflow_status ?? ''} onChange={(event) => setRenewal({ ...renewal, workflow_status: event.target.value })}>
+              <option value="">Select status</option>
+              {renewalWorkflowOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-end">
+            <label className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-sm ${surface}`}>
+              <input type="checkbox" checked={Boolean(renewal.auto_renews)} onChange={(event) => setRenewal({ ...renewal, auto_renews: event.target.checked })} />
+              Auto-renews
+            </label>
+          </div>
+          <div className="md:col-span-2">
+            <label className={`mb-1 block text-xs ${textMuted}`}>Notes</label>
+            <textarea className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} rows={4} value={renewal.notes ?? ''} onChange={(event) => setRenewal({ ...renewal, notes: event.target.value })} />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onSave()}>Save Renewal</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InventoryModal({ surface, textMuted, item, setItem, onSave, onClose }: { surface: string; textMuted: string; item: InventoryItem; setItem: (value: InventoryItem | null) => void; onSave: () => Promise<void>; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className={`w-full max-w-2xl rounded-xl border p-4 shadow-lg ${surface}`}>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Inventory Detail</h3>
+          <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={onClose}>Close</button>
+        </div>
+        <div className="grid gap-2 md:grid-cols-2">
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>Item Name</label>
+            <input className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={item.name} onChange={(event) => setItem({ ...item, name: event.target.value })} />
+          </div>
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>SKU</label>
+            <input className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={item.sku} disabled />
+          </div>
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>Quantity On Hand</label>
+            <input type="number" className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={item.quantity_on_hand} onChange={(event) => setItem({ ...item, quantity_on_hand: Number(event.target.value) })} />
+          </div>
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>Minimum On Hand</label>
+            <input type="number" className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={item.minimum_on_hand} onChange={(event) => setItem({ ...item, minimum_on_hand: Number(event.target.value) })} />
+          </div>
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>Location</label>
+            <input className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={item.location ?? ''} onChange={(event) => setItem({ ...item, location: event.target.value })} />
+          </div>
+          <div>
+            <label className={`mb-1 block text-xs ${textMuted}`}>Vendor</label>
+            <input className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} value={item.vendor ?? ''} onChange={(event) => setItem({ ...item, vendor: event.target.value })} />
+          </div>
+          <div className="md:col-span-2">
+            <label className={`mb-1 block text-xs ${textMuted}`}>Notes</label>
+            <textarea className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} rows={4} value={item.notes ?? ''} onChange={(event) => setItem({ ...item, notes: event.target.value })} />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onSave()}>Save Inventory Item</button>
+        </div>
+      </div>
+    </div>
   )
 }
 

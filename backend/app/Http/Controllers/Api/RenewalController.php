@@ -44,8 +44,12 @@ class RenewalController extends Controller
             'start_date' => ['nullable', 'date'],
             'renewal_date' => ['nullable', 'date'],
             'expiration_date' => ['required', 'date'],
+            'workflow_status' => ['nullable', 'string', 'max:255'],
+            'auto_renews' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        $payload['auto_renews'] = (bool) ($payload['auto_renews'] ?? false);
 
         $payload['status'] = $this->statusService->fromExpiration(Carbon::parse($payload['expiration_date']));
         $payload['created_by'] = $request->user()->id;
@@ -73,6 +77,8 @@ class RenewalController extends Controller
             'start_date' => ['nullable', 'date'],
             'renewal_date' => ['nullable', 'date'],
             'expiration_date' => ['sometimes', 'date'],
+            'workflow_status' => ['nullable', 'string', 'max:255'],
+            'auto_renews' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
         ]);
 

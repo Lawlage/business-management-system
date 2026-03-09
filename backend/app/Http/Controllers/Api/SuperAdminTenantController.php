@@ -53,7 +53,7 @@ class SuperAdminTenantController extends Controller
                 'slug' => $payload['slug'],
                 'status' => 'active',
                 'created_by' => $request->user()?->id,
-                'data' => [],
+                'data' => ['timezone' => 'UTC'],
             ]);
 
             $tenantAdmin = User::query()->create([

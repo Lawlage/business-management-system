@@ -43,7 +43,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'acme',
                 'status' => 'active',
                 'created_by' => $superadmin->id,
-                'data' => json_encode([]),
+                'data' => json_encode(['timezone' => 'UTC']),
                 'updated_at' => now(),
                 'created_at' => now(),
             ],
