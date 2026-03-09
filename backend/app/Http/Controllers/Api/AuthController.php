@@ -34,7 +34,7 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return new JsonResponse([
-            'user' => $request->user()->load('tenantMemberships'),
+            'user' => $request->user()->load('tenantMemberships.tenant'),
         ]);
     }
 

@@ -11,6 +11,8 @@ use App\Services\AuditLogger;
 use App\Enums\TenantRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class SuperAdminTenantController extends Controller
@@ -29,21 +31,47 @@ class SuperAdminTenantController extends Controller
         return new JsonResponse(GlobalAuditLog::query()->latest()->limit(300)->get());
     }
 
+    public function users(): JsonResponse
+    {
+        return new JsonResponse(User::query()->orderBy('name')->get(['id', 'name', 'email', 'is_global_superadmin']));
+    }
+
     public function store(Request $request): JsonResponse
     {
         $payload = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:64', 'alpha_dash', 'unique:tenants,slug'],
+            'tenant_admin.name' => ['required', 'string', 'max:255'],
+            'tenant_admin.email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'tenant_admin.password' => ['required', 'string', 'min:12'],
         ]);
 
-        $tenant = Tenant::query()->create([
-            'id' => (string) Str::uuid(),
-            'name' => $payload['name'],
-            'slug' => $payload['slug'],
-            'status' => 'active',
-            'created_by' => $request->user()?->id,
-            'data' => [],
-        ]);
+        [$tenant, $tenantAdmin] = DB::transaction(function () use ($payload, $request): array {
+            $tenant = Tenant::query()->create([
+                'id' => (string) Str::uuid(),
+                'name' => $payload['name'],
+                'slug' => $payload['slug'],
+                'status' => 'active',
+                'created_by' => $request->user()?->id,
+                'data' => [],
+            ]);
+
+            $tenantAdmin = User::query()->create([
+                'name' => $payload['tenant_admin']['name'],
+                'email' => $payload['tenant_admin']['email'],
+                'password' => Hash::make($payload['tenant_admin']['password']),
+                'is_global_superadmin' => false,
+            ]);
+
+            TenantMembership::query()->create([
+                'tenant_id' => $tenant->id,
+                'user_id' => $tenantAdmin->id,
+                'role' => TenantRole::TenantAdmin->value,
+                'can_edit' => true,
+            ]);
+
+            return [$tenant, $tenantAdmin];
+        });
 
         $this->auditLogger->global($request, 'tenant.created', $request->user(), $tenant->id, [
             'entity_type' => 'tenant',
@@ -52,7 +80,25 @@ class SuperAdminTenantController extends Controller
             'slug' => $tenant->slug,
         ]);
 
-        return new JsonResponse($tenant, 201);
+        $this->auditLogger->global($request, 'tenant.user_created', $request->user(), $tenant->id, [
+            'entity_type' => 'user',
+            'entity_id' => (string) $tenantAdmin->id,
+            'email' => $tenantAdmin->email,
+        ]);
+
+        $this->auditLogger->global($request, 'tenant.admin_assigned', $request->user(), $tenant->id, [
+            'entity_type' => 'user',
+            'entity_id' => (string) $tenantAdmin->id,
+        ]);
+
+        return new JsonResponse([
+            'tenant' => $tenant,
+            'tenant_admin' => [
+                'id' => $tenantAdmin->id,
+                'name' => $tenantAdmin->name,
+                'email' => $tenantAdmin->email,
+            ],
+        ], 201);
     }
 
     public function destroy(Request $request, string $tenantId): JsonResponse

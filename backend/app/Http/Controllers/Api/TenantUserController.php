@@ -10,6 +10,7 @@ use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class TenantUserController extends Controller
 {
@@ -33,10 +34,11 @@ class TenantUserController extends Controller
     {
         $tenantId = (string) $request->attributes->get('tenant_id');
         $roles = implode(',', array_map(fn (TenantRole $role): string => $role->value, TenantRole::cases()));
+        $centralConnection = (string) config('tenancy.database.central_connection', config('database.default'));
 
         $payload = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'email', 'max:255', Rule::unique($centralConnection . '.users', 'email')],
             'password' => ['required', 'string', 'min:12'],
             'role' => ['required', 'in:' . $roles],
         ]);
@@ -65,6 +67,10 @@ class TenantUserController extends Controller
     public function destroy(Request $request, int $userId): JsonResponse
     {
         $tenantId = (string) $request->attributes->get('tenant_id');
+
+        if ((int) $request->user()?->id === $userId) {
+            return new JsonResponse(['message' => 'You cannot delete your own account.'], 422);
+        }
 
         TenantMembership::query()
             ->where('tenant_id', $tenantId)

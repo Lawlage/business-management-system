@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
 FRONTEND_DIR="$ROOT_DIR/frontend"
 TAILSCALE_IP="100.120.34.53"
-BACKEND_PORT="8000"
+BACKEND_PORT="8080"
 FRONTEND_PORT="5173"
 LOG_ROOT="$ROOT_DIR/logs/startup"
 LATEST_LINK="$LOG_ROOT/latest"
@@ -19,7 +19,7 @@ if [[ ! -d "$BACKEND_DIR" || ! -d "$FRONTEND_DIR" ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 [start|stop|status]"
+  echo "Usage: $0 [start|stop|restart|status]"
 }
 
 resolve_pid_file() {
@@ -139,6 +139,10 @@ case "$ACTION" in
     ;;
   stop)
     do_stop
+    ;;
+  restart)
+    do_stop
+    do_start
     ;;
   status)
     do_status

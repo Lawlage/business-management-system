@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/tenants/{tenantId}/break-glass', [BreakGlassController::class, 'start']);
         Route::post('/tenants/{tenantId}/break-glass/{token}/stop', [BreakGlassController::class, 'stop']);
         Route::get('/audit-logs', [SuperAdminTenantController::class, 'auditLogs']);
+        Route::get('/users', [SuperAdminTenantController::class, 'users']);
     });
 
     Route::middleware('tenant.context')->group(function (): void {

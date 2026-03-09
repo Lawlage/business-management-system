@@ -59,9 +59,21 @@ Use the root platform control script to start/stop all services with logs:
 
 - Start: `./platform.sh start`
 - Stop: `./platform.sh stop`
+- Restart: `./platform.sh restart`
 - Status: `./platform.sh status`
 
 Runtime logs are written to `logs/startup/<timestamp>/` and linked via `logs/startup/latest/`.
+
+## Interactive UI Coverage
+
+The frontend now includes working actions (API-backed buttons/forms) for:
+
+- Dashboard refresh with renewal and low-stock widgets
+- Renewal create/list/delete
+- Inventory create/list/check-in/check-out/delete
+- Recycle bin list and restore
+- Tenant admin: tenant users, edit permission toggles, custom fields, tenant audit logs
+- Superadmin: tenant create/suspend/delete (tenant creation includes new tenant-admin creation), global audit logs, break-glass session controls
 
 ## Demo Credentials
 
