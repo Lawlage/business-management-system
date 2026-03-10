@@ -1260,17 +1260,21 @@ function RenewalsPage({ surface, textMuted, timezone, renewals, onOpenCreate, on
       ) : <p className={`mt-2 text-sm ${textMuted}`}>Your role cannot create renewal objects.</p>}
 
       <div className="mt-4 space-y-2">
+        <div className={`hidden rounded-md border px-3 py-2 text-xs font-semibold uppercase tracking-wide md:grid md:grid-cols-[2fr_1.3fr_1.2fr_0.8fr_1fr] ${surface} ${textMuted}`}>
+          <span>Title</span>
+          <span className="border-l border-white/15 pl-3">Type / Status</span>
+          <span className="border-l border-white/15 pl-3">Workflow</span>
+          <span className="border-l border-white/15 pl-3">Auto</span>
+          <span className="border-l border-white/15 pl-3">Expires</span>
+        </div>
         {renewals.map((renewal) => (
           <button key={renewal.id} type="button" className={rowButtonClass} onClick={() => onSelect(renewal)}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-              <p className="font-medium">{renewal.title}</p>
-              <p className={`text-sm ${textMuted}`}>{formatRenewalCategory(renewal.category)} - Auto: {renewal.status}</p>
-              <p className={`text-sm ${textMuted}`}>Workflow: {renewal.workflow_status || 'Not set'}</p>
-              <p className={`text-sm ${textMuted}`}>Auto-renew: {renewal.auto_renews ? 'Yes' : 'No'}</p>
-              <p className={`text-sm ${textMuted}`}>Expires: {formatDateTime(renewal.expiration_date, timezone)}</p>
-              </div>
-              <span className={`text-xs ${textMuted}`}>Open</span>
+            <div className="grid gap-1 md:grid-cols-[2fr_1.3fr_1.2fr_0.8fr_1fr] md:items-center md:gap-3">
+              <p className="line-clamp-2 break-words font-medium">{renewal.title}</p>
+              <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{formatRenewalCategory(renewal.category)} / {renewal.status}</p>
+              <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{renewal.workflow_status || 'Not set'}</p>
+              <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{renewal.auto_renews ? 'Yes' : 'No'}</p>
+              <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{formatDateTime(renewal.expiration_date, timezone)}</p>
             </div>
           </button>
         ))}
@@ -1280,7 +1284,8 @@ function RenewalsPage({ surface, textMuted, timezone, renewals, onOpenCreate, on
 }
 
 function InventoryPage({ surface, textMuted, timezone, items, onOpenCreate, onAdjust, onSelect, canCreate }: { surface: string; textMuted: string; timezone: string; items: InventoryItem[]; onOpenCreate: () => void; onAdjust: (id: number, type: 'check_in' | 'check_out') => Promise<void>; onSelect: (item: InventoryItem) => void; canCreate: boolean }) {
-  const rowClass = `app-inner-box flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 transition hover:-translate-y-0.5 hover:brightness-105 ${surface}`
+  const inventoryGridCols = 'md:grid-cols-[minmax(0,2fr)_110px_110px_220px_220px]'
+  const rowClass = `app-inner-box grid gap-2 rounded-md border p-3 transition hover:-translate-y-0.5 hover:brightness-105 md:items-center md:gap-0 ${inventoryGridCols} ${surface}`
 
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
@@ -1292,14 +1297,23 @@ function InventoryPage({ surface, textMuted, timezone, items, onOpenCreate, onAd
       ) : <p className={`mt-2 text-sm ${textMuted}`}>Your role cannot create inventory items.</p>}
 
       <div className="mt-4 space-y-2">
+        <div className={`hidden rounded-md border px-3 py-2 text-xs font-semibold uppercase tracking-wide md:grid ${inventoryGridCols} ${surface} ${textMuted}`}>
+          <span>Item</span>
+          <span className="border-l border-white/15 pl-3">On Hand</span>
+          <span className="border-l border-white/15 pl-3">Minimum</span>
+          <span className="border-l border-white/15 pl-3">Created</span>
+          <span className="border-l border-white/15 pl-3">Actions</span>
+        </div>
         {items.map((item) => (
           <div key={item.id} className={rowClass}>
-            <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onSelect(item)}>
-              <p className="font-medium">{item.name} ({item.sku})</p>
-              <p className={`text-sm ${textMuted}`}>On hand: {item.quantity_on_hand} / Min: {item.minimum_on_hand}</p>
-              <p className={`text-sm ${textMuted}`}>Created: {formatDateTime(item.created_at, timezone)}</p>
+            <button type="button" className="min-w-0 pr-3 text-left" onClick={() => onSelect(item)}>
+              <p className="font-medium">{item.name}</p>
+              <p className={`text-sm ${textMuted}`}>{item.sku}</p>
             </button>
-            <div className="flex gap-2">
+            <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{item.quantity_on_hand}</p>
+            <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{item.minimum_on_hand}</p>
+            <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{formatDateTime(item.created_at, timezone)}</p>
+            <div className="flex gap-2 border-l border-white/12 pl-3 md:justify-end">
               <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_out')}>Check Out</button>
               <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_in')}>Check In</button>
             </div>
