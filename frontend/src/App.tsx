@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 type AppRole = 'standard_user' | 'sub_admin' | 'tenant_admin' | 'global_superadmin'
 
@@ -70,6 +70,14 @@ type TenantUserMembership = {
     name: string
     email: string
   }
+}
+
+type ConfirmationDialog = {
+  title: string
+  message: string
+  confirmLabel: string
+  tone: 'danger' | 'neutral'
+  resolve: (confirmed: boolean) => void
 }
 
 const roleLabels: Record<AppRole, string> = {
@@ -152,6 +160,19 @@ function formatRenewalCategory(value?: string | null): string {
     .join(' ')
 }
 
+function formatAuditEvent(event?: string): string {
+  if (!event) {
+    return 'Unknown event'
+  }
+
+  const normalized = event.replace(/[._]/g, ' ')
+  return normalized
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 const inventoryDefaults = {
   name: '',
   sku: '',
@@ -160,6 +181,7 @@ const inventoryDefaults = {
 }
 
 function App() {
+  const location = useLocation()
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme_preference') === 'light' ? 'light' : 'dark'))
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -198,6 +220,8 @@ function App() {
   const [newTenantAdmin, setNewTenantAdmin] = useState({ name: '', email: '', password: '' })
   const [selectedRenewal, setSelectedRenewal] = useState<Renewal | null>(null)
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null)
+  const [confirmationDialog, setConfirmationDialog] = useState<ConfirmationDialog | null>(null)
+  const [isRouteRefreshing, setIsRouteRefreshing] = useState(false)
 
   const role = useMemo(() => {
     if (!user) {
@@ -262,6 +286,67 @@ function App() {
   }, [role, isAuthenticated])
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return
+    }
+
+    let cancelled = false
+
+    const refreshForRoute = async () => {
+      setIsRouteRefreshing(true)
+      try {
+        if (location.pathname.startsWith('/superadmin')) {
+          if (role === 'global_superadmin') {
+            if (location.pathname === '/superadmin' || location.pathname === '/superadmin/access') {
+              await loadSuperTenants()
+            }
+            if (location.pathname === '/superadmin/audit') {
+              await loadGlobalAuditLogs()
+            }
+          }
+          return
+        }
+
+        if (!selectedTenantId) {
+          return
+        }
+
+        if (role === 'global_superadmin' && (!isSuperadminTenantWorkspace || !breakGlassToken)) {
+          return
+        }
+
+        if (location.pathname === '/app') {
+          await loadDashboard()
+        } else if (location.pathname === '/app/renewals') {
+          await Promise.all([loadRenewals(), loadDashboard()])
+        } else if (location.pathname === '/app/inventory') {
+          await Promise.all([loadInventory(), loadDashboard()])
+        } else if (location.pathname === '/app/recycle-bin') {
+          await loadRecycleBin()
+        } else if (location.pathname === '/app/admin/users') {
+          await loadTenantUsers()
+        } else if (location.pathname === '/app/admin/custom-fields') {
+          await loadCustomFields()
+        } else if (location.pathname === '/app/admin/audit') {
+          await loadTenantAuditLogs()
+        } else if (location.pathname === '/app/admin/tenant-settings') {
+          await loadTenantSettings()
+        }
+      } finally {
+        if (!cancelled) {
+          setIsRouteRefreshing(false)
+        }
+      }
+    }
+
+    void refreshForRoute()
+
+    return () => {
+      cancelled = true
+    }
+  }, [location.pathname, isAuthenticated, selectedTenantId, role, isSuperadminTenantWorkspace, breakGlassToken])
+
+  useEffect(() => {
     if (!notice) {
       return
     }
@@ -276,6 +361,30 @@ function App() {
   }, [notice])
 
   const toggleTheme = () => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
+
+  const requestConfirmation = (options: {
+    title: string
+    message: string
+    confirmLabel?: string
+    tone?: 'danger' | 'neutral'
+  }): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmationDialog({
+        title: options.title,
+        message: options.message,
+        confirmLabel: options.confirmLabel ?? 'Confirm',
+        tone: options.tone ?? 'neutral',
+        resolve,
+      })
+    })
+  }
+
+  const resolveConfirmation = (confirmed: boolean) => {
+    if (confirmationDialog) {
+      confirmationDialog.resolve(confirmed)
+      setConfirmationDialog(null)
+    }
+  }
 
   const authedFetch = async <T,>(path: string, init?: RequestInit, tenantScoped = false): Promise<T> => {
     if (!token) {
@@ -493,6 +602,17 @@ function App() {
   }
 
   const stopBreakGlass = async () => {
+    const confirmed = await requestConfirmation({
+      title: 'End break-glass session?',
+      message: 'You will exit tenant workspace and return to superadmin mode.',
+      confirmLabel: 'End Session',
+      tone: 'danger',
+    })
+
+    if (!confirmed) {
+      return
+    }
+
     await withNotice(async () => {
       await authedFetch('/api/superadmin/tenants/' + selectedTenantId + '/break-glass/' + breakGlassToken + '/stop', { method: 'POST' })
       setBreakGlassToken('')
@@ -511,6 +631,17 @@ function App() {
   }
 
   const deleteRenewal = async (id: number) => {
+    const confirmed = await requestConfirmation({
+      title: 'Delete renewal?',
+      message: 'This will move the renewal to recycle bin.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+
+    if (!confirmed) {
+      return
+    }
+
     await withNotice(async () => {
       await authedFetch('/api/renewals/' + id, { method: 'DELETE' }, true)
       await Promise.all([loadRenewals(), loadDashboard()])
@@ -548,6 +679,17 @@ function App() {
   }
 
   const deleteInventory = async (id: number) => {
+    const confirmed = await requestConfirmation({
+      title: 'Delete inventory item?',
+      message: 'This will move the item to recycle bin.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+
+    if (!confirmed) {
+      return
+    }
+
     await withNotice(async () => {
       await authedFetch('/api/inventory/' + id, { method: 'DELETE' }, true)
       await Promise.all([loadInventory(), loadDashboard()])
@@ -602,6 +744,17 @@ function App() {
   }
 
   const removeTenantUser = async (id: number) => {
+    const confirmed = await requestConfirmation({
+      title: 'Remove tenant user?',
+      message: 'The user will be removed from this tenant.',
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    })
+
+    if (!confirmed) {
+      return
+    }
+
     await withNotice(async () => {
       await authedFetch('/api/tenant-users/' + id, { method: 'DELETE' }, true)
       await loadTenantUsers()
@@ -627,6 +780,17 @@ function App() {
   }
 
   const deleteCustomField = async (id: number) => {
+    const confirmed = await requestConfirmation({
+      title: 'Delete custom field?',
+      message: 'Deleting this field can affect existing data views.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+
+    if (!confirmed) {
+      return
+    }
+
     await withNotice(async () => {
       await authedFetch('/api/custom-fields/' + id, { method: 'DELETE' }, true)
       await loadCustomFields()
@@ -663,13 +827,26 @@ function App() {
   }
 
   const deleteTenant = async (tenantId: string) => {
+    const confirmed = await requestConfirmation({
+      title: 'Delete tenant?',
+      message: 'This action is high-risk and should only be done intentionally.',
+      confirmLabel: 'Delete Tenant',
+      tone: 'danger',
+    })
+
+    if (!confirmed) {
+      return
+    }
+
     await withNotice(async () => {
       await authedFetch('/api/superadmin/tenants/' + tenantId, { method: 'DELETE' })
       await loadSuperTenants()
     }, 'Tenant deleted.')
   }
 
-  const baseButton = theme === 'dark' ? 'rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 hover:bg-slate-700' : 'rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-100'
+  const baseButton = theme === 'dark'
+    ? 'cursor-pointer rounded-md border border-slate-500 bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-100 shadow-sm transition hover:bg-slate-700 hover:shadow-lg'
+    : 'cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 hover:shadow-lg'
   const surface = theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-slate-300 bg-white'
   const textMuted = theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
 
@@ -790,13 +967,7 @@ function App() {
             {role === 'global_superadmin' && isSuperadminTenantWorkspace && breakGlassToken ? (
               <button
                 className="rounded-md border border-red-500 bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-500"
-                onClick={() => {
-                  const confirmed = window.confirm('End break-glass session and return to superadmin view?')
-                  if (!confirmed) {
-                    return
-                  }
-                  void stopBreakGlass()
-                }}
+                onClick={() => void stopBreakGlass()}
               >
                 End Break-Glass
               </button>
@@ -816,14 +987,34 @@ function App() {
         <aside className={`rounded-xl border p-4 ${surface}`}>
           <p className={`mb-2 text-xs uppercase ${textMuted}`}>Main</p>
           <nav className="flex flex-col gap-2">
-            {appLinks.map((link) => (<Link key={link.to} className={baseButton} to={link.to}>{link.label}</Link>))}
+            {appLinks.map((link) => {
+              const isActive = location.pathname === link.to
+              return (
+                <Link key={link.to} className={baseButton} to={link.to}>
+                  <span className="flex items-center justify-between gap-2">
+                    <span>{link.label}</span>
+                    {isActive && isRouteRefreshing ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-cyan-300" /> : null}
+                  </span>
+                </Link>
+              )
+            })}
           </nav>
 
           {adminLinks.length > 0 ? (
             <>
               <p className={`mb-2 mt-4 text-xs uppercase ${textMuted}`}>Admin Settings</p>
               <nav className="flex flex-col gap-2">
-                {adminLinks.map((link) => (<Link key={link.to} className={baseButton} to={link.to}>{link.label}</Link>))}
+                {adminLinks.map((link) => {
+                  const isActive = location.pathname === link.to
+                  return (
+                    <Link key={link.to} className={baseButton} to={link.to}>
+                      <span className="flex items-center justify-between gap-2">
+                        <span>{link.label}</span>
+                        {isActive && isRouteRefreshing ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-cyan-300" /> : null}
+                      </span>
+                    </Link>
+                  )
+                })}
               </nav>
             </>
           ) : null}
@@ -843,7 +1034,7 @@ function App() {
         <main className="space-y-4">
           <Routes>
             <Route path="/" element={<Navigate to={role === 'global_superadmin' ? '/superadmin' : '/app'} replace />} />
-            <Route path="/app" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <DashboardPage surface={surface} textMuted={textMuted} dashboard={dashboard} reload={loadDashboard} />} />
+            <Route path="/app" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <DashboardPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} dashboard={dashboard} reload={loadDashboard} onOpenRenewal={setSelectedRenewal} onOpenInventory={setSelectedInventoryItem} />} />
             <Route path="/app/renewals" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RenewalsPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} renewals={renewals} form={newRenewal} setForm={setNewRenewal} onCreate={createRenewal} onDelete={deleteRenewal} onSelect={setSelectedRenewal} canCreate={role !== 'standard_user'} canDelete={role === 'tenant_admin' || role === 'global_superadmin'} />} />
             <Route path="/app/inventory" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <InventoryPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} items={inventory} form={newInventory} setForm={setNewInventory} onCreate={createInventory} onDelete={deleteInventory} onAdjust={adjustStock} onSelect={setSelectedInventoryItem} canCreate={role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'} canDelete={role === 'tenant_admin' || role === 'global_superadmin'} />} />
             <Route path="/app/recycle-bin" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RecycleBinPage surface={surface} textMuted={textMuted} data={recycleBin} reload={loadRecycleBin} onRestore={restoreEntity} />} />
@@ -874,11 +1065,35 @@ function App() {
           {notice}
         </div>
       ) : null}
+
+      {confirmationDialog ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className={`w-full max-w-md rounded-xl border p-5 shadow-2xl ${surface}`}>
+            <h3 className="text-lg font-semibold">{confirmationDialog.title}</h3>
+            <p className={`mt-2 text-sm ${textMuted}`}>{confirmationDialog.message}</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button className={baseButton} onClick={() => resolveConfirmation(false)}>Cancel</button>
+              <button
+                className={
+                  confirmationDialog.tone === 'danger'
+                    ? 'rounded-md border border-red-500 bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-500'
+                    : baseButton
+                }
+                onClick={() => resolveConfirmation(true)}
+              >
+                {confirmationDialog.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
 
-function DashboardPage({ surface, textMuted, dashboard, reload }: { surface: string; textMuted: string; dashboard: { important_renewals: Renewal[]; critical_renewals: Renewal[]; low_stock_items: InventoryItem[] } | null; reload: () => Promise<void> }) {
+function DashboardPage({ surface, textMuted, timezone, dashboard, reload, onOpenRenewal, onOpenInventory }: { surface: string; textMuted: string; timezone: string; dashboard: { important_renewals: Renewal[]; critical_renewals: Renewal[]; low_stock_items: InventoryItem[] } | null; reload: () => Promise<void>; onOpenRenewal: (renewal: Renewal) => void; onOpenInventory: (item: InventoryItem) => void }) {
+  const clickableItemClass = `w-full cursor-pointer rounded-md border p-2 text-left transition hover:-translate-y-0.5 hover:border-cyan-400/80 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 ${surface}`
+
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <div className="mb-4 flex items-center justify-between">
@@ -886,15 +1101,52 @@ function DashboardPage({ surface, textMuted, dashboard, reload }: { surface: str
         <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void reload()}>Refresh</button>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <CardList title="Most Important Renewals" textMuted={textMuted} items={dashboard?.important_renewals.map((renewal) => `${renewal.title} (${renewal.status})`) ?? []} />
-        <CardList title="Critical Renewals" textMuted={textMuted} items={dashboard?.critical_renewals.map((renewal) => `${renewal.title} (${renewal.expiration_date})`) ?? []} />
-        <CardList title="Low Stock Alerts" textMuted={textMuted} items={dashboard?.low_stock_items.map((item) => `${item.name}: ${item.quantity_on_hand}/${item.minimum_on_hand}`) ?? []} />
+        <div className="rounded-md border border-slate-600 p-3">
+          <h3 className="font-semibold">Most Important Renewals</h3>
+          <div className="mt-2 space-y-2">
+            {(dashboard?.important_renewals ?? []).length === 0 ? <p className={`text-sm ${textMuted}`}>No records.</p> : null}
+            {(dashboard?.important_renewals ?? []).map((renewal) => (
+              <button key={renewal.id} type="button" className={clickableItemClass} onClick={() => onOpenRenewal(renewal)}>
+                <p className="font-medium text-sm">{renewal.title}</p>
+                <p className={`text-xs ${textMuted}`}>{renewal.status} - {formatDateTime(renewal.expiration_date, timezone)}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-md border border-slate-600 p-3">
+          <h3 className="font-semibold">Critical Renewals</h3>
+          <div className="mt-2 space-y-2">
+            {(dashboard?.critical_renewals ?? []).length === 0 ? <p className={`text-sm ${textMuted}`}>No records.</p> : null}
+            {(dashboard?.critical_renewals ?? []).map((renewal) => (
+              <button key={renewal.id} type="button" className={clickableItemClass} onClick={() => onOpenRenewal(renewal)}>
+                <p className="font-medium text-sm">{renewal.title}</p>
+                <p className={`text-xs ${textMuted}`}>{renewal.status} - {formatDateTime(renewal.expiration_date, timezone)}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-md border border-slate-600 p-3">
+          <h3 className="font-semibold">Low Stock Alerts</h3>
+          <div className="mt-2 space-y-2">
+            {(dashboard?.low_stock_items ?? []).length === 0 ? <p className={`text-sm ${textMuted}`}>No records.</p> : null}
+            {(dashboard?.low_stock_items ?? []).map((item) => (
+              <button key={item.id} type="button" className={clickableItemClass} onClick={() => onOpenInventory(item)}>
+                <p className="font-medium text-sm">{item.name}</p>
+                <p className={`text-xs ${textMuted}`}>On hand: {item.quantity_on_hand} / Min: {item.minimum_on_hand}</p>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   )
 }
 
 function RenewalsPage({ surface, textMuted, timezone, renewals, form, setForm, onCreate, onDelete, onSelect, canCreate, canDelete }: { surface: string; textMuted: string; timezone: string; renewals: Renewal[]; form: { title: string; category: string; expiration_date: string; workflow_status: string; auto_renews: boolean; notes: string }; setForm: (value: { title: string; category: string; expiration_date: string; workflow_status: string; auto_renews: boolean; notes: string }) => void; onCreate: () => Promise<void>; onDelete: (id: number) => Promise<void>; onSelect: (renewal: Renewal) => void; canCreate: boolean; canDelete: boolean }) {
+  const deleteButtonClass = 'rounded-md border border-red-800 bg-red-950/70 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-900/80'
+
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <h2 className="text-lg font-semibold">Renewals</h2>
@@ -948,8 +1200,15 @@ function RenewalsPage({ surface, textMuted, timezone, renewals, form, setForm, o
               <p className={`text-sm ${textMuted}`}>Expires: {formatDateTime(renewal.expiration_date, timezone)}</p>
             </div>
             <div className="flex gap-2">
-              <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => onSelect(renewal)}>Open</button>
-              {canDelete ? <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onDelete(renewal.id)}>Delete</button> : null}
+              <button className="rounded-md border border-cyan-400/80 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25" onClick={() => onSelect(renewal)}>Open</button>
+              {canDelete ? (
+                <button
+                  className={deleteButtonClass}
+                  onClick={() => void onDelete(renewal.id)}
+                >
+                  Delete
+                </button>
+              ) : null}
             </div>
           </div>
         ))}
@@ -959,6 +1218,8 @@ function RenewalsPage({ surface, textMuted, timezone, renewals, form, setForm, o
 }
 
 function InventoryPage({ surface, textMuted, timezone, items, form, setForm, onCreate, onDelete, onAdjust, onSelect, canCreate, canDelete }: { surface: string; textMuted: string; timezone: string; items: InventoryItem[]; form: { name: string; sku: string; quantity_on_hand: number; minimum_on_hand: number }; setForm: (value: { name: string; sku: string; quantity_on_hand: number; minimum_on_hand: number }) => void; onCreate: () => Promise<void>; onDelete: (id: number) => Promise<void>; onAdjust: (id: number, type: 'check_in' | 'check_out') => Promise<void>; onSelect: (item: InventoryItem) => void; canCreate: boolean; canDelete: boolean }) {
+  const deleteButtonClass = 'rounded-md border border-red-800 bg-red-950/70 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-900/80'
+
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <h2 className="text-lg font-semibold">Inventory</h2>
@@ -995,10 +1256,17 @@ function InventoryPage({ surface, textMuted, timezone, items, form, setForm, onC
               <p className={`text-sm ${textMuted}`}>Created: {formatDateTime(item.created_at, timezone)}</p>
             </div>
             <div className="flex gap-2">
-              <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => onSelect(item)}>Open</button>
+              <button className="rounded-md border border-cyan-400/80 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25" onClick={() => onSelect(item)}>Open</button>
               <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_out')}>Check Out</button>
               <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_in')}>Check In</button>
-              {canDelete ? <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onDelete(item.id)}>Delete</button> : null}
+              {canDelete ? (
+                <button
+                  className={deleteButtonClass}
+                  onClick={() => void onDelete(item.id)}
+                >
+                  Delete
+                </button>
+              ) : null}
             </div>
           </div>
         ))}
@@ -1039,6 +1307,8 @@ function RecycleBinPage({ surface, textMuted, data, reload, onRestore }: { surfa
 }
 
 function TenantUsersPage({ surface, users, form, setForm, onCreate, onRemove, onToggleEdit, reload }: { surface: string; users: TenantUserMembership[]; form: { name: string; email: string; password: string; role: AppRole }; setForm: (value: { name: string; email: string; password: string; role: AppRole }) => void; onCreate: () => Promise<void>; onRemove: (id: number) => Promise<void>; onToggleEdit: (id: number, canEdit: boolean) => Promise<void>; reload: () => Promise<void> }) {
+  const deleteButtonClass = 'rounded-md border border-red-800 bg-red-950/70 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-900/80'
+
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <div className="mb-3 flex items-center justify-between">
@@ -1067,7 +1337,12 @@ function TenantUsersPage({ surface, users, form, setForm, onCreate, onRemove, on
             </div>
             <div className="flex gap-2">
               <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onToggleEdit(membership.user.id, membership.can_edit)}>{membership.can_edit ? 'Revoke Edit' : 'Allow Edit'}</button>
-              <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onRemove(membership.user.id)}>Remove</button>
+              <button
+                className={deleteButtonClass}
+                onClick={() => void onRemove(membership.user.id)}
+              >
+                Remove
+              </button>
             </div>
           </div>
         ))}
@@ -1077,6 +1352,8 @@ function TenantUsersPage({ surface, users, form, setForm, onCreate, onRemove, on
 }
 
 function CustomFieldsPage({ surface, fields, form, setForm, onCreate, onDelete, reload }: { surface: string; fields: CustomField[]; form: { entity_type: 'renewal' | 'inventory'; name: string; key: string; field_type: string }; setForm: (value: { entity_type: 'renewal' | 'inventory'; name: string; key: string; field_type: string }) => void; onCreate: () => Promise<void>; onDelete: (id: number) => Promise<void>; reload: () => Promise<void> }) {
+  const deleteButtonClass = 'rounded-md border border-red-800 bg-red-950/70 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-900/80'
+
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <div className="mb-3 flex items-center justify-between">
@@ -1108,7 +1385,12 @@ function CustomFieldsPage({ surface, fields, form, setForm, onCreate, onDelete, 
               <p className="font-medium">{field.name} ({field.key})</p>
               <p className="text-sm">{field.entity_type} - {field.field_type}</p>
             </div>
-            <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onDelete(field.id)}>Delete</button>
+            <button
+              className={deleteButtonClass}
+              onClick={() => void onDelete(field.id)}
+            >
+              Delete
+            </button>
           </div>
         ))}
       </div>
@@ -1117,21 +1399,50 @@ function CustomFieldsPage({ surface, fields, form, setForm, onCreate, onDelete, 
 }
 
 function TenantAuditPage({ surface, timezone, data, reload }: { surface: string; timezone: string; data: { tenant_logs: Array<{ id: number; event: string; created_at: string }>; break_glass_logs: Array<{ id: number; event: string; created_at: string }> } | null; reload: () => Promise<void> }) {
+  const tenantEvents = data?.tenant_logs ?? []
+  const breakGlassEvents = data?.break_glass_logs ?? []
+
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Tenant Audit Logs</h2>
         <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void reload()}>Refresh</button>
       </div>
+
       <div className="grid gap-4 md:grid-cols-2">
-        <CardList title="Tenant Events" textMuted="" items={(data?.tenant_logs ?? []).map((log) => `${log.event} (${formatDateTime(log.created_at, timezone)})`)} />
-        <CardList title="Break-Glass Events" textMuted="" items={(data?.break_glass_logs ?? []).map((log) => `${log.event} (${formatDateTime(log.created_at, timezone)})`)} />
+        <div className={`rounded-md border p-3 ${surface}`}>
+          <h3 className="font-semibold">Tenant Events</h3>
+          <div className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
+            {tenantEvents.length === 0 ? <p className="text-sm text-slate-400">No records.</p> : null}
+            {tenantEvents.map((log) => (
+              <div key={log.id} className={`rounded-md border p-2 text-sm ${surface}`}>
+                <p><span className="font-semibold">Action:</span> {formatAuditEvent(log.event)}</p>
+                <p><span className="font-semibold">When:</span> {formatDateTime(log.created_at, timezone)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={`rounded-md border p-3 ${surface}`}>
+          <h3 className="font-semibold">Break-Glass Events</h3>
+          <div className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
+            {breakGlassEvents.length === 0 ? <p className="text-sm text-slate-400">No records.</p> : null}
+            {breakGlassEvents.map((log) => (
+              <div key={log.id} className={`rounded-md border p-2 text-sm ${surface}`}>
+                <p><span className="font-semibold">Action:</span> {formatAuditEvent(log.event)}</p>
+                <p><span className="font-semibold">When:</span> {formatDateTime(log.created_at, timezone)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   )
 }
 
 function SuperadminTenantsPage({ surface, tenants, tenantForm, setTenantForm, tenantAdminForm, setTenantAdminForm, onCreate, onSuspend, onUnsuspend, onDelete, reload }: { surface: string; tenants: Tenant[]; tenantForm: { name: string; slug: string }; setTenantForm: (value: { name: string; slug: string }) => void; tenantAdminForm: { name: string; email: string; password: string }; setTenantAdminForm: (value: { name: string; email: string; password: string }) => void; onCreate: () => Promise<void>; onSuspend: (tenantId: string) => Promise<void>; onUnsuspend: (tenantId: string) => Promise<void>; onDelete: (tenantId: string) => Promise<void>; reload: () => Promise<void> }) {
+  const deleteButtonClass = 'rounded-md border border-red-800 bg-red-950/70 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-900/80'
+
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <div className="mb-3 flex items-center justify-between">
@@ -1167,7 +1478,12 @@ function SuperadminTenantsPage({ surface, tenants, tenantForm, setTenantForm, te
               ) : (
                 <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onSuspend(tenant.id)}>Suspend</button>
               )}
-              <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onDelete(tenant.id)}>Delete</button>
+              <button
+                className={deleteButtonClass}
+                onClick={() => void onDelete(tenant.id)}
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))}
@@ -1255,9 +1571,12 @@ function GlobalAuditPage({ surface, logs, reload }: { surface: string; logs: Arr
         <h2 className="text-lg font-semibold">Global Audit Logs</h2>
         <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void reload()}>Refresh</button>
       </div>
-      <div className="space-y-2">
+      <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">
         {logs.map((log) => (
-          <div key={log.id} className={`rounded-md border p-3 text-sm ${surface}`}>{log.event} - {formatDateTime(log.created_at, 'UTC')}</div>
+          <div key={log.id} className={`rounded-md border p-3 text-sm ${surface}`}>
+            <p><span className="font-semibold">Action:</span> {formatAuditEvent(log.event)}</p>
+            <p><span className="font-semibold">When:</span> {formatDateTime(log.created_at, 'UTC')}</p>
+          </div>
         ))}
       </div>
     </section>
@@ -1376,20 +1695,6 @@ function InventoryModal({ surface, textMuted, item, setItem, onSave, onClose }: 
           <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onSave()}>Save Inventory Item</button>
         </div>
       </div>
-    </div>
-  )
-}
-
-function CardList({ title, items, textMuted }: { title: string; items: string[]; textMuted: string }) {
-  return (
-    <div className="rounded-md border border-slate-600 p-3">
-      <h3 className="font-semibold">{title}</h3>
-      {items.length === 0 ? <p className={`mt-2 text-sm ${textMuted || 'text-slate-400'}`}>No records.</p> : null}
-      <ul className="mt-2 space-y-1 text-sm">
-        {items.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-      </ul>
     </div>
   )
 }
