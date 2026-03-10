@@ -702,7 +702,7 @@ function App() {
     }, 'Renewal created.')
   }
 
-  const deleteRenewal = async (id: number) => {
+  const deleteRenewal = async (id: number): Promise<boolean> => {
     const confirmed = await requestConfirmation({
       title: 'Delete renewal?',
       message: 'This will move the renewal to recycle bin.',
@@ -711,13 +711,15 @@ function App() {
     })
 
     if (!confirmed) {
-      return
+      return false
     }
 
     await withNotice(async () => {
       await authedFetch('/api/renewals/' + id, { method: 'DELETE' }, true)
       await Promise.all([loadRenewals(), loadDashboard()])
     }, 'Renewal moved to recycle bin.')
+
+    return true
   }
 
   const updateRenewal = async () => {
@@ -750,7 +752,7 @@ function App() {
     }, 'Inventory item created.')
   }
 
-  const deleteInventory = async (id: number) => {
+  const deleteInventory = async (id: number): Promise<boolean> => {
     const confirmed = await requestConfirmation({
       title: 'Delete inventory item?',
       message: 'This will move the item to recycle bin.',
@@ -759,13 +761,15 @@ function App() {
     })
 
     if (!confirmed) {
-      return
+      return false
     }
 
     await withNotice(async () => {
       await authedFetch('/api/inventory/' + id, { method: 'DELETE' }, true)
       await Promise.all([loadInventory(), loadDashboard()])
     }, 'Inventory item moved to recycle bin.')
+
+    return true
   }
 
   const updateInventoryItem = async () => {
@@ -981,7 +985,7 @@ function App() {
     }
 
     return (
-      <div className="app-shell flex min-h-screen items-center justify-center p-4 text-[var(--ui-text)]">
+      <div className={`app-shell density-${tenantUiSettings.density} flex min-h-screen items-center justify-center p-4 text-[var(--ui-text)]`}>
         <form onSubmit={handleLogin} className={`w-full max-w-md rounded-xl border p-6 shadow-sm ${surface}`}>
           <h1 className="text-2xl font-bold">Sign in</h1>
           <p className={`mt-2 text-sm ${textMuted}`}>Use your platform credentials to access the dashboard.</p>
@@ -1016,7 +1020,7 @@ function App() {
   }
 
   return (
-    <div className="app-shell min-h-screen text-[var(--ui-text)]">
+    <div className={`app-shell density-${tenantUiSettings.density} min-h-screen text-[var(--ui-text)]`}>
       <header className={`border-b ${surface}`}>
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 p-4">
           <div>
@@ -1097,8 +1101,8 @@ function App() {
             <Route path="/" element={<Navigate to={role === 'global_superadmin' ? '/superadmin' : '/app'} replace />} />
             <Route path="/login" element={<Navigate to={role === 'global_superadmin' ? '/superadmin' : '/app'} replace />} />
             <Route path="/app" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <DashboardPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} dashboard={dashboard} reload={loadDashboard} onOpenRenewal={setSelectedRenewal} onOpenInventory={setSelectedInventoryItem} />} />
-            <Route path="/app/renewals" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RenewalsPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} renewals={renewals} onOpenCreate={() => setIsCreateRenewalOpen(true)} onDelete={deleteRenewal} onSelect={setSelectedRenewal} canCreate={role !== 'standard_user'} canDelete={role === 'tenant_admin' || role === 'global_superadmin'} />} />
-            <Route path="/app/inventory" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <InventoryPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} items={inventory} onOpenCreate={() => setIsCreateInventoryOpen(true)} onDelete={deleteInventory} onAdjust={adjustStock} onSelect={setSelectedInventoryItem} canCreate={role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'} canDelete={role === 'tenant_admin' || role === 'global_superadmin'} />} />
+            <Route path="/app/renewals" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RenewalsPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} renewals={renewals} onOpenCreate={() => setIsCreateRenewalOpen(true)} onSelect={setSelectedRenewal} canCreate={role !== 'standard_user'} />} />
+            <Route path="/app/inventory" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <InventoryPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} items={inventory} onOpenCreate={() => setIsCreateInventoryOpen(true)} onAdjust={adjustStock} onSelect={setSelectedInventoryItem} canCreate={role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'} />} />
             <Route path="/app/recycle-bin" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RecycleBinPage surface={surface} textMuted={textMuted} data={recycleBin} reload={loadRecycleBin} onRestore={restoreEntity} />} />
 
             <Route path="/app/admin/users" element={canManageTenantAdminPages ? <TenantUsersPage surface={surface} users={tenantUsers} form={newTenantUser} setForm={setNewTenantUser} onCreate={createTenantUser} onRemove={removeTenantUser} onToggleEdit={toggleTenantUserEdit} reload={loadTenantUsers} /> : <Navigate to="/app" replace />} />
@@ -1112,8 +1116,8 @@ function App() {
             <Route path="*" element={<Navigate to={role === 'global_superadmin' ? '/superadmin' : '/app'} replace />} />
           </Routes>
 
-          {selectedRenewal ? <RenewalModal surface={surface} textMuted={textMuted} renewal={selectedRenewal} setRenewal={setSelectedRenewal} onSave={updateRenewal} onClose={() => setSelectedRenewal(null)} /> : null}
-          {selectedInventoryItem ? <InventoryModal surface={surface} textMuted={textMuted} item={selectedInventoryItem} setItem={setSelectedInventoryItem} onSave={updateInventoryItem} onClose={() => setSelectedInventoryItem(null)} /> : null}
+          {selectedRenewal ? <RenewalModal surface={surface} textMuted={textMuted} renewal={selectedRenewal} setRenewal={setSelectedRenewal} onSave={updateRenewal} onDelete={async () => { const deleted = await deleteRenewal(selectedRenewal.id); if (deleted) { setSelectedRenewal(null) } }} canDelete={role === 'tenant_admin' || role === 'global_superadmin'} onClose={() => setSelectedRenewal(null)} /> : null}
+          {selectedInventoryItem ? <InventoryModal surface={surface} textMuted={textMuted} item={selectedInventoryItem} setItem={setSelectedInventoryItem} onSave={updateInventoryItem} onDelete={async () => { const deleted = await deleteInventory(selectedInventoryItem.id); if (deleted) { setSelectedInventoryItem(null) } }} canDelete={role === 'tenant_admin' || role === 'global_superadmin'} onClose={() => setSelectedInventoryItem(null)} /> : null}
           {isCreateRenewalOpen ? (
             <CreateRenewalModal
               surface={surface}
@@ -1243,8 +1247,8 @@ function DashboardPage({ surface, textMuted, timezone, dashboard, reload, onOpen
   )
 }
 
-function RenewalsPage({ surface, textMuted, timezone, renewals, onOpenCreate, onDelete, onSelect, canCreate, canDelete }: { surface: string; textMuted: string; timezone: string; renewals: Renewal[]; onOpenCreate: () => void; onDelete: (id: number) => Promise<void>; onSelect: (renewal: Renewal) => void; canCreate: boolean; canDelete: boolean }) {
-  const deleteButtonClass = 'rounded-md border border-red-800 bg-red-950/70 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-900/80'
+function RenewalsPage({ surface, textMuted, timezone, renewals, onOpenCreate, onSelect, canCreate }: { surface: string; textMuted: string; timezone: string; renewals: Renewal[]; onOpenCreate: () => void; onSelect: (renewal: Renewal) => void; canCreate: boolean }) {
+  const rowButtonClass = `app-inner-box w-full rounded-md border p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${surface}`
 
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
@@ -1257,34 +1261,26 @@ function RenewalsPage({ surface, textMuted, timezone, renewals, onOpenCreate, on
 
       <div className="mt-4 space-y-2">
         {renewals.map((renewal) => (
-          <div key={renewal.id} className={`app-inner-box flex items-center justify-between rounded-md border p-3 ${surface}`}>
-            <div>
+          <button key={renewal.id} type="button" className={rowButtonClass} onClick={() => onSelect(renewal)}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
               <p className="font-medium">{renewal.title}</p>
               <p className={`text-sm ${textMuted}`}>{formatRenewalCategory(renewal.category)} - Auto: {renewal.status}</p>
               <p className={`text-sm ${textMuted}`}>Workflow: {renewal.workflow_status || 'Not set'}</p>
               <p className={`text-sm ${textMuted}`}>Auto-renew: {renewal.auto_renews ? 'Yes' : 'No'}</p>
               <p className={`text-sm ${textMuted}`}>Expires: {formatDateTime(renewal.expiration_date, timezone)}</p>
+              </div>
+              <span className={`text-xs ${textMuted}`}>Open</span>
             </div>
-            <div className="flex gap-2">
-              <button className="rounded-md border border-cyan-400/80 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25" onClick={() => onSelect(renewal)}>Open</button>
-              {canDelete ? (
-                <button
-                  className={deleteButtonClass}
-                  onClick={() => void onDelete(renewal.id)}
-                >
-                  Delete
-                </button>
-              ) : null}
-            </div>
-          </div>
+          </button>
         ))}
       </div>
     </section>
   )
 }
 
-function InventoryPage({ surface, textMuted, timezone, items, onOpenCreate, onDelete, onAdjust, onSelect, canCreate, canDelete }: { surface: string; textMuted: string; timezone: string; items: InventoryItem[]; onOpenCreate: () => void; onDelete: (id: number) => Promise<void>; onAdjust: (id: number, type: 'check_in' | 'check_out') => Promise<void>; onSelect: (item: InventoryItem) => void; canCreate: boolean; canDelete: boolean }) {
-  const deleteButtonClass = 'rounded-md border border-red-800 bg-red-950/70 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-900/80'
+function InventoryPage({ surface, textMuted, timezone, items, onOpenCreate, onAdjust, onSelect, canCreate }: { surface: string; textMuted: string; timezone: string; items: InventoryItem[]; onOpenCreate: () => void; onAdjust: (id: number, type: 'check_in' | 'check_out') => Promise<void>; onSelect: (item: InventoryItem) => void; canCreate: boolean }) {
+  const rowClass = `app-inner-box flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 transition hover:-translate-y-0.5 hover:brightness-105 ${surface}`
 
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
@@ -1297,24 +1293,15 @@ function InventoryPage({ surface, textMuted, timezone, items, onOpenCreate, onDe
 
       <div className="mt-4 space-y-2">
         {items.map((item) => (
-          <div key={item.id} className={`app-inner-box flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 ${surface}`}>
-            <div>
+          <div key={item.id} className={rowClass}>
+            <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onSelect(item)}>
               <p className="font-medium">{item.name} ({item.sku})</p>
               <p className={`text-sm ${textMuted}`}>On hand: {item.quantity_on_hand} / Min: {item.minimum_on_hand}</p>
               <p className={`text-sm ${textMuted}`}>Created: {formatDateTime(item.created_at, timezone)}</p>
-            </div>
+            </button>
             <div className="flex gap-2">
-              <button className="rounded-md border border-cyan-400/80 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25" onClick={() => onSelect(item)}>Open</button>
               <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_out')}>Check Out</button>
               <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_in')}>Check In</button>
-              {canDelete ? (
-                <button
-                  className={deleteButtonClass}
-                  onClick={() => void onDelete(item.id)}
-                >
-                  Delete
-                </button>
-              ) : null}
             </div>
           </div>
         ))}
@@ -1872,7 +1859,7 @@ function CreateInventoryModal({
   )
 }
 
-function RenewalModal({ surface, textMuted, renewal, setRenewal, onSave, onClose }: { surface: string; textMuted: string; renewal: Renewal; setRenewal: (value: Renewal | null) => void; onSave: () => Promise<void>; onClose: () => void }) {
+function RenewalModal({ surface, textMuted, renewal, setRenewal, onSave, onDelete, canDelete, onClose }: { surface: string; textMuted: string; renewal: Renewal; setRenewal: (value: Renewal | null) => void; onSave: () => Promise<void>; onDelete: () => Promise<void>; canDelete: boolean; onClose: () => void }) {
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className={`w-full max-w-2xl rounded-xl border p-4 shadow-lg ${surface}`}>
@@ -1917,7 +1904,8 @@ function RenewalModal({ surface, textMuted, renewal, setRenewal, onSave, onClose
             <textarea className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} rows={4} value={renewal.notes ?? ''} onChange={(event) => setRenewal({ ...renewal, notes: event.target.value })} />
           </div>
         </div>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-end gap-2">
+          {canDelete ? <button className="rounded-md border border-red-800 bg-red-950/70 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-900/80" onClick={() => void onDelete()}>Delete</button> : null}
           <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onSave()}>Save Renewal</button>
         </div>
       </div>
@@ -1925,7 +1913,7 @@ function RenewalModal({ surface, textMuted, renewal, setRenewal, onSave, onClose
   )
 }
 
-function InventoryModal({ surface, textMuted, item, setItem, onSave, onClose }: { surface: string; textMuted: string; item: InventoryItem; setItem: (value: InventoryItem | null) => void; onSave: () => Promise<void>; onClose: () => void }) {
+function InventoryModal({ surface, textMuted, item, setItem, onSave, onDelete, canDelete, onClose }: { surface: string; textMuted: string; item: InventoryItem; setItem: (value: InventoryItem | null) => void; onSave: () => Promise<void>; onDelete: () => Promise<void>; canDelete: boolean; onClose: () => void }) {
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className={`w-full max-w-2xl rounded-xl border p-4 shadow-lg ${surface}`}>
@@ -1963,7 +1951,8 @@ function InventoryModal({ surface, textMuted, item, setItem, onSave, onClose }: 
             <textarea className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`} rows={4} value={item.notes ?? ''} onChange={(event) => setItem({ ...item, notes: event.target.value })} />
           </div>
         </div>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-end gap-2">
+          {canDelete ? <button className="rounded-md border border-red-800 bg-red-950/70 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-900/80" onClick={() => void onDelete()}>Delete</button> : null}
           <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onSave()}>Save Inventory Item</button>
         </div>
       </div>

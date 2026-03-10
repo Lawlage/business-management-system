@@ -6,13 +6,13 @@
   --ui-surface-elevated: #ffffff;
   --ui-text: #1f2937;
   --ui-muted: #475569;
-  --ui-tertiary: #002c42;
-  --ui-accent: #002c42;
-  --ui-border: #6b7f93;
+  --ui-tertiary: #4b5563;
+  --ui-accent: #4b5563;
+  --ui-border: #5f738a;
   --ui-neutral: #334155;
-  --ui-panel-bg: #2f3d50;
+  --ui-panel-bg: #1e293b;
   --ui-inner-bg: #35506a;
-  --ui-button-bg: #002c42;
+  --ui-button-bg: #4b5563;
   --ui-button-fg: #f8fafc;
   --ui-font-family: "Bahnschrift", "Arial Narrow", "Franklin Gothic Medium", "Segoe UI", sans-serif;
   --ui-density-gap: 1rem;
@@ -107,6 +107,50 @@ button:disabled {
 
 .notice-pop {
   animation: notice-fade-in 260ms ease-out;
+}
+
+.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.app-shell select,
+.app-shell textarea,
+.app-shell .app-button {
+  padding-top: var(--ui-density-pad);
+  padding-bottom: var(--ui-density-pad);
+}
+
+.density-compact .p-4 {
+  padding: 0.75rem !important;
+}
+
+.density-compact .p-3 {
+  padding: 0.6rem !important;
+}
+
+.density-compact .p-2 {
+  padding: 0.45rem !important;
+}
+
+.density-compact .gap-6 {
+  gap: 1rem !important;
+}
+
+.density-compact .gap-4 {
+  gap: 0.75rem !important;
+}
+
+.density-compact .gap-3 {
+  gap: 0.55rem !important;
+}
+
+.density-compact .gap-2 {
+  gap: 0.4rem !important;
+}
+
+.density-compact .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.75rem !important;
+}
+
+.density-compact .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.4rem !important;
 }
 
 .theme-toggle-link {

@@ -17,11 +17,11 @@ export const defaultTenantUiSettings: TenantUiSettings = {
   theme_preset: 'default',
   density: 'comfortable',
   font_family: 'modern_sans',
-  primary_colour: '#0f2747',
-  secondary_colour: '#2f3d50',
-  tertiary_colour: '#002c42',
-  accent_colour: '#002c42',
-  border_colour: '#6b7f93',
+  primary_colour: '#0f172a',
+  secondary_colour: '#1e293b',
+  tertiary_colour: '#4b5563',
+  accent_colour: '#4b5563',
+  border_colour: '#5f738a',
 }
 
 export const defaultTenantColourSet = {
@@ -52,13 +52,16 @@ export const fontFamilyOptions: Array<{ value: FontFamilyMode; label: string }> 
 export function normalizeUiSettings(value?: Partial<TenantUiSettings> | null): TenantUiSettings {
   const legacy = (value ?? {}) as Record<string, string>
 
+  const normalizedTertiary = (value?.tertiary_colour ?? legacy.tertiary_color ?? legacy.primary_color ?? defaultTenantUiSettings.tertiary_colour)
+  const migratedTertiary = normalizedTertiary.toLowerCase() === '#0b5cab' ? defaultTenantUiSettings.tertiary_colour : normalizedTertiary
+
   return {
     ...defaultTenantUiSettings,
     ...(value ?? {}),
     primary_colour: (value?.primary_colour ?? legacy.primary_color ?? defaultTenantUiSettings.primary_colour),
     secondary_colour: (value?.secondary_colour ?? legacy.secondary_color ?? legacy.neutral_color ?? defaultTenantUiSettings.secondary_colour),
-    tertiary_colour: (value?.tertiary_colour ?? legacy.tertiary_color ?? legacy.primary_color ?? defaultTenantUiSettings.tertiary_colour),
-    accent_colour: (value?.accent_colour ?? value?.tertiary_colour ?? legacy.accent_color ?? legacy.tertiary_color ?? legacy.primary_color ?? defaultTenantUiSettings.accent_colour),
+    tertiary_colour: migratedTertiary,
+    accent_colour: migratedTertiary,
     border_colour: (value?.border_colour ?? legacy.border_color ?? legacy.neutral_color ?? defaultTenantUiSettings.border_colour),
   }
 }

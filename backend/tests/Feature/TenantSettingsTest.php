@@ -28,10 +28,10 @@ class TenantSettingsTest extends TestCase
             ->assertJsonPath('ui_settings.theme_preset', 'default')
             ->assertJsonPath('ui_settings.density', 'comfortable')
             ->assertJsonPath('ui_settings.font_family', 'modern_sans')
-            ->assertJsonPath('ui_settings.primary_colour', '#0f2747')
-            ->assertJsonPath('ui_settings.secondary_colour', '#2f3d50')
-            ->assertJsonPath('ui_settings.tertiary_colour', '#002c42')
-            ->assertJsonPath('ui_settings.border_colour', '#6b7f93');
+            ->assertJsonPath('ui_settings.primary_colour', '#0f172a')
+            ->assertJsonPath('ui_settings.secondary_colour', '#1e293b')
+            ->assertJsonPath('ui_settings.tertiary_colour', '#4b5563')
+            ->assertJsonPath('ui_settings.border_colour', '#5f738a');
     }
 
     public function test_tenant_admin_can_update_ui_settings_and_timezone(): void
