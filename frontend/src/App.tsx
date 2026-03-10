@@ -8,9 +8,8 @@ import {
   densityOptions,
   fontFamilyOptions,
   normalizeUiSettings,
-  themePresetOptions,
 } from './uiSettings'
-import type { DensityMode, FontFamilyMode, TenantUiSettings, ThemePreset } from './uiSettings'
+import type { DensityMode, FontFamilyMode, TenantUiSettings } from './uiSettings'
 
 type AppRole = 'standard_user' | 'sub_admin' | 'tenant_admin' | 'global_superadmin'
 
@@ -1665,19 +1664,6 @@ function TenantSettingsPage({
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
-        <label className="text-sm">
-          <span className={`mb-1 block text-xs uppercase tracking-wide ${textMuted}`}>Theme Preset</span>
-          <select
-            className={`w-full rounded-md border px-3 py-2 text-sm ${surface}`}
-            value={uiSettings.theme_preset}
-            onChange={(event) => setUiSettings({ ...uiSettings, theme_preset: event.target.value as ThemePreset })}
-          >
-            {themePresetOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-
         <label className="text-sm">
           <span className={`mb-1 block text-xs uppercase tracking-wide ${textMuted}`}>Layout Density</span>
           <select
