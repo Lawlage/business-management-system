@@ -1,12 +1,70 @@
 @import "tailwindcss";
 
 :root {
-  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --ui-bg: linear-gradient(145deg, #f8f7f4 0%, #f0ede6 45%, #e5ecef 100%);
+  --ui-surface: #fffdf8;
+  --ui-surface-elevated: #ffffff;
+  --ui-text: #1f2937;
+  --ui-muted: #475569;
+  --ui-tertiary: #002c42;
+  --ui-accent: #002c42;
+  --ui-border: #6b7f93;
+  --ui-neutral: #334155;
+  --ui-panel-bg: #2f3d50;
+  --ui-inner-bg: #35506a;
+  --ui-button-bg: #002c42;
+  --ui-button-fg: #f8fafc;
+  --ui-font-family: "Bahnschrift", "Arial Narrow", "Franklin Gothic Medium", "Segoe UI", sans-serif;
+  --ui-density-gap: 1rem;
+  --ui-density-pad: 0.9rem;
+  font-family: var(--ui-font-family);
 }
 
 body {
   margin: 0;
   min-width: 320px;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+
+.app-shell {
+  background: var(--ui-bg);
+}
+
+.app-panel {
+  background: var(--ui-panel-bg);
+  border-width: 2px;
+  border-color: var(--ui-border);
+  color: var(--ui-text);
+}
+
+.app-inner-box {
+  border-width: 3px;
+  border-color: color-mix(in oklab, var(--ui-border) 78%, var(--ui-accent) 22%);
+  background: var(--ui-inner-bg);
+}
+
+.app-button {
+  cursor: pointer;
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in oklab, var(--ui-tertiary) 55%, transparent);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-fg);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 12px 26px -18px color-mix(in srgb, var(--ui-neutral) 65%, transparent);
+}
+
+.app-button:hover,
+.app-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+  filter: brightness(1.06);
+}
+
+.app-button:active {
+  transform: translateY(0);
 }
 
 button {
@@ -34,4 +92,44 @@ button:disabled {
   box-shadow: none;
   transform: none;
   filter: none;
+}
+
+@keyframes notice-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notice-pop {
+  animation: notice-fade-in 260ms ease-out;
+}
+
+.theme-toggle-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: color-mix(in oklab, var(--ui-text) 72%, var(--ui-muted) 28%);
+  text-decoration: underline;
+  text-underline-offset: 0.18rem;
+  text-decoration-style: dotted;
+}
+
+.theme-toggle-link:hover,
+.theme-toggle-link:focus-visible,
+.theme-toggle-link:active {
+  box-shadow: none;
+  transform: none;
+  filter: none;
+  color: var(--ui-text);
 }

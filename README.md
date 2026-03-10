@@ -82,7 +82,7 @@ The frontend now includes working actions (API-backed buttons/forms) for:
 - Inventory create/list/check-in/check-out/delete
 - Click-to-open foreground edit modals for renewal/inventory records
 - Recycle bin list and restore
-- Tenant admin: tenant users, edit permission toggles, custom fields, tenant settings (timezone), tenant audit logs
+- Tenant admin: tenant users, edit permission toggles, custom fields, tenant settings (timezone + appearance presets/colors/density/typography), tenant audit logs
 - Superadmin: tenant create/suspend/delete (tenant creation includes new tenant-admin creation), global audit logs, break-glass session controls
 
 ## Demo Credentials

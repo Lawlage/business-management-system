@@ -5,5 +5,5 @@ test('unauthenticated user is prompted to sign in', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   await expect(page.getByLabel('Email')).toBeVisible()
-  await expect(page.getByLabel('Password')).toBeVisible()
+  await expect(page.getByLabel('Password', { exact: true })).toBeVisible()
 })

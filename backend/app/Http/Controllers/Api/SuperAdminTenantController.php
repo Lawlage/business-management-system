@@ -53,7 +53,19 @@ class SuperAdminTenantController extends Controller
             'slug' => $payload['slug'],
             'status' => 'active',
             'created_by' => $request->user()?->id,
-            'data' => ['timezone' => 'UTC'],
+            'data' => [
+                'timezone' => 'Pacific/Auckland',
+                'ui_settings' => [
+                    'theme_preset' => 'default',
+                    'density' => 'comfortable',
+                    'font_family' => 'modern_sans',
+                    'primary_colour' => '#0f2747',
+                    'secondary_colour' => '#2f3d50',
+                    'tertiary_colour' => '#002c42',
+                    'accent_colour' => '#002c42',
+                    'border_colour' => '#6b7f93',
+                ],
+            ],
         ]);
 
         $tenantAdmin = User::query()->create([
