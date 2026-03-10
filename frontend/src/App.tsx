@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, Navigate, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 
 type AppRole = 'standard_user' | 'sub_admin' | 'tenant_admin' | 'global_superadmin'
 
@@ -177,6 +177,7 @@ function App() {
   const [breakGlassConfirmed, setBreakGlassConfirmed] = useState(false)
   const [tenantTimezone, setTenantTimezone] = useState('UTC')
   const [notice, setNotice] = useState('')
+  const [noticeType, setNoticeType] = useState<'success' | 'error'>('success')
 
   const [dashboard, setDashboard] = useState<{ important_renewals: Renewal[]; critical_renewals: Renewal[]; low_stock_items: InventoryItem[] } | null>(null)
   const [renewals, setRenewals] = useState<Renewal[]>([])
@@ -259,6 +260,20 @@ function App() {
     }
     void Promise.all([loadSuperTenants(), loadGlobalAuditLogs()])
   }, [role, isAuthenticated])
+
+  useEffect(() => {
+    if (!notice) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setNotice('')
+    }, 4200)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [notice])
 
   const toggleTheme = () => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
 
@@ -392,8 +407,10 @@ function App() {
     setNotice('')
     try {
       await action()
+      setNoticeType('success')
       setNotice(successMessage)
     } catch (error) {
+      setNoticeType('error')
       setNotice(error instanceof Error ? error.message : 'Request failed')
     }
   }
@@ -460,20 +477,26 @@ function App() {
     setGlobalAudit(data)
   }
 
-  const startBreakGlass = async () => {
+  const startBreakGlass = async (): Promise<boolean> => {
+    let started = false
+
     await withNotice(async () => {
       const data = await authedFetch<{ token: string }>('/api/superadmin/tenants/' + selectedTenantId + '/break-glass', {
         method: 'POST',
         body: JSON.stringify({ reason: breakGlassReason, permission_confirmed: breakGlassConfirmed }),
       })
       setBreakGlassToken(data.token)
+      started = true
     }, 'Break-glass session started.')
+
+    return started
   }
 
   const stopBreakGlass = async () => {
     await withNotice(async () => {
       await authedFetch('/api/superadmin/tenants/' + selectedTenantId + '/break-glass/' + breakGlassToken + '/stop', { method: 'POST' })
       setBreakGlassToken('')
+      setIsSuperadminTenantWorkspace(false)
       setBreakGlassReason('')
       setBreakGlassConfirmed(false)
     }, 'Break-glass session ended.')
@@ -763,11 +786,31 @@ function App() {
             <p className={`text-sm ${textMuted}`}>{user?.email} - {roleLabels[role]}</p>
           </div>
           <div className="flex items-center gap-2">
-            {role === 'global_superadmin' ? <Link to="/superadmin/access" className={baseButton}>Tenant Access</Link> : null}
+            {role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Link to="/superadmin/access" className={baseButton}>Tenant Access</Link> : null}
+            {role === 'global_superadmin' && isSuperadminTenantWorkspace && breakGlassToken ? (
+              <button
+                className="rounded-md border border-red-500 bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-500"
+                onClick={() => {
+                  const confirmed = window.confirm('End break-glass session and return to superadmin view?')
+                  if (!confirmed) {
+                    return
+                  }
+                  void stopBreakGlass()
+                }}
+              >
+                End Break-Glass
+              </button>
+            ) : null}
             <button onClick={handleLogout} className={baseButton}>Sign out</button>
           </div>
         </div>
       </header>
+
+      {role === 'global_superadmin' && isSuperadminTenantWorkspace && breakGlassToken ? (
+        <div className="border-b border-red-400 bg-red-700 px-4 py-3 text-sm font-semibold text-white">
+          Superadmin break-glass session active for tenant: {selectedTenant?.name ?? selectedTenantId}
+        </div>
+      ) : null}
 
       <div className="mx-auto grid max-w-7xl gap-6 p-4 md:grid-cols-[240px_1fr]">
         <aside className={`rounded-xl border p-4 ${surface}`}>
@@ -785,7 +828,7 @@ function App() {
             </>
           ) : null}
 
-          {role === 'global_superadmin' ? (
+          {role === 'global_superadmin' && !isSuperadminTenantWorkspace ? (
             <>
               <p className={`mb-2 mt-4 text-xs uppercase ${textMuted}`}>Superadmin</p>
               <nav className="flex flex-col gap-2">
@@ -798,8 +841,6 @@ function App() {
         </aside>
 
         <main className="space-y-4">
-          {notice ? <div className={`rounded-md border p-3 text-sm ${surface}`}>{notice}</div> : null}
-
           <Routes>
             <Route path="/" element={<Navigate to={role === 'global_superadmin' ? '/superadmin' : '/app'} replace />} />
             <Route path="/app" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <DashboardPage surface={surface} textMuted={textMuted} dashboard={dashboard} reload={loadDashboard} />} />
@@ -814,13 +855,25 @@ function App() {
 
             <Route path="/superadmin" element={role === 'global_superadmin' ? <SuperadminTenantsPage surface={surface} tenants={superTenants} tenantForm={newTenant} setTenantForm={setNewTenant} tenantAdminForm={newTenantAdmin} setTenantAdminForm={setNewTenantAdmin} onCreate={createTenant} onSuspend={suspendTenant} onUnsuspend={unsuspendTenant} onDelete={deleteTenant} reload={loadSuperTenants} /> : <Navigate to="/app" replace />} />
             <Route path="/superadmin/audit" element={role === 'global_superadmin' ? <GlobalAuditPage surface={surface} logs={globalAudit} reload={loadGlobalAuditLogs} /> : <Navigate to="/app" replace />} />
-            <Route path="/superadmin/access" element={role === 'global_superadmin' ? <SuperadminTenantAccessPage surface={surface} textMuted={textMuted} tenants={superTenants} selectedTenantId={selectedTenantId} setSelectedTenantId={(tenantId) => { setSelectedTenantId(tenantId); setIsSuperadminTenantWorkspace(false); setBreakGlassToken('') }} breakGlassReason={breakGlassReason} setBreakGlassReason={setBreakGlassReason} breakGlassConfirmed={breakGlassConfirmed} setBreakGlassConfirmed={setBreakGlassConfirmed} breakGlassToken={breakGlassToken} startBreakGlass={startBreakGlass} stopBreakGlass={stopBreakGlass} enterWorkspace={() => { if (!selectedTenantId) { setNotice('Select a tenant before entering workspace.'); return; } if (!breakGlassToken) { setNotice('Start break-glass access before entering tenant workspace.'); return; } setIsSuperadminTenantWorkspace(true); }} /> : <Navigate to="/app" replace />} />
+            <Route path="/superadmin/access" element={role === 'global_superadmin' ? <SuperadminTenantAccessPage surface={surface} textMuted={textMuted} tenants={superTenants} selectedTenantId={selectedTenantId} setSelectedTenantId={(tenantId) => { setSelectedTenantId(tenantId); setIsSuperadminTenantWorkspace(false); setBreakGlassToken('') }} breakGlassReason={breakGlassReason} setBreakGlassReason={setBreakGlassReason} breakGlassConfirmed={breakGlassConfirmed} setBreakGlassConfirmed={setBreakGlassConfirmed} breakGlassToken={breakGlassToken} stopBreakGlass={stopBreakGlass} enterWorkspace={async () => { if (!selectedTenantId) { setNoticeType('error'); setNotice('Select a tenant before entering workspace.'); return false; } if (!breakGlassToken) { const started = await startBreakGlass(); if (!started) { return false; } } setIsSuperadminTenantWorkspace(true); return true; }} /> : <Navigate to="/app" replace />} />
           </Routes>
 
           {selectedRenewal ? <RenewalModal surface={surface} textMuted={textMuted} renewal={selectedRenewal} setRenewal={setSelectedRenewal} onSave={updateRenewal} onClose={() => setSelectedRenewal(null)} /> : null}
           {selectedInventoryItem ? <InventoryModal surface={surface} textMuted={textMuted} item={selectedInventoryItem} setItem={setSelectedInventoryItem} onSave={updateInventoryItem} onClose={() => setSelectedInventoryItem(null)} /> : null}
         </main>
       </div>
+
+      {notice ? (
+        <div
+          className={`fixed bottom-5 right-5 z-[70] max-w-md rounded-lg border px-4 py-3 text-sm shadow-xl backdrop-blur ${
+            noticeType === 'success'
+              ? 'border-emerald-300/70 bg-emerald-300/80 text-emerald-950'
+              : 'border-red-300/70 bg-red-400/80 text-red-950'
+          }`}
+        >
+          {notice}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1134,7 +1187,6 @@ function SuperadminTenantAccessPage({
   breakGlassConfirmed,
   setBreakGlassConfirmed,
   breakGlassToken,
-  startBreakGlass,
   stopBreakGlass,
   enterWorkspace,
 }: {
@@ -1148,10 +1200,11 @@ function SuperadminTenantAccessPage({
   breakGlassConfirmed: boolean
   setBreakGlassConfirmed: (value: boolean) => void
   breakGlassToken: string
-  startBreakGlass: () => Promise<void>
   stopBreakGlass: () => Promise<void>
-  enterWorkspace: () => void
+  enterWorkspace: () => Promise<boolean>
 }) {
+  const navigate = useNavigate()
+
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
       <h2 className="text-lg font-semibold">Superadmin Tenant Access</h2>
@@ -1173,23 +1226,21 @@ function SuperadminTenantAccessPage({
       </label>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {!breakGlassToken ? (
-          <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void startBreakGlass()}>Start Break-Glass</button>
-        ) : (
+        {breakGlassToken ? (
           <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void stopBreakGlass()}>End Break-Glass</button>
-        )}
-        <Link
+        ) : null}
+        <button
+          type="button"
           className={`rounded-md border px-3 py-2 text-sm ${surface}`}
-          to="/app"
-          onClick={(event) => {
-            if (!selectedTenantId || !breakGlassToken) {
-              event.preventDefault()
+          onClick={async () => {
+            const allowed = await enterWorkspace()
+            if (allowed) {
+              navigate('/app')
             }
-            enterWorkspace()
           }}
         >
           Enter Tenant Workspace
-        </Link>
+        </button>
       </div>
 
       <p className={`mt-2 text-xs ${textMuted}`}>{breakGlassToken ? 'Break-glass session is active.' : 'No active break-glass session.'}</p>

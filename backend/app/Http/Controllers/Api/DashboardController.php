@@ -28,7 +28,7 @@ class DashboardController extends Controller
             ->get();
 
         $lowStockItems = InventoryItem::query()
-            ->whereColumn('quantity_on_hand', '<=', 'minimum_on_hand')
+            ->whereColumn('quantity_on_hand', '<', 'minimum_on_hand')
             ->orderByRaw('(minimum_on_hand - quantity_on_hand) desc')
             ->limit(10)
             ->get();
