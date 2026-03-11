@@ -8,6 +8,7 @@ import type { ApiError } from '../../hooks/useApi'
 import type { Tenant } from '../../types'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
+import { Modal } from '../../components/Modal'
 import { PageHeader } from '../../components/PageHeader'
 import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
@@ -37,6 +38,7 @@ export function TenantsPage() {
 
   const [tenantForm, setTenantForm] = useState<TenantForm>(initialTenantForm)
   const [adminForm, setAdminForm] = useState<AdminForm>(initialAdminForm)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   const { data: tenants, isLoading } = useQuery<Tenant[]>({
     queryKey: ['superadmin-tenants'],
@@ -60,6 +62,7 @@ export function TenantsPage() {
       void queryClient.invalidateQueries({ queryKey: ['superadmin-tenants'] })
       setTenantForm(initialTenantForm)
       setAdminForm(initialAdminForm)
+      setIsCreateOpen(false)
     },
     onError: (error: ApiError | Error) => {
       showNotice((error as ApiError | Error)?.message ?? 'Request failed', 'error')
@@ -120,51 +123,14 @@ export function TenantsPage() {
 
   return (
     <Card>
-      <PageHeader title="Tenants" />
-
-      <form onSubmit={handleSubmit} className="mb-6 grid gap-2 md:grid-cols-3">
-        <Input
-          placeholder="Tenant Name"
-          required
-          value={tenantForm.name}
-          onChange={(e) => setTenantForm((f) => ({ ...f, name: e.target.value }))}
-        />
-        <Input
-          placeholder="tenant-slug"
-          required
-          value={tenantForm.slug}
-          onChange={(e) => setTenantForm((f) => ({ ...f, slug: e.target.value }))}
-        />
-        <Input
-          placeholder="Admin Name"
-          required
-          value={adminForm.name}
-          onChange={(e) => setAdminForm((f) => ({ ...f, name: e.target.value }))}
-        />
-        <Input
-          placeholder="Admin Email"
-          type="email"
-          required
-          value={adminForm.email}
-          onChange={(e) => setAdminForm((f) => ({ ...f, email: e.target.value }))}
-        />
-        <Input
-          placeholder="Admin Password"
-          type="password"
-          required
-          minLength={12}
-          autoComplete="new-password"
-          value={adminForm.password}
-          onChange={(e) => setAdminForm((f) => ({ ...f, password: e.target.value }))}
-        />
-        <Button
-          type="submit"
-          variant="primary"
-          isLoading={createMutation.isPending}
-        >
-          Create Tenant + Admin
-        </Button>
-      </form>
+      <PageHeader
+        title="Tenants"
+        action={
+          <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
+            + Create Tenant
+          </Button>
+        }
+      />
 
       <div className="space-y-2">
         {isLoading && (
@@ -237,6 +203,67 @@ export function TenantsPage() {
             </div>
           ))}
       </div>
+
+      {isCreateOpen && (
+        <Modal
+          title="Create Tenant + Admin"
+          onClose={() => { setIsCreateOpen(false); setTenantForm(initialTenantForm); setAdminForm(initialAdminForm) }}
+          maxWidth="md"
+          footer={
+            <div className="flex justify-end">
+              <Button
+                variant="primary"
+                onClick={() => createMutation.mutate()}
+                isLoading={createMutation.isPending}
+              >
+                Create Tenant + Admin
+              </Button>
+            </div>
+          }
+        >
+          <form onSubmit={handleSubmit} className="grid gap-3">
+            <Input
+              label="Tenant Name"
+              placeholder="Tenant Name"
+              required
+              value={tenantForm.name}
+              onChange={(e) => setTenantForm((f) => ({ ...f, name: e.target.value }))}
+            />
+            <Input
+              label="Tenant Slug"
+              placeholder="tenant-slug"
+              required
+              value={tenantForm.slug}
+              onChange={(e) => setTenantForm((f) => ({ ...f, slug: e.target.value }))}
+            />
+            <Input
+              label="Admin Name"
+              placeholder="Admin Name"
+              required
+              value={adminForm.name}
+              onChange={(e) => setAdminForm((f) => ({ ...f, name: e.target.value }))}
+            />
+            <Input
+              label="Admin Email"
+              placeholder="Admin Email"
+              type="email"
+              required
+              value={adminForm.email}
+              onChange={(e) => setAdminForm((f) => ({ ...f, email: e.target.value }))}
+            />
+            <Input
+              label="Admin Password"
+              placeholder="Admin Password"
+              type="password"
+              required
+              minLength={12}
+              autoComplete="new-password"
+              value={adminForm.password}
+              onChange={(e) => setAdminForm((f) => ({ ...f, password: e.target.value }))}
+            />
+          </form>
+        </Modal>
+      )}
     </Card>
   )
 }

@@ -11,7 +11,6 @@ import { TimezoneSelect } from '../../../components/TimezoneSelect'
 import {
   densityOptions,
   fontFamilyOptions,
-  defaultTenantColourSet,
 } from '../../../uiSettings'
 import type { DensityMode, FontFamilyMode } from '../../../uiSettings'
 
@@ -42,10 +41,6 @@ export function TenantSettingsPage() {
       showNotice((error as ApiError | Error)?.message ?? 'Request failed', 'error')
     },
   })
-
-  function handleResetColours() {
-    setTenantUiSettings({ ...tenantUiSettings, ...defaultTenantColourSet })
-  }
 
   return (
     <Card>
@@ -105,88 +100,8 @@ export function TenantSettingsPage() {
           </div>
         </div>
 
-        {/* Colour Settings */}
-        <div>
-          <h3 className="mb-3 text-sm font-semibold text-[var(--ui-text)]">
-            Colour Settings
-          </h3>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="text-sm">
-              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--ui-muted)]">
-                Primary Colour (Background)
-              </span>
-              <input
-                type="color"
-                className="h-11 w-full rounded-md border border-[var(--ui-border)] px-3 py-2 app-panel"
-                value={tenantUiSettings.primary_colour}
-                onChange={(e) =>
-                  setTenantUiSettings({
-                    ...tenantUiSettings,
-                    primary_colour: e.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label className="text-sm">
-              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--ui-muted)]">
-                Secondary Colour (Containers)
-              </span>
-              <input
-                type="color"
-                className="h-11 w-full rounded-md border border-[var(--ui-border)] px-3 py-2 app-panel"
-                value={tenantUiSettings.secondary_colour}
-                onChange={(e) =>
-                  setTenantUiSettings({
-                    ...tenantUiSettings,
-                    secondary_colour: e.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label className="text-sm">
-              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--ui-muted)]">
-                Border Colour (Panels + Boxes)
-              </span>
-              <input
-                type="color"
-                className="h-11 w-full rounded-md border border-[var(--ui-border)] px-3 py-2 app-panel"
-                value={tenantUiSettings.border_colour}
-                onChange={(e) =>
-                  setTenantUiSettings({
-                    ...tenantUiSettings,
-                    border_colour: e.target.value,
-                  })
-                }
-              />
-            </label>
-
-            <label className="text-sm">
-              <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--ui-muted)]">
-                Tertiary/Accent Colour (Clickable + Highlights)
-              </span>
-              <input
-                type="color"
-                className="h-11 w-full rounded-md border border-[var(--ui-border)] px-3 py-2 app-panel"
-                value={tenantUiSettings.tertiary_colour}
-                onChange={(e) =>
-                  setTenantUiSettings({
-                    ...tenantUiSettings,
-                    tertiary_colour: e.target.value,
-                    accent_colour: e.target.value,
-                  })
-                }
-              />
-            </label>
-          </div>
-        </div>
-
         {/* Footer buttons */}
         <div className="flex flex-wrap gap-2 border-t border-[var(--ui-border)] pt-4">
-          <Button variant="secondary" onClick={handleResetColours}>
-            Reset Colours
-          </Button>
           <Button
             variant="primary"
             onClick={() => saveMutation.mutate()}

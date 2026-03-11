@@ -103,7 +103,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
               onClick={() => onOpenRenewal(renewal)}
             >
               <div className="grid gap-2 md:grid-cols-[2fr_1.3fr_1.2fr_0.8fr_1fr]">
-                <span className="font-medium text-sm text-[var(--ui-text)]">{renewal.title}</span>
+                <span className="font-medium text-sm text-[var(--ui-text)] truncate">{renewal.title}</span>
 
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-[var(--ui-muted)]">

@@ -144,7 +144,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
                   className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60 rounded"
                   onClick={() => onOpenItem(item)}
                 >
-                  <p className="font-medium text-sm text-[var(--ui-text)]">{item.name}</p>
+                  <p className="font-medium text-sm text-[var(--ui-text)] truncate">{item.name}</p>
                   <p className="text-xs text-[var(--ui-muted)]">{item.sku}</p>
                 </button>
 
@@ -157,7 +157,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
                 </span>
 
                 {/* Stock adjustment */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 justify-end">
                   <input
                     type="number"
                     min={0}
@@ -174,6 +174,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
                   <Button
                     variant="secondary"
                     size="sm"
+                    className="w-12 justify-center"
                     onClick={() => handleAdjust(item, 'check_out')}
                     disabled={adjustMutation.isPending}
                   >
@@ -182,6 +183,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
                   <Button
                     variant="secondary"
                     size="sm"
+                    className="w-12 justify-center"
                     onClick={() => handleAdjust(item, 'check_in')}
                     disabled={adjustMutation.isPending}
                   >

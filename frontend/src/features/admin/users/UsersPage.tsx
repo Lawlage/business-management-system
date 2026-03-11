@@ -9,6 +9,7 @@ import type { TenantUserMembership, AppRole } from '../../../types'
 import { roleLabels } from '../../../types'
 import { Button } from '../../../components/Button'
 import { Card } from '../../../components/Card'
+import { Modal } from '../../../components/Modal'
 import { PageHeader } from '../../../components/PageHeader'
 import { EmptyState } from '../../../components/EmptyState'
 import { SkeletonRow } from '../../../components/SkeletonRow'
@@ -37,6 +38,7 @@ export function UsersPage() {
   const queryClient = useQueryClient()
 
   const [form, setForm] = useState<CreateUserForm>(initialForm)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   const { data: users, isLoading } = useQuery<TenantUserMembership[]>({
     queryKey: ['tenant-users', selectedTenantId],
@@ -56,6 +58,7 @@ export function UsersPage() {
       showNotice('Tenant user created.')
       void queryClient.invalidateQueries({ queryKey: ['tenant-users', selectedTenantId] })
       setForm(initialForm)
+      setIsCreateOpen(false)
     },
     onError: (error: ApiError | Error) => {
       showNotice((error as ApiError | Error)?.message ?? 'Request failed', 'error')
@@ -114,43 +117,14 @@ export function UsersPage() {
 
   return (
     <Card>
-      <PageHeader title="Tenant Users" />
-
-      <div className="mb-4 grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
-        <Input
-          placeholder="Name"
-          value={form.name}
-          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-        />
-        <Input
-          placeholder="Email"
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-        />
-        <Input
-          placeholder="Password"
-          type="password"
-          value={form.password}
-          onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-        />
-        <Select
-          value={form.role}
-          onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as AppRole }))}
-        >
-          <option value="standard_user">Standard User</option>
-          <option value="sub_admin">Sub Admin</option>
-          <option value="tenant_admin">Tenant Admin</option>
-        </Select>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleCreate}
-          isLoading={createMutation.isPending}
-        >
-          Add User
-        </Button>
-      </div>
+      <PageHeader
+        title="Tenant Users"
+        action={
+          <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
+            + Create User
+          </Button>
+        }
+      />
 
       <div className="space-y-2">
         {isLoading && (
@@ -210,6 +184,57 @@ export function UsersPage() {
             </div>
           ))}
       </div>
+
+      {isCreateOpen && (
+        <Modal
+          title="Create User"
+          onClose={() => { setIsCreateOpen(false); setForm(initialForm) }}
+          maxWidth="md"
+          footer={
+            <div className="flex justify-end">
+              <Button
+                variant="primary"
+                onClick={handleCreate}
+                isLoading={createMutation.isPending}
+              >
+                Add User
+              </Button>
+            </div>
+          }
+        >
+          <div className="grid gap-3">
+            <Input
+              label="Name"
+              placeholder="Name"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+            <Input
+              label="Email"
+              placeholder="Email"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            />
+            <Input
+              label="Password"
+              placeholder="Password"
+              type="password"
+              value={form.password}
+              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            />
+            <Select
+              label="Role"
+              value={form.role}
+              onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as AppRole }))}
+            >
+              <option value="standard_user">Standard User</option>
+              <option value="sub_admin">Sub Admin</option>
+              <option value="tenant_admin">Tenant Admin</option>
+            </Select>
+          </div>
+        </Modal>
+      )}
     </Card>
   )
 }

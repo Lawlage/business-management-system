@@ -19,12 +19,12 @@ class AuditLogController extends Controller
         $tenantId = (string) $request->attributes->get('tenant_id');
 
         return new JsonResponse([
-            'tenant_logs' => TenantAuditLog::query()->latest()->paginate(50),
+            'tenant_logs' => TenantAuditLog::query()->latest()->paginate(10),
             'break_glass_logs' => GlobalAuditLog::query()
                 ->where('tenant_id', $tenantId)
                 ->where('event', 'like', 'break_glass.%')
                 ->latest()
-                ->paginate(50, ['*'], 'break_glass_page'),
+                ->paginate(10, ['*'], 'break_glass_page'),
         ]);
     }
 }
