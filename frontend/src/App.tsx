@@ -65,10 +65,23 @@ function AppContent() {
     setBreakGlassToken,
     setSuperTenants,
     canManageTenantAdminPages,
+    canEditRecords,
   } = useTenant()
   const { authedFetch } = useApi()
   const { showNotice } = useNotice()
   const confirm = useConfirm()
+
+  // Light/dark mode — defaults to light, persisted in localStorage
+  const [colorMode, setColorMode] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('colorMode') as 'light' | 'dark') ?? 'light'
+  })
+  const toggleColorMode = () => {
+    setColorMode((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light'
+      localStorage.setItem('colorMode', next)
+      return next
+    })
+  }
 
   // Modals opened from dashboard
   const [dashboardRenewal, setDashboardRenewal] = useState<Renewal | null>(null)
@@ -82,11 +95,11 @@ function AppContent() {
     }
   }, [user, selectedTenantId, setSelectedTenantId])
 
-  // Apply UI theme whenever tenant settings change
+  // Apply UI theme whenever tenant settings or color mode change
   useEffect(() => {
-    document.documentElement.classList.add('dark')
-    applyUiTheme('dark', tenantUiSettings)
-  }, [tenantUiSettings])
+    document.documentElement.classList.toggle('dark', colorMode === 'dark')
+    applyUiTheme(colorMode, tenantUiSettings)
+  }, [colorMode, tenantUiSettings])
 
   // Load superadmin tenant list (used to populate sidebar/topbar and tenant selector)
   const superAdminTenantsEnabled = role === 'global_superadmin' && isAuthenticated
@@ -128,6 +141,9 @@ function AppContent() {
     } catch {
       // Ignore transport failures — clear local session regardless
     }
+    queryClient.clear()
+    setSelectedTenantId('')
+    setSuperTenants([])
     setBreakGlassToken('')
     setIsSuperadminTenantWorkspace(false)
     logout()
@@ -175,13 +191,18 @@ function AppContent() {
   const defaultRedirect = role === 'global_superadmin' ? '/superadmin' : '/app'
 
   return (
-    <div className={`app-shell density-${tenantUiSettings.density} min-h-screen text-[var(--ui-text)]`}>
-      <TopBar onLogout={() => void handleLogout()} onStopBreakGlass={() => void handleStopBreakGlass()} />
+    <div className={`app-shell density-${tenantUiSettings.density} flex h-screen flex-col overflow-hidden text-[var(--ui-text)]`}>
+      <TopBar
+        onLogout={() => void handleLogout()}
+        onStopBreakGlass={() => void handleStopBreakGlass()}
+        colorMode={colorMode}
+        onToggleColorMode={toggleColorMode}
+      />
 
-      <div className="mx-auto grid max-w-7xl gap-6 p-4 md:grid-cols-[240px_1fr]">
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar role={role} isSuperadminTenantWorkspace={isSuperadminTenantWorkspace} />
 
-        <main className="min-w-0 space-y-4">
+        <main className="min-w-0 flex-1 space-y-4 overflow-y-auto p-6">
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
@@ -249,6 +270,7 @@ function AppContent() {
                   void queryClient.invalidateQueries({ queryKey: ['renewals', selectedTenantId] })
                 }}
                 canDelete={role === 'tenant_admin' || role === 'global_superadmin'}
+                canEdit={canEditRecords}
               />
             </Suspense>
           )}
@@ -262,11 +284,12 @@ function AppContent() {
                   void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
                 }}
                 canDelete={role === 'tenant_admin' || role === 'global_superadmin'}
+                canEdit={canEditRecords}
               />
             </Suspense>
           )}
         </main>
-      </div>
+      </div> {/* flex row: sidebar + main */}
 
       <NoticeToast />
       <ConfirmDialog />

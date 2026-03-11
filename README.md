@@ -33,7 +33,7 @@ For AI coding tools working in this repository, use `agents.md` as the source-of
 ## Repository Layout
 
 - `backend`: Laravel API, tenancy, RBAC, audit, business modules.
-- `frontend`: Single React app with role-aware routing and dashboards.
+- `frontend`: Modular React app with role-aware routing, React Query data fetching, and feature-based directory structure (`features/`, `components/`, `contexts/`, `hooks/`).
 - `tasks`: Local implementation notes (ignored by git).
 
 ## Backend Setup

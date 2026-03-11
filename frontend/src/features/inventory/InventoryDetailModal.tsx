@@ -14,6 +14,7 @@ type InventoryDetailModalProps = {
   onClose: () => void
   onUpdated: () => void
   canDelete: boolean
+  canEdit: boolean
 }
 
 type InventoryForm = {
@@ -30,6 +31,7 @@ export function InventoryDetailModal({
   onClose,
   onUpdated,
   canDelete,
+  canEdit,
 }: InventoryDetailModalProps) {
   const { authedFetch } = useApi()
   const { showNotice } = useNotice()
@@ -120,13 +122,15 @@ export function InventoryDetailModal({
               </Button>
             )}
           </div>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            isLoading={saveMutation.isPending}
-          >
-            Save Item
-          </Button>
+          {canEdit && (
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              isLoading={saveMutation.isPending}
+            >
+              Save Item
+            </Button>
+          )}
         </div>
       }
     >
@@ -136,6 +140,7 @@ export function InventoryDetailModal({
           required
           value={form.name}
           onChange={(e) => setField('name', e.target.value)}
+          disabled={!canEdit}
         />
 
         <Input
@@ -151,6 +156,7 @@ export function InventoryDetailModal({
           min={0}
           value={form.quantity_on_hand}
           onChange={(e) => setField('quantity_on_hand', Number(e.target.value))}
+          disabled={!canEdit}
         />
 
         <Input
@@ -159,18 +165,21 @@ export function InventoryDetailModal({
           min={0}
           value={form.minimum_on_hand}
           onChange={(e) => setField('minimum_on_hand', Number(e.target.value))}
+          disabled={!canEdit}
         />
 
         <Input
           label="Location"
           value={form.location}
           onChange={(e) => setField('location', e.target.value)}
+          disabled={!canEdit}
         />
 
         <Input
           label="Vendor"
           value={form.vendor}
           onChange={(e) => setField('vendor', e.target.value)}
+          disabled={!canEdit}
         />
 
         <Textarea
@@ -179,6 +188,7 @@ export function InventoryDetailModal({
           rows={3}
           value={form.notes}
           onChange={(e) => setField('notes', e.target.value)}
+          disabled={!canEdit}
         />
       </div>
     </Modal>

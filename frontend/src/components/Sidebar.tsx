@@ -66,7 +66,12 @@ export function Sidebar({ role, isSuperadminTenantWorkspace }: SidebarProps) {
   ]
 
   return (
-    <aside className="rounded-xl border border-[var(--ui-border)] app-panel p-4">
+    <aside className="app-panel flex h-full w-60 flex-shrink-0 flex-col overflow-y-auto border-r border-[var(--ui-border)]">
+      <div className="px-4 pb-3 pt-5">
+        <span className="text-lg font-bold tracking-tight text-[var(--ui-text)]">BMS</span>
+      </div>
+
+      <div className="flex-1 p-4">
       {showMainSection && (
         <div className="mb-4">
           <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">Main</p>
@@ -108,6 +113,7 @@ export function Sidebar({ role, isSuperadminTenantWorkspace }: SidebarProps) {
           </nav>
         </div>
       )}
+      </div> {/* flex-1 nav area */}
     </aside>
   )
 }

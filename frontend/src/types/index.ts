@@ -93,8 +93,8 @@ export type DashboardData = {
 }
 
 export type RecycleBinData = {
-  renewals: Renewal[]
-  inventory_items: InventoryItem[]
+  renewals: PaginatedResponse<Renewal>
+  inventory_items: PaginatedResponse<InventoryItem>
 }
 
 export type TenantAuditData = {

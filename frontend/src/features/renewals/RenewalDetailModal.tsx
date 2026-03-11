@@ -16,6 +16,7 @@ type RenewalDetailModalProps = {
   onClose: () => void
   onUpdated: () => void
   canDelete: boolean
+  canEdit: boolean
 }
 
 type RenewalForm = {
@@ -32,6 +33,7 @@ export function RenewalDetailModal({
   onClose,
   onUpdated,
   canDelete,
+  canEdit,
 }: RenewalDetailModalProps) {
   const { authedFetch } = useApi()
   const { showNotice } = useNotice()
@@ -122,13 +124,15 @@ export function RenewalDetailModal({
               </Button>
             )}
           </div>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            isLoading={saveMutation.isPending}
-          >
-            Save Renewal
-          </Button>
+          {canEdit && (
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              isLoading={saveMutation.isPending}
+            >
+              Save Renewal
+            </Button>
+          )}
         </div>
       }
     >
@@ -138,12 +142,14 @@ export function RenewalDetailModal({
           required
           value={form.title}
           onChange={(e) => setField('title', e.target.value)}
+          disabled={!canEdit}
         />
 
         <Select
           label="Type"
           value={form.category}
           onChange={(e) => setField('category', e.target.value)}
+          disabled={!canEdit}
         >
           {renewalCategoryOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -158,12 +164,14 @@ export function RenewalDetailModal({
           required
           value={form.expiration_date?.slice(0, 10) ?? ''}
           onChange={(e) => setField('expiration_date', e.target.value)}
+          disabled={!canEdit}
         />
 
         <Select
           label="Workflow Status"
           value={form.workflow_status}
           onChange={(e) => setField('workflow_status', e.target.value)}
+          disabled={!canEdit}
         >
           <option value="">Select status</option>
           {renewalWorkflowOptions.map((opt) => (
@@ -179,6 +187,7 @@ export function RenewalDetailModal({
           rows={3}
           value={form.notes}
           onChange={(e) => setField('notes', e.target.value)}
+          disabled={!canEdit}
         />
 
         <div className="flex items-center md:col-span-2">
@@ -187,6 +196,7 @@ export function RenewalDetailModal({
               type="checkbox"
               checked={form.auto_renews}
               onChange={(e) => setField('auto_renews', e.target.checked)}
+              disabled={!canEdit}
               className="rounded border-[var(--ui-border)]"
             />
             Auto-renews

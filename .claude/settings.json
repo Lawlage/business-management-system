@@ -7,7 +7,10 @@
       "Bash(source /home/jacob/.nvm/nvm.sh)",
       "Bash(npm install:*)",
       "Bash(node $NVM_DIR/versions/node/v20.20.0/bin/npx tsc -p tsconfig.app.json --noEmit)",
-      "Bash(echo \"Exit: $?\")"
+      "Bash(echo \"Exit: $?\")",
+      "Bash(head -50 /home/jacob/business-management-system/frontend/.env*)",
+      "Bash(bash -c 'source /home/jacob/.nvm/nvm.sh && nvm use 20 && ./node_modules/.bin/tsc -p tsconfig.app.json --noEmit 2>&1')",
+      "Bash(bash -c 'source /home/jacob/.nvm/nvm.sh && nvm use 20 && npm run test 2>&1')"
     ]
   }
 }

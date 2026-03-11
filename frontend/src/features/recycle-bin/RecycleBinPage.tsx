@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
@@ -9,11 +10,15 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import type { RecycleBinData } from '../../types'
 
+type Tab = 'renewals' | 'inventory'
+
 export function RecycleBinPage() {
   const { selectedTenantId } = useTenant()
   const { authedFetch } = useApi()
   const { showNotice } = useNotice()
   const queryClient = useQueryClient()
+
+  const [activeTab, setActiveTab] = useState<Tab>('renewals')
 
   const { data, isLoading } = useQuery({
     queryKey: ['recycle-bin', selectedTenantId],
@@ -46,14 +51,30 @@ export function RecycleBinPage() {
     restoreMutation.mutate({ entityType, id })
   }
 
+  const tabClass = (tab: Tab) =>
+    [
+      'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+      activeTab === tab
+        ? 'border-[var(--ui-tertiary)] text-[var(--ui-text)]'
+        : 'border-transparent text-[var(--ui-muted)] hover:text-[var(--ui-text)]',
+    ].join(' ')
+
   return (
     <Card>
       <PageHeader title="Recycle Bin" />
 
-      {/* Renewals Section */}
-      <div className="mb-6">
-        <h3 className="mb-3 text-sm font-semibold text-[var(--ui-text)]">Renewals</h3>
+      {/* Tab bar */}
+      <div className="mb-4 flex border-b border-[var(--ui-border)]">
+        <button className={tabClass('renewals')} onClick={() => setActiveTab('renewals')}>
+          Renewals
+        </button>
+        <button className={tabClass('inventory')} onClick={() => setActiveTab('inventory')}>
+          Inventory Items
+        </button>
+      </div>
 
+      {/* Renewals tab */}
+      {activeTab === 'renewals' && (
         <div className="space-y-2">
           {isLoading ? (
             <>
@@ -61,10 +82,10 @@ export function RecycleBinPage() {
               <SkeletonRow />
               <SkeletonRow />
             </>
-          ) : !data || data.renewals.length === 0 ? (
-            <EmptyState message="Your recycle bin is empty." />
+          ) : !data || data.renewals.data.length === 0 ? (
+            <EmptyState message="No renewals in the recycle bin." />
           ) : (
-            data.renewals.map((renewal) => (
+            data.renewals.data.map((renewal) => (
               <div
                 key={renewal.id}
                 className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2"
@@ -82,12 +103,10 @@ export function RecycleBinPage() {
             ))
           )}
         </div>
-      </div>
+      )}
 
-      {/* Inventory Items Section */}
-      <div>
-        <h3 className="mb-3 text-sm font-semibold text-[var(--ui-text)]">Inventory Items</h3>
-
+      {/* Inventory tab */}
+      {activeTab === 'inventory' && (
         <div className="space-y-2">
           {isLoading ? (
             <>
@@ -95,10 +114,10 @@ export function RecycleBinPage() {
               <SkeletonRow />
               <SkeletonRow />
             </>
-          ) : !data || data.inventory_items.length === 0 ? (
-            <EmptyState message="Your recycle bin is empty." />
+          ) : !data || data.inventory_items.data.length === 0 ? (
+            <EmptyState message="No inventory items in the recycle bin." />
           ) : (
-            data.inventory_items.map((item) => (
+            data.inventory_items.data.map((item) => (
               <div
                 key={item.id}
                 className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2"
@@ -116,7 +135,7 @@ export function RecycleBinPage() {
             ))
           )}
         </div>
-      </div>
+      )}
     </Card>
   )
 }

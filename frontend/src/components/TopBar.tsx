@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { LogOut, ShieldAlert } from 'lucide-react'
+import { LogOut, Moon, ShieldAlert, Sun } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
 import { roleLabels } from '../types'
@@ -8,9 +8,11 @@ import { Button } from './Button'
 type TopBarProps = {
   onLogout: () => void
   onStopBreakGlass: () => void
+  colorMode: 'light' | 'dark'
+  onToggleColorMode: () => void
 }
 
-export function TopBar({ onLogout, onStopBreakGlass }: TopBarProps) {
+export function TopBar({ onLogout, onStopBreakGlass, colorMode, onToggleColorMode }: TopBarProps) {
   const { user } = useAuth()
   const { role, selectedTenant, isSuperadminTenantWorkspace, breakGlassToken } = useTenant()
 
@@ -29,7 +31,7 @@ export function TopBar({ onLogout, onStopBreakGlass }: TopBarProps) {
   return (
     <>
       <header className="border-b border-[var(--ui-border)] app-panel">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+        <div className="flex items-center justify-between px-6 py-3">
           <div>
             <p className="font-semibold text-[var(--ui-text)]">{portalTitle}</p>
             {user && (
@@ -42,6 +44,14 @@ export function TopBar({ onLogout, onStopBreakGlass }: TopBarProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={onToggleColorMode}
+              className="theme-toggle-link rounded-md p-1.5"
+              aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {colorMode === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+
             {isSuperadmin && !isSuperadminTenantWorkspace && (
               <Link to="/superadmin/access">
                 <Button variant="secondary" size="sm">
