@@ -12,16 +12,19 @@ class AuditLogController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+        ]);
+
         $tenantId = (string) $request->attributes->get('tenant_id');
 
         return new JsonResponse([
-            'tenant_logs' => TenantAuditLog::query()->latest()->limit(200)->get(),
+            'tenant_logs' => TenantAuditLog::query()->latest()->paginate(50),
             'break_glass_logs' => GlobalAuditLog::query()
                 ->where('tenant_id', $tenantId)
                 ->where('event', 'like', 'break_glass.%')
                 ->latest()
-                ->limit(200)
-                ->get(),
+                ->paginate(50, ['*'], 'break_glass_page'),
         ]);
     }
 }

@@ -12,6 +12,10 @@ class DashboardController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'renewal_threshold_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
+        ]);
+
         $thresholdDays = (int) $request->integer('renewal_threshold_days', 30);
 
         $importantRenewals = Renewal::query()

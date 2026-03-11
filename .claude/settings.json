@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -r \"echo password_hash\\(''dummy_placeholder_for_timing'', PASSWORD_BCRYPT, [''cost'' => 12]\\) . PHP_EOL;\")",
+      "Bash(curl -s -w \"\\\\nHTTP_STATUS:%{http_code}\" http://127.0.0.1:8090/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"test@test.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"test\"\"\"\"}')",
+      "Bash(curl -s -w \"\\\\nHTTP_STATUS:%{http_code}\" http://127.0.0.1:8090/api/auth/login -X POST -H \"Content-Type: application/json\" -H \"Accept: application/json\" -d '{\"\"email\"\":\"\"test@test.com\"\",\"\"password\"\":\"\"test\"\"}')"
+    ]
+  }
+}

@@ -16,9 +16,13 @@ class CustomFieldController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $entityType = (string) $request->query('entity_type', 'renewal');
+        $query = CustomFieldDefinition::query();
 
-        return new JsonResponse(CustomFieldDefinition::query()->where('entity_type', $entityType)->get());
+        if ($request->has('entity_type')) {
+            $query->where('entity_type', (string) $request->query('entity_type'));
+        }
+
+        return new JsonResponse($query->get());
     }
 
     public function store(Request $request): JsonResponse

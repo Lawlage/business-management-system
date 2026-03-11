@@ -11,6 +11,7 @@ use App\Services\AuditLogger;
 use App\Enums\TenantRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -42,11 +43,14 @@ class SuperAdminTenantController extends Controller
             'slug' => ['required', 'string', 'max:64', 'alpha_dash', 'unique:tenants,slug'],
             'tenant_admin.name' => ['required', 'string', 'max:255'],
             'tenant_admin.email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'tenant_admin.password' => ['required', 'string', 'min:12'],
+            'tenant_admin.password' => ['required', 'string', 'min:12', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'],
         ]);
 
-        // Tenant creation triggers tenancy provisioning listeners. We keep this
-        // outside an explicit DB transaction to avoid transaction state conflicts.
+        $defaults = config('tenant_defaults');
+
+        // Tenant creation triggers tenancy provisioning listeners (DB creation, migrations).
+        // The tenant record itself is created outside an explicit DB transaction to avoid
+        // conflicts with the event-driven provisioning pipeline.
         $tenant = Tenant::query()->create([
             'id' => (string) Str::uuid(),
             'name' => $payload['name'],
@@ -54,33 +58,30 @@ class SuperAdminTenantController extends Controller
             'status' => 'active',
             'created_by' => $request->user()?->id,
             'data' => [
-                'timezone' => 'Pacific/Auckland',
-                'ui_settings' => [
-                    'theme_preset' => 'default',
-                    'density' => 'comfortable',
-                    'font_family' => 'modern_sans',
-                    'primary_colour' => '#0f172a',
-                    'secondary_colour' => '#1e293b',
-                    'tertiary_colour' => '#4b5563',
-                    'accent_colour' => '#4b5563',
-                    'border_colour' => '#5f738a',
-                ],
+                'timezone' => $defaults['timezone'],
+                'ui_settings' => $defaults['ui_settings'],
             ],
         ]);
 
-        $tenantAdmin = User::query()->create([
-            'name' => $payload['tenant_admin']['name'],
-            'email' => $payload['tenant_admin']['email'],
-            'password' => Hash::make($payload['tenant_admin']['password']),
-            'is_global_superadmin' => false,
-        ]);
+        // Wrap user + membership creation in a transaction so an orphaned user is
+        // never created if the membership insert fails.
+        $tenantAdmin = DB::transaction(function () use ($payload, $tenant): User {
+            $user = User::query()->create([
+                'name' => $payload['tenant_admin']['name'],
+                'email' => $payload['tenant_admin']['email'],
+                'password' => Hash::make($payload['tenant_admin']['password']),
+                'is_global_superadmin' => false,
+            ]);
 
-        TenantMembership::query()->create([
-            'tenant_id' => $tenant->id,
-            'user_id' => $tenantAdmin->id,
-            'role' => TenantRole::TenantAdmin->value,
-            'can_edit' => true,
-        ]);
+            TenantMembership::query()->create([
+                'tenant_id' => $tenant->id,
+                'user_id' => $user->id,
+                'role' => TenantRole::TenantAdmin->value,
+                'can_edit' => true,
+            ]);
+
+            return $user;
+        });
 
         $this->auditLogger->global($request, 'tenant.created', $request->user(), $tenant->id, [
             'entity_type' => 'tenant',

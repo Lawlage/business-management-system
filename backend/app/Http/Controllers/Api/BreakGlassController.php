@@ -22,10 +22,13 @@ class BreakGlassController extends Controller
             'permission_confirmed' => ['required', 'accepted'],
         ]);
 
+        // Generate a cryptographically random token and store its hash.
+        // The plaintext token is returned to the client once and never stored.
         $token = (string) Str::uuid();
+        $tokenHash = hash('sha256', $token);
 
         $access = BreakGlassAccess::query()->create([
-            'token' => $token,
+            'token' => $tokenHash,
             'tenant_id' => $tenantId,
             'user_id' => $request->user()->id,
             'reason' => $payload['reason'],
@@ -50,9 +53,11 @@ class BreakGlassController extends Controller
 
     public function stop(Request $request, string $tenantId, string $token): JsonResponse
     {
+        $tokenHash = hash('sha256', $token);
+
         $access = BreakGlassAccess::query()
             ->where('tenant_id', $tenantId)
-            ->where('token', $token)
+            ->where('token', $tokenHash)
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 

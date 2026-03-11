@@ -12,23 +12,6 @@ use Illuminate\Validation\Rule;
 class TenantSettingsController extends Controller
 {
     /**
-     * @return array{theme_preset: string, density: string, font_family: string, primary_colour: string, secondary_colour: string, tertiary_colour: string, accent_colour: string, border_colour: string}
-     */
-    private function defaultUiSettings(): array
-    {
-        return [
-            'theme_preset' => 'default',
-            'density' => 'comfortable',
-            'font_family' => 'modern_sans',
-            'primary_colour' => '#0f172a',
-            'secondary_colour' => '#1e293b',
-            'tertiary_colour' => '#4b5563',
-            'accent_colour' => '#4b5563',
-            'border_colour' => '#5f738a',
-        ];
-    }
-
-    /**
      * @param  array<string, mixed>  $settings
      * @return array<string, mixed>
      */
@@ -90,13 +73,13 @@ class TenantSettingsController extends Controller
 
         $timezone = $tenant->timezone;
         if (! is_string($timezone) || $timezone === '') {
-            $timezone = data_get($tenant->data ?? [], 'timezone', 'Pacific/Auckland');
+            $timezone = data_get($tenant->data ?? [], 'timezone', config('tenant_defaults.timezone'));
         }
 
         return new JsonResponse([
             'timezone' => $timezone,
             'ui_settings' => [
-                ...$this->defaultUiSettings(),
+                ...(array) config('tenant_defaults.ui_settings'),
                 ...$uiSettings,
             ],
         ]);
@@ -135,7 +118,7 @@ class TenantSettingsController extends Controller
         $incomingUiSettings = $this->normalizeUiSettings((array) ($payload['ui_settings'] ?? []));
 
         $computedUiSettings = [
-            ...$this->defaultUiSettings(),
+            ...(array) config('tenant_defaults.ui_settings'),
             ...$existingUiSettings,
             ...$incomingUiSettings,
         ];
@@ -144,7 +127,7 @@ class TenantSettingsController extends Controller
         $tenant->ui_settings = $computedUiSettings;
         $tenant->save();
 
-        $this->auditLogger->global($request, 'tenant.settings_updated', $request->user(), $tenantId, [
+        $this->auditLogger->tenant($request, 'tenant.settings_updated', $request->user(), [
             'entity_type' => 'tenant',
             'entity_id' => $tenantId,
             'timezone' => $payload['timezone'],

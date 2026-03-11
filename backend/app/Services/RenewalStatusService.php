@@ -19,7 +19,7 @@ class RenewalStatusService
         }
 
         if ($days <= 30) {
-            return 'Action required';
+            return 'Action Required';
         }
 
         if ($days <= 60) {

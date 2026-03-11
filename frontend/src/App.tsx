@@ -270,11 +270,15 @@ function App() {
 
   const [dashboard, setDashboard] = useState<{ important_renewals: Renewal[]; critical_renewals: Renewal[]; low_stock_items: InventoryItem[] } | null>(null)
   const [renewals, setRenewals] = useState<Renewal[]>([])
+  const [renewalsPage, setRenewalsPage] = useState(1)
+  const [renewalsLastPage, setRenewalsLastPage] = useState(1)
   const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [inventoryPage, setInventoryPage] = useState(1)
+  const [inventoryLastPage, setInventoryLastPage] = useState(1)
   const [recycleBin, setRecycleBin] = useState<{ renewals: Renewal[]; inventory_items: InventoryItem[] } | null>(null)
   const [tenantUsers, setTenantUsers] = useState<TenantUserMembership[]>([])
   const [customFields, setCustomFields] = useState<CustomField[]>([])
-  const [tenantAudit, setTenantAudit] = useState<{ tenant_logs: Array<{ id: number; event: string; created_at: string }>; break_glass_logs: Array<{ id: number; event: string; created_at: string }> } | null>(null)
+  const [tenantAudit, setTenantAudit] = useState<{ tenant_logs: { data: Array<{ id: number; event: string; created_at: string }>; current_page: number; last_page: number }; break_glass_logs: { data: Array<{ id: number; event: string; created_at: string }>; current_page: number; last_page: number } } | null>(null)
 
   const [superTenants, setSuperTenants] = useState<Tenant[]>([])
   const [globalAudit, setGlobalAudit] = useState<Array<{ id: number; event: string; created_at: string }>>([])
@@ -299,15 +303,11 @@ function App() {
     if (user.is_global_superadmin) {
       return 'global_superadmin' as AppRole
     }
-    const roles = user.tenant_memberships.map((membership) => membership.role)
-    if (roles.includes('tenant_admin')) {
-      return 'tenant_admin'
-    }
-    if (roles.includes('sub_admin')) {
-      return 'sub_admin'
-    }
-    return 'standard_user'
-  }, [user])
+    const membership = selectedTenantId
+      ? user.tenant_memberships.find((m) => m.tenant_id === selectedTenantId)
+      : user.tenant_memberships[0]
+    return membership?.role ?? 'standard_user'
+  }, [user, selectedTenantId])
 
   useEffect(() => {
     document.documentElement.classList.add('dark')
@@ -483,6 +483,17 @@ function App() {
     const text = await response.text()
     const payload = text ? JSON.parse(text) : null
 
+    if (response.status === 401) {
+      localStorage.removeItem('auth_token')
+      setToken(null)
+      setUser(null)
+      setIsAuthenticated(false)
+      setSelectedTenantId('')
+      setIsSuperadminTenantWorkspace(false)
+      setBreakGlassToken('')
+      throw new Error('Session expired. Please sign in again.')
+    }
+
     if (!response.ok) {
       throw new Error(payload?.message ?? `Request failed with status ${response.status}`)
     }
@@ -596,14 +607,26 @@ function App() {
     setDashboard(data)
   }
 
-  const loadRenewals = async () => {
-    const data = await authedFetch<{ data: Renewal[] }>('/api/renewals', undefined, true)
-    setRenewals(data.data ?? [])
+  const loadRenewals = async (page = 1) => {
+    const data = await authedFetch<{ data: Renewal[]; current_page: number; last_page: number }>(`/api/renewals?page=${page}`, undefined, true)
+    setRenewalsLastPage(data.last_page ?? 1)
+    setRenewalsPage(data.current_page ?? 1)
+    if (page === 1) {
+      setRenewals(data.data ?? [])
+    } else {
+      setRenewals((prev) => [...prev, ...(data.data ?? [])])
+    }
   }
 
-  const loadInventory = async () => {
-    const data = await authedFetch<{ data: InventoryItem[] }>('/api/inventory', undefined, true)
-    setInventory(data.data ?? [])
+  const loadInventory = async (page = 1) => {
+    const data = await authedFetch<{ data: InventoryItem[]; current_page: number; last_page: number }>(`/api/inventory?page=${page}`, undefined, true)
+    setInventoryLastPage(data.last_page ?? 1)
+    setInventoryPage(data.current_page ?? 1)
+    if (page === 1) {
+      setInventory(data.data ?? [])
+    } else {
+      setInventory((prev) => [...prev, ...(data.data ?? [])])
+    }
   }
 
   const loadRecycleBin = async () => {
@@ -617,13 +640,26 @@ function App() {
   }
 
   const loadCustomFields = async () => {
-    const data = await authedFetch<CustomField[]>('/api/custom-fields?entity_type=renewal', undefined, true)
+    const data = await authedFetch<CustomField[]>('/api/custom-fields', undefined, true)
     setCustomFields(data)
   }
 
-  const loadTenantAuditLogs = async () => {
-    const data = await authedFetch<{ tenant_logs: Array<{ id: number; event: string; created_at: string }>; break_glass_logs: Array<{ id: number; event: string; created_at: string }> }>('/api/audit-logs', undefined, true)
-    setTenantAudit(data)
+  const loadTenantAuditLogs = async (tenantPage = 1, bgPage = 1, append = false) => {
+    const data = await authedFetch<{
+      tenant_logs: { data: Array<{ id: number; event: string; created_at: string }>; current_page: number; last_page: number }
+      break_glass_logs: { data: Array<{ id: number; event: string; created_at: string }>; current_page: number; last_page: number }
+    }>(`/api/audit-logs?page=${tenantPage}&break_glass_page=${bgPage}`, undefined, true)
+    if (append) {
+      setTenantAudit((prev) => {
+        if (!prev) return data
+        return {
+          tenant_logs: tenantPage > (prev.tenant_logs.current_page) ? { ...data.tenant_logs, data: [...prev.tenant_logs.data, ...data.tenant_logs.data] } : data.tenant_logs,
+          break_glass_logs: bgPage > (prev.break_glass_logs.current_page) ? { ...data.break_glass_logs, data: [...prev.break_glass_logs.data, ...data.break_glass_logs.data] } : data.break_glass_logs,
+        }
+      })
+    } else {
+      setTenantAudit(data)
+    }
   }
 
   const loadTenantSettings = async () => {
@@ -793,11 +829,11 @@ function App() {
     }, 'Inventory item updated.')
   }
 
-  const adjustStock = async (id: number, type: 'check_in' | 'check_out') => {
+  const adjustStock = async (id: number, type: 'check_in' | 'check_out', quantity = 1) => {
     await withNotice(async () => {
       await authedFetch('/api/inventory/' + id + '/adjust-stock', {
         method: 'POST',
-        body: JSON.stringify({ type, quantity: 1, reason: type === 'check_out' ? 'Checked out' : 'Checked in' }),
+        body: JSON.stringify({ type, quantity, reason: type === 'check_out' ? 'Checked out' : 'Checked in' }),
       }, true)
       await Promise.all([loadInventory(), loadDashboard()])
     }, 'Stock updated.')
@@ -1100,14 +1136,14 @@ function App() {
             <Route path="/" element={<Navigate to={role === 'global_superadmin' ? '/superadmin' : '/app'} replace />} />
             <Route path="/login" element={<Navigate to={role === 'global_superadmin' ? '/superadmin' : '/app'} replace />} />
             <Route path="/app" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <DashboardPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} dashboard={dashboard} reload={loadDashboard} onOpenRenewal={setSelectedRenewal} onOpenInventory={setSelectedInventoryItem} />} />
-            <Route path="/app/renewals" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RenewalsPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} renewals={renewals} onOpenCreate={() => setIsCreateRenewalOpen(true)} onSelect={setSelectedRenewal} canCreate={role !== 'standard_user'} />} />
-            <Route path="/app/inventory" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <InventoryPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} items={inventory} onOpenCreate={() => setIsCreateInventoryOpen(true)} onAdjust={adjustStock} onSelect={setSelectedInventoryItem} canCreate={role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'} />} />
+            <Route path="/app/renewals" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RenewalsPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} renewals={renewals} onOpenCreate={() => setIsCreateRenewalOpen(true)} onSelect={setSelectedRenewal} canCreate={role !== 'standard_user'} hasMore={renewalsPage < renewalsLastPage} loadMore={() => void loadRenewals(renewalsPage + 1)} />} />
+            <Route path="/app/inventory" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <InventoryPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} items={inventory} onOpenCreate={() => setIsCreateInventoryOpen(true)} onAdjust={adjustStock} onSelect={setSelectedInventoryItem} canCreate={role !== 'standard_user'} hasMore={inventoryPage < inventoryLastPage} loadMore={() => void loadInventory(inventoryPage + 1)} />} />
             <Route path="/app/recycle-bin" element={role === 'global_superadmin' && !isSuperadminTenantWorkspace ? <Navigate to="/superadmin/access" replace /> : <RecycleBinPage surface={surface} textMuted={textMuted} data={recycleBin} reload={loadRecycleBin} onRestore={restoreEntity} />} />
 
             <Route path="/app/admin/users" element={canManageTenantAdminPages ? <TenantUsersPage surface={surface} users={tenantUsers} form={newTenantUser} setForm={setNewTenantUser} onCreate={createTenantUser} onRemove={removeTenantUser} onToggleEdit={toggleTenantUserEdit} reload={loadTenantUsers} /> : <Navigate to="/app" replace />} />
             <Route path="/app/admin/custom-fields" element={canManageTenantAdminPages ? <CustomFieldsPage surface={surface} fields={customFields} form={newCustomField} setForm={setNewCustomField} onCreate={createCustomField} onDelete={deleteCustomField} reload={loadCustomFields} /> : <Navigate to="/app" replace />} />
             <Route path="/app/admin/tenant-settings" element={canManageTenantAdminPages ? <TenantSettingsPage surface={surface} textMuted={textMuted} timezone={tenantTimezone} setTimezone={setTenantTimezone} uiSettings={tenantUiSettings} setUiSettings={setTenantUiSettings} save={updateTenantSettings} /> : <Navigate to="/app" replace />} />
-            <Route path="/app/admin/audit" element={canManageTenantAdminPages ? <TenantAuditPage surface={surface} timezone={tenantTimezone} data={tenantAudit} reload={loadTenantAuditLogs} /> : <Navigate to="/app" replace />} />
+            <Route path="/app/admin/audit" element={canManageTenantAdminPages ? <TenantAuditPage surface={surface} timezone={tenantTimezone} data={tenantAudit} reload={() => loadTenantAuditLogs(1, 1)} loadMore={(tp, bgp) => loadTenantAuditLogs(tp, bgp, true)} /> : <Navigate to="/app" replace />} />
 
             <Route path="/superadmin" element={role === 'global_superadmin' ? <SuperadminTenantsPage surface={surface} tenants={superTenants} tenantForm={newTenant} setTenantForm={setNewTenant} tenantAdminForm={newTenantAdmin} setTenantAdminForm={setNewTenantAdmin} onCreate={createTenant} onSuspend={suspendTenant} onUnsuspend={unsuspendTenant} onDelete={deleteTenant} reload={loadSuperTenants} /> : <Navigate to="/app" replace />} />
             <Route path="/superadmin/audit" element={role === 'global_superadmin' ? <GlobalAuditPage surface={surface} logs={globalAudit} reload={loadGlobalAuditLogs} /> : <Navigate to="/app" replace />} />
@@ -1169,7 +1205,10 @@ function App() {
       ) : null}
 
       {confirmationDialog ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onKeyDown={(event) => { if (event.key === 'Escape') { resolveConfirmation(false) } }}
+        >
           <div role="dialog" aria-modal="true" className={`w-full max-w-md rounded-xl border p-5 shadow-2xl ${surface}`}>
             <h3 className="text-lg font-semibold">{confirmationDialog.title}</h3>
             <p className={`mt-2 text-sm ${textMuted}`}>{confirmationDialog.message}</p>
@@ -1246,7 +1285,7 @@ function DashboardPage({ surface, textMuted, timezone, dashboard, reload, onOpen
   )
 }
 
-function RenewalsPage({ surface, textMuted, timezone, renewals, onOpenCreate, onSelect, canCreate }: { surface: string; textMuted: string; timezone: string; renewals: Renewal[]; onOpenCreate: () => void; onSelect: (renewal: Renewal) => void; canCreate: boolean }) {
+function RenewalsPage({ surface, textMuted, timezone, renewals, onOpenCreate, onSelect, canCreate, hasMore, loadMore }: { surface: string; textMuted: string; timezone: string; renewals: Renewal[]; onOpenCreate: () => void; onSelect: (renewal: Renewal) => void; canCreate: boolean; hasMore: boolean; loadMore: () => void }) {
   const rowButtonClass = `app-inner-box w-full rounded-md border p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${surface}`
 
   return (
@@ -1277,13 +1316,19 @@ function RenewalsPage({ surface, textMuted, timezone, renewals, onOpenCreate, on
             </div>
           </button>
         ))}
+        {hasMore ? (
+          <div className="pt-2 text-center">
+            <button className={`rounded-md border px-4 py-2 text-sm ${surface}`} onClick={loadMore}>Load More</button>
+          </div>
+        ) : null}
       </div>
     </section>
   )
 }
 
-function InventoryPage({ surface, textMuted, timezone, items, onOpenCreate, onAdjust, onSelect, canCreate }: { surface: string; textMuted: string; timezone: string; items: InventoryItem[]; onOpenCreate: () => void; onAdjust: (id: number, type: 'check_in' | 'check_out') => Promise<void>; onSelect: (item: InventoryItem) => void; canCreate: boolean }) {
-  const inventoryGridCols = 'md:grid-cols-[minmax(0,2fr)_110px_110px_220px_220px]'
+function InventoryPage({ surface, textMuted, timezone, items, onOpenCreate, onAdjust, onSelect, canCreate, hasMore, loadMore }: { surface: string; textMuted: string; timezone: string; items: InventoryItem[]; onOpenCreate: () => void; onAdjust: (id: number, type: 'check_in' | 'check_out', quantity: number) => Promise<void>; onSelect: (item: InventoryItem) => void; canCreate: boolean; hasMore: boolean; loadMore: () => void }) {
+  const [adjustQtys, setAdjustQtys] = useState<Record<number, number>>({})
+  const inventoryGridCols = 'md:grid-cols-[minmax(0,2fr)_110px_110px_220px_280px]'
   const rowClass = `app-inner-box grid gap-2 rounded-md border p-3 transition hover:-translate-y-0.5 hover:brightness-105 md:items-center md:gap-0 ${inventoryGridCols} ${surface}`
 
   return (
@@ -1303,21 +1348,37 @@ function InventoryPage({ surface, textMuted, timezone, items, onOpenCreate, onAd
           <span className="border-l border-white/15 pl-3">Created</span>
           <span className="border-l border-white/15 pl-3">Actions</span>
         </div>
-        {items.map((item) => (
-          <div key={item.id} className={rowClass}>
-            <button type="button" className="min-w-0 pr-3 text-left" onClick={() => onSelect(item)}>
-              <p className="font-medium">{item.name}</p>
-              <p className={`text-sm ${textMuted}`}>{item.sku}</p>
-            </button>
-            <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{item.quantity_on_hand}</p>
-            <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{item.minimum_on_hand}</p>
-            <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{formatDateTime(item.created_at, timezone)}</p>
-            <div className="flex gap-2 border-l border-white/12 pl-3 md:justify-end">
-              <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_out')}>Check Out</button>
-              <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_in')}>Check In</button>
+        {items.map((item) => {
+          const qty = adjustQtys[item.id] ?? 1
+          return (
+            <div key={item.id} className={rowClass}>
+              <button type="button" className="min-w-0 pr-3 text-left" onClick={() => onSelect(item)}>
+                <p className="font-medium">{item.name}</p>
+                <p className={`text-sm ${textMuted}`}>{item.sku}</p>
+              </button>
+              <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{item.quantity_on_hand}</p>
+              <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{item.minimum_on_hand}</p>
+              <p className={`border-l border-white/12 pl-3 text-sm ${textMuted}`}>{formatDateTime(item.created_at, timezone)}</p>
+              <div className="flex items-center gap-1 border-l border-white/12 pl-3 md:justify-end">
+                <input
+                  type="number"
+                  min="1"
+                  aria-label={`Quantity for ${item.name}`}
+                  className={`w-16 rounded-md border px-2 py-1.5 text-sm ${surface}`}
+                  value={qty}
+                  onChange={(event) => setAdjustQtys({ ...adjustQtys, [item.id]: Math.max(1, Number(event.target.value)) })}
+                />
+                <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_out', qty)}>Out</button>
+                <button className={`rounded-md border px-3 py-2 text-sm ${surface}`} onClick={() => void onAdjust(item.id, 'check_in', qty)}>In</button>
+              </div>
             </div>
+          )
+        })}
+        {hasMore ? (
+          <div className="pt-2 text-center">
+            <button className={`rounded-md border px-4 py-2 text-sm ${surface}`} onClick={loadMore}>Load More</button>
           </div>
-        ))}
+        ) : null}
       </div>
     </section>
   )
@@ -1446,9 +1507,11 @@ function CustomFieldsPage({ surface, fields, form, setForm, onCreate, onDelete, 
   )
 }
 
-function TenantAuditPage({ surface, timezone, data, reload }: { surface: string; timezone: string; data: { tenant_logs: Array<{ id: number; event: string; created_at: string }>; break_glass_logs: Array<{ id: number; event: string; created_at: string }> } | null; reload: () => Promise<void> }) {
-  const tenantEvents = data?.tenant_logs ?? []
-  const breakGlassEvents = data?.break_glass_logs ?? []
+function TenantAuditPage({ surface, timezone, data, reload, loadMore }: { surface: string; timezone: string; data: { tenant_logs: { data: Array<{ id: number; event: string; created_at: string }>; current_page: number; last_page: number }; break_glass_logs: { data: Array<{ id: number; event: string; created_at: string }>; current_page: number; last_page: number } } | null; reload: () => Promise<void>; loadMore: (tenantPage: number, bgPage: number) => Promise<void> }) {
+  const tenantEvents = data?.tenant_logs.data ?? []
+  const breakGlassEvents = data?.break_glass_logs.data ?? []
+  const tenantHasMore = data ? data.tenant_logs.current_page < data.tenant_logs.last_page : false
+  const bgHasMore = data ? data.break_glass_logs.current_page < data.break_glass_logs.last_page : false
 
   return (
     <section className={`rounded-xl border p-4 ${surface}`}>
@@ -1469,6 +1532,9 @@ function TenantAuditPage({ surface, timezone, data, reload }: { surface: string;
               </div>
             ))}
           </div>
+          {tenantHasMore ? (
+            <button className={`mt-2 w-full rounded-md border px-3 py-1.5 text-sm ${surface}`} onClick={() => void loadMore((data?.tenant_logs.current_page ?? 1) + 1, data?.break_glass_logs.current_page ?? 1)}>Load More</button>
+          ) : null}
         </div>
 
         <div className={`app-inner-box rounded-md border p-3 ${surface}`}>
@@ -1482,6 +1548,9 @@ function TenantAuditPage({ surface, timezone, data, reload }: { surface: string;
               </div>
             ))}
           </div>
+          {bgHasMore ? (
+            <button className={`mt-2 w-full rounded-md border px-3 py-1.5 text-sm ${surface}`} onClick={() => void loadMore(data?.tenant_logs.current_page ?? 1, (data?.break_glass_logs.current_page ?? 1) + 1)}>Load More</button>
+          ) : null}
         </div>
       </div>
     </section>
@@ -1759,6 +1828,12 @@ function CreateRenewalModal({
   onCreate: () => Promise<void>
   onClose: () => void
 }) {
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { onClose() } }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className={`w-full max-w-2xl rounded-xl border p-4 shadow-lg ${surface}`}>
@@ -1826,6 +1901,12 @@ function CreateInventoryModal({
   onCreate: () => Promise<void>
   onClose: () => void
 }) {
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { onClose() } }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className={`w-full max-w-2xl rounded-xl border p-4 shadow-lg ${surface}`}>
@@ -1860,6 +1941,12 @@ function CreateInventoryModal({
 }
 
 function RenewalModal({ surface, textMuted, renewal, setRenewal, onSave, onDelete, canDelete, onClose }: { surface: string; textMuted: string; renewal: Renewal; setRenewal: (value: Renewal | null) => void; onSave: () => Promise<void>; onDelete: () => Promise<void>; canDelete: boolean; onClose: () => void }) {
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { onClose() } }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className={`w-full max-w-2xl rounded-xl border p-4 shadow-lg ${surface}`}>
@@ -1914,6 +2001,12 @@ function RenewalModal({ surface, textMuted, renewal, setRenewal, onSave, onDelet
 }
 
 function InventoryModal({ surface, textMuted, item, setItem, onSave, onDelete, canDelete, onClose }: { surface: string; textMuted: string; item: InventoryItem; setItem: (value: InventoryItem | null) => void; onSave: () => Promise<void>; onDelete: () => Promise<void>; canDelete: boolean; onClose: () => void }) {
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { onClose() } }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className={`w-full max-w-2xl rounded-xl border p-4 shadow-lg ${surface}`}>

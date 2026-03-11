@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -39,29 +40,35 @@ class TenantUserController extends Controller
         $payload = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique($centralConnection . '.users', 'email')],
-            'password' => ['required', 'string', 'min:12'],
+            'password' => ['required', 'string', 'min:12', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'],
             'role' => ['required', 'in:' . $roles],
         ]);
 
-        $user = User::query()->create([
-            'name' => $payload['name'],
-            'email' => $payload['email'],
-            'password' => Hash::make($payload['password']),
-        ]);
+        $user = DB::transaction(function () use ($payload, $tenantId): User {
+            $user = User::query()->create([
+                'name' => $payload['name'],
+                'email' => $payload['email'],
+                'password' => Hash::make($payload['password']),
+            ]);
 
-        TenantMembership::query()->create([
-            'tenant_id' => $tenantId,
-            'user_id' => $user->id,
-            'role' => $payload['role'],
-            'can_edit' => true,
-        ]);
+            TenantMembership::query()->create([
+                'tenant_id' => $tenantId,
+                'user_id' => $user->id,
+                'role' => $payload['role'],
+                'can_edit' => true,
+            ]);
 
-        $this->auditLogger->global($request, 'tenant.user_created', $request->user(), $tenantId, [
+            return $user;
+        });
+
+        $this->auditLogger->tenant($request, 'tenant.user_created', $request->user(), [
             'entity_type' => 'user',
             'entity_id' => (string) $user->id,
+            'email' => $user->email,
+            'role' => $payload['role'],
         ]);
 
-        return new JsonResponse($user, 201);
+        return new JsonResponse($user->only(['id', 'name', 'email']), 201);
     }
 
     public function destroy(Request $request, int $userId): JsonResponse
@@ -72,12 +79,16 @@ class TenantUserController extends Controller
             return new JsonResponse(['message' => 'You cannot delete your own account.'], 422);
         }
 
-        TenantMembership::query()
+        $deleted = TenantMembership::query()
             ->where('tenant_id', $tenantId)
             ->where('user_id', $userId)
             ->delete();
 
-        $this->auditLogger->global($request, 'tenant.user_removed', $request->user(), $tenantId, [
+        if (! $deleted) {
+            return new JsonResponse(['message' => 'User not found in this tenant.'], 404);
+        }
+
+        $this->auditLogger->tenant($request, 'tenant.user_removed', $request->user(), [
             'entity_type' => 'user',
             'entity_id' => (string) $userId,
         ]);
@@ -90,13 +101,19 @@ class TenantUserController extends Controller
         $tenantId = (string) $request->attributes->get('tenant_id');
 
         $payload = $request->validate([
-            'password' => ['required', 'string', 'min:12'],
+            'password' => ['required', 'string', 'min:12', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'],
         ]);
 
-        $user = User::query()->findOrFail($userId);
+        // Verify the target user belongs to this tenant before allowing password reset.
+        $membership = TenantMembership::query()
+            ->where('tenant_id', $tenantId)
+            ->where('user_id', $userId)
+            ->firstOrFail();
+
+        $user = User::query()->findOrFail($membership->user_id);
         $user->update(['password' => Hash::make($payload['password'])]);
 
-        $this->auditLogger->global($request, 'tenant.user_password_reset', $request->user(), $tenantId, [
+        $this->auditLogger->tenant($request, 'tenant.user_password_reset', $request->user(), [
             'entity_type' => 'user',
             'entity_id' => (string) $user->id,
         ]);
@@ -121,9 +138,11 @@ class TenantUserController extends Controller
 
         $membership->update(array_filter($payload, fn ($value) => $value !== null));
 
-        $this->auditLogger->global($request, 'tenant.membership_updated', $request->user(), $tenantId, [
+        $this->auditLogger->tenant($request, 'tenant.membership_updated', $request->user(), [
             'entity_type' => 'tenant_membership',
             'entity_id' => (string) $membership->id,
+            'role' => $membership->role,
+            'can_edit' => $membership->can_edit,
         ]);
 
         return new JsonResponse($membership);

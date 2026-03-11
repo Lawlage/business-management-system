@@ -46,7 +46,9 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Tokens expire after 24 hours (1440 minutes). The frontend handles 401 responses
+    // by clearing local auth state and redirecting to the login page.
+    'expiration' => env('SANCTUM_TOKEN_EXPIRATION', 1440),
 
     /*
     |--------------------------------------------------------------------------

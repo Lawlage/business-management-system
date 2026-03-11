@@ -27,8 +27,9 @@ class RenewalController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = '%' . $request->string('search') . '%';
-            $query->where('title', 'like', $search);
+            // Escape LIKE metacharacters so users searching for '%' or '_' are treated literally.
+            $term = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], (string) $request->string('search'));
+            $query->where('title', 'like', '%' . $term . '%');
         }
 
         return new JsonResponse($query->orderBy('expiration_date')->paginate(20));

@@ -56,10 +56,12 @@ class TenantAccessService
             return false;
         }
 
+        $tokenHash = hash('sha256', $token);
+
         return BreakGlassAccess::query()
             ->where('tenant_id', $tenantId)
             ->where('user_id', $user->id)
-            ->where('token', $token)
+            ->where('token', $tokenHash)
             ->whereNull('ended_at')
             ->where('expires_at', '>', Carbon::now())
             ->exists();

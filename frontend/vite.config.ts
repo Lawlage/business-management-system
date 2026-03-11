@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:8080',
+      '/api': process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:8090',
     },
   },
   test: {

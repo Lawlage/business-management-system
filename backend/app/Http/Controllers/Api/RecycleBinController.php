@@ -11,20 +11,30 @@ use Illuminate\Http\Request;
 
 class RecycleBinController extends Controller
 {
+    private const ALLOWED_ENTITY_TYPES = ['renewal', 'inventory'];
+
     public function __construct(private readonly AuditLogger $auditLogger)
     {
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+        ]);
+
         return new JsonResponse([
-            'renewals' => Renewal::onlyTrashed()->orderByDesc('deleted_at')->get(),
-            'inventory_items' => InventoryItem::onlyTrashed()->orderByDesc('deleted_at')->get(),
+            'renewals' => Renewal::onlyTrashed()->orderByDesc('deleted_at')->paginate(20, ['*'], 'renewals_page'),
+            'inventory_items' => InventoryItem::onlyTrashed()->orderByDesc('deleted_at')->paginate(20, ['*'], 'inventory_page'),
         ]);
     }
 
     public function restore(Request $request, string $entityType, int $id): JsonResponse
     {
+        if (! in_array($entityType, self::ALLOWED_ENTITY_TYPES, true)) {
+            return new JsonResponse(['message' => 'Invalid entity type.'], 422);
+        }
+
         $model = $entityType === 'renewal' ? Renewal::onlyTrashed() : InventoryItem::onlyTrashed();
         $entity = $model->findOrFail($id);
         $entity->restore();

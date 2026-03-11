@@ -20,6 +20,16 @@ For AI coding tools working in this repository, use `agents.md` as the source-of
 - Custom field definitions and typed value storage.
 - Daily purge command for records in recycle bin older than 30 days.
 
+## Security Model
+
+- **Authentication**: Laravel Sanctum Bearer tokens. Tokens expire after 24 hours (configurable via `SANCTUM_TOKEN_EXPIRATION`). The frontend clears auth state and redirects to login on 401 responses.
+- **Login rate limiting**: 6 attempts per minute per IP (`throttle:6,1`). Timing-safe comparison prevents email enumeration.
+- **Break-glass tokens**: Stored as SHA-256 hashes in the database. The plaintext token is returned to the caller once and never persisted.
+- **Password policy**: Minimum 12 characters, requires uppercase, lowercase, digit, and special character. Enforced on all password fields.
+- **Input sanitisation**: LIKE search terms are escaped for `%`, `_`, and `\` metacharacters. Recycle-bin entity type is validated against an allowlist.
+- **Tenant defaults**: Centralised in `config/tenant_defaults.php` — single source of truth for initial timezone and UI settings.
+- **Audit logging**: Tenant-scoped events write to the per-tenant `TenantAuditLog`; cross-tenant events (break-glass, tenant creation) write to the central `GlobalAuditLog`.
+
 ## Repository Layout
 
 - `backend`: Laravel API, tenancy, RBAC, audit, business modules.
@@ -73,17 +83,18 @@ By default, `./platform.sh start` (and `restart`) runs backend bootstrapping bef
 
 ## Interactive UI Coverage
 
-The frontend now includes working actions (API-backed buttons/forms) for:
+The frontend includes working actions (API-backed) for:
 
 - Dashboard refresh with renewal and low-stock widgets
-- Renewal create/list/delete
+- Renewal create/list/delete with **Load More** pagination (20/page)
 - Renewal workflow status tracking (auto status + user-entered workflow status)
 - Renewal auto-renew checkbox on create/edit
-- Inventory create/list/check-in/check-out/delete
-- Click-to-open foreground edit modals for renewal/inventory records
+- Inventory create/list/delete with **Load More** pagination and per-item quantity input for check-in/check-out
+- Click-to-open foreground edit modals for renewal/inventory records (Escape key dismisses)
 - Recycle bin list and restore
-- Tenant admin: tenant users, edit permission toggles, custom fields, tenant settings (timezone + appearance presets/colors/density/typography), tenant audit logs
+- Tenant admin: tenant users, edit permission toggles, custom fields (all entity types shown), tenant settings (timezone + appearance presets/colours/density/typography), tenant audit logs with **Load More** pagination
 - Superadmin: tenant create/suspend/delete (tenant creation includes new tenant-admin creation), global audit logs, break-glass session controls
+- Role is resolved from the active tenant membership (not the highest role across all tenants)
 
 ## Demo Credentials
 
