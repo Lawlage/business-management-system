@@ -1,0 +1,10 @@
+.git
+.github
+logs/
+node_modules/
+frontend/dist/
+frontend/node_modules/
+backend/vendor/
+backend/storage/logs/
+backend/.env
+*.log

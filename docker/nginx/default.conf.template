@@ -1,0 +1,27 @@
+server {
+    listen 80;
+    server_name ${APP_DOMAIN};
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Real IP forwarded by host Nginx via X-Forwarded-For
+    real_ip_header X-Forwarded-For;
+    set_real_ip_from 127.0.0.1;        # host Nginx connects from loopback
+    set_real_ip_from 172.16.0.0/12;    # Docker bridge gateway
+
+    # Laravel API — forward to php-fpm via backend service
+    location /api/ {
+        fastcgi_pass backend:9000;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME /var/www/html/public/index.php;
+        fastcgi_param REQUEST_URI $request_uri;
+        fastcgi_param HTTP_X_FORWARDED_FOR $http_x_forwarded_for;
+        fastcgi_param HTTP_X_FORWARDED_PROTO $http_x_forwarded_proto;
+    }
+
+    # SPA fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

@@ -19,7 +19,7 @@ if [[ ! -d "$BACKEND_DIR" || ! -d "$FRONTEND_DIR" ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 [start|stop|restart|status]"
+  echo "Usage: $0 [start|stop|restart|status|docker:up|docker:down|docker:logs]"
 }
 
 resolve_pid_file() {
@@ -139,6 +139,21 @@ do_status() {
   done < "$pid_file"
 }
 
+do_docker_up() {
+  cd "$ROOT_DIR"
+  docker compose up --build -d
+}
+
+do_docker_down() {
+  cd "$ROOT_DIR"
+  docker compose down
+}
+
+do_docker_logs() {
+  cd "$ROOT_DIR"
+  docker compose logs -f
+}
+
 case "$ACTION" in
   start)
     do_start
@@ -152,6 +167,15 @@ case "$ACTION" in
     ;;
   status)
     do_status
+    ;;
+  docker:up)
+    do_docker_up
+    ;;
+  docker:down)
+    do_docker_down
+    ;;
+  docker:logs)
+    do_docker_logs
     ;;
   *)
     usage
