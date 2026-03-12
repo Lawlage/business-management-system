@@ -12,10 +12,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Platform (start everything)
 ```
-./platform.sh start     # bootstrap + start backend + frontend
+./platform.sh start     # bootstrap + start backend + frontend (bare-metal)
 ./platform.sh stop
 ./platform.sh restart
 ./platform.sh status
+
+./platform.sh docker:up      # build images and start Docker stack (detached)
+./platform.sh docker:down    # stop and remove containers
+./platform.sh docker:logs    # follow logs across all services
 ```
 
 ### Backend
@@ -39,6 +43,26 @@ php -l path/to/file.php
 php artisan app:purge-soft-deleted-records
 ```
 
+### Backend (Docker)
+```bash
+# Run any artisan command inside the running container
+docker compose exec backend php artisan <command>
+
+# Migrations (after adding a new migration file)
+docker compose exec backend php artisan migrate
+docker compose exec backend php artisan tenants:migrate
+
+# Tests — runs against the Docker MySQL instance
+docker compose exec backend php artisan test
+docker compose exec backend php artisan test --filter=SomeTestClass
+
+# Open a shell
+docker compose exec backend sh
+```
+
+> **Code changes** (backend): the dev override mounts `./backend` into the container — edits take effect immediately without a rebuild.
+> **Rebuild required** when: `Dockerfile` changes, or `composer.json`/`composer.lock` changes (new packages).
+
 ### Frontend
 ```bash
 cd frontend
@@ -53,6 +77,9 @@ npm run test:e2e     # Playwright E2E
 # TypeScript check only (faster than full build)
 ./node_modules/.bin/tsc -p tsconfig.app.json --noEmit
 ```
+
+> **Code changes** (frontend in Docker): Vite HMR is active via the `frontend` dev service — edits are hot-reloaded in the browser.
+> **Rebuild required** when: `package.json`/`package-lock.json` changes (new npm packages).
 
 ---
 

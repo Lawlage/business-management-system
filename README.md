@@ -81,6 +81,68 @@ By default, `./platform.sh start` (and `restart`) runs backend bootstrapping bef
 - `php artisan tenants:migrate --force`
 - `php artisan db:seed --force`
 
+## Docker Setup
+
+The platform can also run as a Docker Compose stack.
+
+### Prerequisites
+
+Docker Engine must be installed with the **Compose v2 plugin**. On Ubuntu, Docker's official apt repository is required — the Ubuntu-packaged Docker does not include the plugin:
+
+```bash
+sudo apt-get install ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update && sudo apt-get install docker-compose-plugin
+```
+
+Verify: `docker compose version`
+
+### First-time setup
+
+```bash
+cp .env.docker .env
+# Generate an app key and paste it into .env as APP_KEY:
+cd backend && php artisan key:generate --show
+cd ..
+```
+
+### Running
+
+```bash
+./platform.sh docker:up      # build images and start all services (detached)
+./platform.sh docker:logs    # follow logs across all services
+./platform.sh docker:down    # stop and remove containers
+```
+
+The stack binds to `127.0.0.1:8091`. A host Nginx vhost (see `tasks/dockerize.md`) terminates TLS and proxies to that port.
+
+### Developing with Docker
+
+| What changed | Action needed |
+|---|---|
+| Backend PHP code | Nothing — `./backend` is live-mounted; changes take effect immediately |
+| Frontend code | Nothing — Vite HMR is active on port 5173 |
+| New migration file | `docker compose exec backend php artisan migrate` |
+| New tenant migration | `docker compose exec backend php artisan tenants:migrate` |
+| `composer.json` / `composer.lock` | `./platform.sh docker:up` (triggers rebuild) |
+| `package.json` / `package-lock.json` | `./platform.sh docker:up` (triggers rebuild) |
+| `Dockerfile` or `docker/` config | `./platform.sh docker:up` (triggers rebuild) |
+
+**Running tests inside Docker:**
+```bash
+docker compose exec backend php artisan test
+docker compose exec backend php artisan test --filter=SomeTestClass
+```
+
+**Useful one-liners:**
+```bash
+docker compose exec backend php artisan tinker   # REPL
+docker compose exec backend sh                   # shell into backend container
+docker compose exec mysql mysql -u bms_user -p   # MySQL prompt
+```
+
 ## Interactive UI Coverage
 
 The frontend includes working actions (API-backed) for:

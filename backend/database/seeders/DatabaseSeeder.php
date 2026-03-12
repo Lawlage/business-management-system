@@ -38,14 +38,16 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        DB::table('tenants')->updateOrInsert(
+        // Use firstOrCreate (not DB::table) so Eloquent model events fire and
+        // stancl/tenancy's CreateDatabase pipeline runs on first seed.
+        $tenant = Tenant::firstOrCreate(
             ['id' => '00000000-0000-0000-0000-000000000001'],
             [
                 'name' => 'Acme Corp',
                 'slug' => 'acme',
                 'status' => 'active',
                 'created_by' => $superadmin->id,
-                'data' => json_encode([
+                'data' => [
                     'timezone' => 'Pacific/Auckland',
                     'ui_settings' => [
                         'theme_preset' => 'default',
@@ -57,13 +59,9 @@ class DatabaseSeeder extends Seeder
                         'accent_colour' => '#4b5563',
                         'border_colour' => '#5f738a',
                     ],
-                ]),
-                'updated_at' => now(),
-                'created_at' => now(),
+                ],
             ],
         );
-
-        $tenant = Tenant::query()->findOrFail('00000000-0000-0000-0000-000000000001');
 
         TenantMembership::query()->firstOrCreate(
             ['tenant_id' => $tenant->id, 'user_id' => $tenantAdmin->id],

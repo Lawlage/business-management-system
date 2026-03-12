@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   backend:
     build:
@@ -10,6 +8,9 @@ services:
     volumes:
       - ./backend:/var/www/html
       - backend_storage:/var/www/html/storage
+      # Isolate Docker's config/route cache from the host filesystem so
+      # bare-metal tests don't pick up Docker-specific settings (e.g. REDIS_HOST=redis)
+      - /var/www/html/bootstrap/cache
 
   frontend:
     image: node:20-alpine
@@ -33,5 +34,5 @@ services:
 
   nginx:
     ports:
-      - "127.0.0.1:8090:80"
-      - "127.0.0.1:5173:5173"
+      - "8090:80"
+      - "5173:5173"

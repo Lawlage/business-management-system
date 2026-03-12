@@ -28,7 +28,10 @@
       "Bash(php -l tests/Feature/InventoryControllerTest.php)",
       "Bash(php -l tests/Feature/RecycleBinControllerTest.php)",
       "Bash(npx vitest:*)",
-      "Bash(./node_modules/.bin/tsc -p tsconfig.app.json --noEmit)"
+      "Bash(./node_modules/.bin/tsc -p tsconfig.app.json --noEmit)",
+      "Bash(xargs ps:*)",
+      "Bash(docker compose:*)",
+      "Bash(bash -lc \"cd /home/jacob/business-management-system/frontend && npm run test\")"
     ]
   }
 }
