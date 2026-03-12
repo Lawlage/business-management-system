@@ -8,7 +8,7 @@ import { SkeletonRow } from '../../components/SkeletonRow'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { Button } from '../../components/Button'
-import { formatDateTime } from '../../lib/format'
+import { formatDate } from '../../lib/format'
 import type { DashboardData, Renewal, InventoryItem } from '../../types'
 
 type DashboardPageProps = {
@@ -27,6 +27,7 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
     queryKey: ['dashboard', selectedTenantId],
     queryFn: () => authedFetch<DashboardData>('/api/dashboard', { tenantScoped: true }),
     enabled: !!selectedTenantId,
+    staleTime: 0,
   })
 
   return (
@@ -70,7 +71,7 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
                   <div className="mt-1 flex items-center gap-2">
                     <Badge status={r.status} />
                     <span className="text-xs text-[var(--ui-muted)]">
-                      {formatDateTime(r.expiration_date, tenantTimezone)}
+                      {formatDate(r.expiration_date, tenantTimezone)}
                     </span>
                   </div>
                 </button>
@@ -102,7 +103,7 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
                   <div className="mt-1 flex items-center gap-2">
                     <Badge status={r.status} />
                     <span className="text-xs text-[var(--ui-muted)]">
-                      {formatDateTime(r.expiration_date, tenantTimezone)}
+                      {formatDate(r.expiration_date, tenantTimezone)}
                     </span>
                   </div>
                 </button>

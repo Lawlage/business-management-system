@@ -24,7 +24,8 @@ export type TenantMembership = {
 
 export type AuthUser = {
   id: number
-  name: string
+  first_name: string
+  last_name: string
   email: string
   is_global_superadmin: boolean
   tenant_memberships: TenantMembership[]
@@ -69,7 +70,8 @@ export type TenantUserMembership = {
   can_edit: boolean
   user: {
     id: number
-    name: string
+    first_name: string
+    last_name: string
     email: string
   }
 }
@@ -77,6 +79,11 @@ export type TenantUserMembership = {
 export type AuditLog = {
   id: number
   event: string
+  triggered_by_name: string | null
+  entity_type: string | null
+  entity_id: string | null
+  metadata: Record<string, unknown> | null
+  ip_address: string | null
   created_at: string
 }
 

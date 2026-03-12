@@ -52,7 +52,10 @@ class RenewalController extends Controller
 
         $payload['auto_renews'] = (bool) ($payload['auto_renews'] ?? false);
 
-        $payload['status'] = $this->statusService->fromExpiration(Carbon::parse($payload['expiration_date']));
+        $payload['status'] = $this->statusService->fromExpiration(
+            Carbon::parse($payload['expiration_date']),
+            $payload['workflow_status'] ?? null,
+        );
         $payload['created_by'] = $request->user()->id;
         $payload['updated_by'] = $request->user()->id;
 
@@ -61,6 +64,7 @@ class RenewalController extends Controller
         $this->auditLogger->tenant($request, 'renewal.created', $request->user(), [
             'entity_type' => 'renewal',
             'entity_id' => $renewal->id,
+            'entity_title' => $renewal->title,
         ]);
 
         return new JsonResponse($renewal, 201);
@@ -83,8 +87,12 @@ class RenewalController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        if (isset($payload['expiration_date'])) {
-            $payload['status'] = $this->statusService->fromExpiration(Carbon::parse($payload['expiration_date']));
+        if (isset($payload['expiration_date']) || array_key_exists('workflow_status', $payload)) {
+            $expirationDate = Carbon::parse($payload['expiration_date'] ?? $renewal->expiration_date);
+            $workflowStatus = array_key_exists('workflow_status', $payload)
+                ? $payload['workflow_status']
+                : $renewal->workflow_status;
+            $payload['status'] = $this->statusService->fromExpiration($expirationDate, $workflowStatus);
         }
 
         $payload['updated_by'] = $request->user()->id;
@@ -94,6 +102,7 @@ class RenewalController extends Controller
         $this->auditLogger->tenant($request, 'renewal.updated', $request->user(), [
             'entity_type' => 'renewal',
             'entity_id' => $renewal->id,
+            'entity_title' => $renewal->title,
         ]);
 
         return new JsonResponse($renewal->fresh());
@@ -107,6 +116,7 @@ class RenewalController extends Controller
         $this->auditLogger->tenant($request, 'renewal.deleted', $request->user(), [
             'entity_type' => 'renewal',
             'entity_id' => $renewal->id,
+            'entity_title' => $renewal->title,
         ]);
 
         return new JsonResponse(['message' => 'Renewal moved to recycle bin.']);

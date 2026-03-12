@@ -14,6 +14,7 @@ class GlobalAuditLog extends Model
 
     protected $fillable = [
         'user_id',
+        'triggered_by_name',
         'tenant_id',
         'event',
         'entity_type',

@@ -17,14 +17,16 @@ import { Input } from '../../../components/Input'
 import { Select } from '../../../components/Select'
 
 type CreateUserForm = {
-  name: string
+  first_name: string
+  last_name: string
   email: string
   password: string
   role: AppRole
 }
 
 const initialForm: CreateUserForm = {
-  name: '',
+  first_name: '',
+  last_name: '',
   email: '',
   password: '',
   role: 'standard_user',
@@ -45,6 +47,7 @@ export function UsersPage() {
     queryFn: () =>
       authedFetch<TenantUserMembership[]>('/api/tenant-users', { tenantScoped: true }),
     enabled: !!selectedTenantId,
+    staleTime: 0,
   })
 
   const createMutation = useMutation({
@@ -148,7 +151,7 @@ export function UsersPage() {
             >
               <div>
                 <p className="text-sm font-medium text-[var(--ui-text)]">
-                  {membership.user.name}{' '}
+                  {membership.user.first_name} {membership.user.last_name}{' '}
                   <span className="text-[var(--ui-muted)]">({membership.user.email})</span>
                 </p>
                 <p className="mt-0.5 text-xs text-[var(--ui-muted)]">
@@ -204,10 +207,16 @@ export function UsersPage() {
         >
           <div className="grid gap-3">
             <Input
-              label="Name"
-              placeholder="Name"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              label="First Name"
+              placeholder="First Name"
+              value={form.first_name}
+              onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
+            />
+            <Input
+              label="Last Name"
+              placeholder="Last Name"
+              value={form.last_name}
+              onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
             />
             <Input
               label="Email"

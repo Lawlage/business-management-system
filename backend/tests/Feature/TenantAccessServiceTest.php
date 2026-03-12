@@ -21,7 +21,8 @@ class TenantAccessServiceTest extends TestCase
     public function test_standard_user_cannot_create_renewals(): void
     {
         $user = User::query()->create([
-            'name' => 'Standard User',
+            'first_name' => 'Standard',
+            'last_name' => 'User',
             'email' => 'standard@example.com',
             'password' => Hash::make('Password123!'),
         ]);
@@ -36,13 +37,15 @@ class TenantAccessServiceTest extends TestCase
         $service = app(TenantAccessService::class);
 
         $this->assertFalse($service->hasPermission($user, 'tenant-a', TenantPermissionMap::CREATE_RENEWAL));
-        $this->assertTrue($service->hasPermission($user, 'tenant-a', TenantPermissionMap::EDIT_EXISTING));
+        $this->assertFalse($service->hasPermission($user, 'tenant-a', TenantPermissionMap::EDIT_EXISTING));
+        $this->assertTrue($service->hasPermission($user, 'tenant-a', TenantPermissionMap::ADJUST_STOCK));
     }
 
     public function test_tenant_admin_can_manage_users(): void
     {
         $user = User::query()->create([
-            'name' => 'Tenant Admin',
+            'first_name' => 'Tenant',
+            'last_name' => 'Admin',
             'email' => 'tenant-admin@example.com',
             'password' => Hash::make('Password123!'),
         ]);
@@ -62,7 +65,8 @@ class TenantAccessServiceTest extends TestCase
     public function test_sub_admin_can_create_renewals_and_inventory_but_not_manage_users(): void
     {
         $user = User::query()->create([
-            'name' => 'Sub Admin',
+            'first_name' => 'Sub',
+            'last_name' => 'Admin',
             'email' => 'sub-admin@example.com',
             'password' => Hash::make('Password123!'),
         ]);
@@ -85,7 +89,8 @@ class TenantAccessServiceTest extends TestCase
     public function test_can_edit_false_blocks_edit_existing_permission(): void
     {
         $user = User::query()->create([
-            'name' => 'Read Only',
+            'first_name' => 'Read',
+            'last_name' => 'Only',
             'email' => 'readonly@example.com',
             'password' => Hash::make('Password123!'),
         ]);
@@ -93,7 +98,7 @@ class TenantAccessServiceTest extends TestCase
         TenantMembership::query()->create([
             'tenant_id' => 'tenant-d',
             'user_id' => $user->id,
-            'role' => TenantRole::StandardUser->value,
+            'role' => TenantRole::SubAdmin->value,
             'can_edit' => false,
         ]);
 
@@ -105,7 +110,8 @@ class TenantAccessServiceTest extends TestCase
     public function test_user_with_no_membership_has_no_access(): void
     {
         $user = User::query()->create([
-            'name' => 'Outsider',
+            'first_name' => 'Out',
+            'last_name' => 'Sider',
             'email' => 'outsider@example.com',
             'password' => Hash::make('Password123!'),
         ]);
@@ -121,7 +127,8 @@ class TenantAccessServiceTest extends TestCase
     public function test_superadmin_with_valid_break_glass_has_access(): void
     {
         $superadmin = User::query()->create([
-            'name' => 'Superadmin',
+            'first_name' => 'Super',
+            'last_name' => 'Admin',
             'email' => 'super@example.com',
             'password' => Hash::make('Password123!'),
             'is_global_superadmin' => true,
@@ -148,7 +155,8 @@ class TenantAccessServiceTest extends TestCase
     public function test_superadmin_without_break_glass_token_has_no_access(): void
     {
         $superadmin = User::query()->create([
-            'name' => 'Superadmin',
+            'first_name' => 'Super',
+            'last_name' => 'Admin',
             'email' => 'super2@example.com',
             'password' => Hash::make('Password123!'),
             'is_global_superadmin' => true,
@@ -162,7 +170,8 @@ class TenantAccessServiceTest extends TestCase
     public function test_expired_break_glass_token_has_no_access(): void
     {
         $superadmin = User::query()->create([
-            'name' => 'Superadmin Expired',
+            'first_name' => 'Superadmin',
+            'last_name' => 'Expired',
             'email' => 'super3@example.com',
             'password' => Hash::make('Password123!'),
             'is_global_superadmin' => true,
@@ -188,7 +197,8 @@ class TenantAccessServiceTest extends TestCase
     public function test_ended_break_glass_token_has_no_access(): void
     {
         $superadmin = User::query()->create([
-            'name' => 'Superadmin Ended',
+            'first_name' => 'Superadmin',
+            'last_name' => 'Ended',
             'email' => 'super4@example.com',
             'password' => Hash::make('Password123!'),
             'is_global_superadmin' => true,
@@ -215,7 +225,8 @@ class TenantAccessServiceTest extends TestCase
     public function test_wrong_tenant_break_glass_token_denied(): void
     {
         $superadmin = User::query()->create([
-            'name' => 'Superadmin Wrong',
+            'first_name' => 'Superadmin',
+            'last_name' => 'Wrong',
             'email' => 'super5@example.com',
             'password' => Hash::make('Password123!'),
             'is_global_superadmin' => true,

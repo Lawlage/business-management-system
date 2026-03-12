@@ -102,7 +102,8 @@ class TenantSettingsTest extends TestCase
     private function createTenantAdminContext(): array
     {
         $user = User::query()->create([
-            'name' => 'Tenant Admin',
+            'first_name' => 'Tenant',
+            'last_name' => 'Admin',
             'email' => 'tenant-admin-'.Str::lower(Str::random(6)).'@example.com',
             'password' => bcrypt('Password123!'),
             'is_global_superadmin' => false,

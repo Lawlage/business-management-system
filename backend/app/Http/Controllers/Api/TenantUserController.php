@@ -38,7 +38,8 @@ class TenantUserController extends Controller
         $centralConnection = (string) config('tenancy.database.central_connection', config('database.default'));
 
         $payload = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique($centralConnection . '.users', 'email')],
             'password' => ['required', 'string', 'min:12', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'],
             'role' => ['required', 'in:' . $roles],
@@ -46,7 +47,8 @@ class TenantUserController extends Controller
 
         $user = DB::transaction(function () use ($payload, $tenantId): User {
             $user = User::query()->create([
-                'name' => $payload['name'],
+                'first_name' => $payload['first_name'],
+                'last_name' => $payload['last_name'],
                 'email' => $payload['email'],
                 'password' => Hash::make($payload['password']),
             ]);
@@ -64,11 +66,12 @@ class TenantUserController extends Controller
         $this->auditLogger->tenant($request, 'tenant.user_created', $request->user(), [
             'entity_type' => 'user',
             'entity_id' => (string) $user->id,
+            'entity_title' => $user->name,
             'email' => $user->email,
             'role' => $payload['role'],
         ]);
 
-        return new JsonResponse($user->only(['id', 'name', 'email']), 201);
+        return new JsonResponse($user->only(['id', 'first_name', 'last_name', 'email']), 201);
     }
 
     public function destroy(Request $request, int $userId): JsonResponse
@@ -88,9 +91,11 @@ class TenantUserController extends Controller
             return new JsonResponse(['message' => 'User not found in this tenant.'], 404);
         }
 
+        $removedUser = User::query()->find($userId);
         $this->auditLogger->tenant($request, 'tenant.user_removed', $request->user(), [
             'entity_type' => 'user',
             'entity_id' => (string) $userId,
+            'entity_title' => $removedUser?->name,
         ]);
 
         return new JsonResponse(['message' => 'User removed from tenant.']);

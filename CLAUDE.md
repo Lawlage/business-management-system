@@ -101,6 +101,7 @@ Do not update either file for routine bug fixes or minor tweaks that don't chang
 - API changes that affect existing contracts require a migration note
 - Keep modules cohesive — new features belong in their own controller + service, not appended to existing ones
 - Avoid over-engineering: implement only what is asked; do not add unrequested abstractions, fallbacks, or configuration options
+- **Keep `platform.sh` working**: after any schema change (e.g. adding/removing columns), update `database/seeders/DatabaseSeeder.php` to match. The seeder is run on every `platform.sh start` — a broken seeder breaks the whole platform bootstrap.
 
 ---
 
@@ -136,12 +137,12 @@ Permission matrix: `app/Support/TenantPermissionMap.php`. Enforcement: `RequireT
 
 | Role | Key permissions |
 |---|---|
-| `standard_user` | `edit_existing` |
-| `sub_admin` | + `create_renewal`, `create_inventory` |
+| `standard_user` | `adjust_stock` only — cannot edit renewals or inventory details |
+| `sub_admin` | `adjust_stock`, `edit_existing`, `create_renewal`, `create_inventory` |
 | `tenant_admin` | + `delete_record`, `manage_users`, `manage_custom_fields`, `view_audit_logs` |
 | `global_superadmin` | Separate middleware (`RequireGlobalSuperadmin`); not a tenant role |
 
-`can_edit` flag on `TenantMembership` can revoke `edit_existing` from standard users.
+`can_edit` flag on `TenantMembership` can revoke `edit_existing` from sub_admins.
 
 ### Audit Logging
 

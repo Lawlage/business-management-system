@@ -18,7 +18,8 @@ class BreakGlassControllerTest extends TestCase
     private function makeSuperadmin(): User
     {
         return User::query()->create([
-            'name' => 'Superadmin',
+            'first_name' => 'Super',
+            'last_name' => 'Admin',
             'email' => 'super-' . Str::random(5) . '@example.com',
             'password' => Hash::make('Password123!'),
             'is_global_superadmin' => true,

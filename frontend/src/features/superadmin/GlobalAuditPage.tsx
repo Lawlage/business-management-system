@@ -13,6 +13,7 @@ export function GlobalAuditPage() {
   const { data: logs, isLoading } = useQuery<AuditLog[]>({
     queryKey: ['global-audit'],
     queryFn: () => authedFetch<AuditLog[]>('/api/superadmin/audit-logs'),
+    staleTime: 0,
   })
 
   return (

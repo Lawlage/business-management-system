@@ -25,6 +25,7 @@ export function RecycleBinPage() {
     queryFn: () =>
       authedFetch<RecycleBinData>('/api/recycle-bin', { tenantScoped: true }),
     enabled: !!selectedTenantId,
+    staleTime: 0,
   })
 
   const restoreMutation = useMutation({

@@ -21,13 +21,14 @@ type TenantForm = {
 }
 
 type AdminForm = {
-  name: string
+  first_name: string
+  last_name: string
   email: string
   password: string
 }
 
 const initialTenantForm: TenantForm = { name: '', slug: '' }
-const initialAdminForm: AdminForm = { name: '', email: '', password: '' }
+const initialAdminForm: AdminForm = { first_name: '', last_name: '', email: '', password: '' }
 
 export function TenantsPage() {
   const { setSuperTenants } = useTenant()
@@ -43,6 +44,7 @@ export function TenantsPage() {
   const { data: tenants, isLoading } = useQuery<Tenant[]>({
     queryKey: ['superadmin-tenants'],
     queryFn: () => authedFetch<Tenant[]>('/api/superadmin/tenants'),
+    staleTime: 0,
   })
 
   useEffect(() => {
@@ -237,11 +239,18 @@ export function TenantsPage() {
               onChange={(e) => setTenantForm((f) => ({ ...f, slug: e.target.value }))}
             />
             <Input
-              label="Admin Name"
-              placeholder="Admin Name"
+              label="Admin First Name"
+              placeholder="Admin First Name"
               required
-              value={adminForm.name}
-              onChange={(e) => setAdminForm((f) => ({ ...f, name: e.target.value }))}
+              value={adminForm.first_name}
+              onChange={(e) => setAdminForm((f) => ({ ...f, first_name: e.target.value }))}
+            />
+            <Input
+              label="Admin Last Name"
+              placeholder="Admin Last Name"
+              required
+              value={adminForm.last_name}
+              onChange={(e) => setAdminForm((f) => ({ ...f, last_name: e.target.value }))}
             />
             <Input
               label="Admin Email"

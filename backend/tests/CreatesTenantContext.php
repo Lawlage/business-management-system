@@ -11,6 +11,25 @@ use Illuminate\Support\Str;
 
 trait CreatesTenantContext
 {
+    /** @var list<string> */
+    private array $tenantIdsToCleanUp = [];
+
+    /**
+     * Delete provisioned tenant databases after each test so they don't accumulate.
+     * Tenant creation fires stancl/tenancy events that provision real MySQL databases
+     * outside the RefreshDatabase transaction — those must be cleaned up explicitly.
+     */
+    protected function tearDown(): void
+    {
+        foreach ($this->tenantIdsToCleanUp as $id) {
+            $tenant = Tenant::query()->find($id);
+            $tenant?->delete();
+        }
+        $this->tenantIdsToCleanUp = [];
+
+        parent::tearDown();
+    }
+
     /**
      * Create a tenant admin user bound to a provisioned tenant.
      *
@@ -19,7 +38,8 @@ trait CreatesTenantContext
     protected function createTenantAdminContext(): array
     {
         $user = User::query()->create([
-            'name' => 'Tenant Admin',
+            'first_name' => 'Tenant',
+            'last_name' => 'Admin',
             'email' => 'tenant-admin-' . Str::random(6) . '@example.com',
             'password' => Hash::make('Password123!'),
             'is_global_superadmin' => false,
@@ -32,6 +52,8 @@ trait CreatesTenantContext
             'status' => 'active',
             'data' => ['timezone' => 'Pacific/Auckland'],
         ]);
+
+        $this->tenantIdsToCleanUp[] = $tenant->id;
 
         TenantMembership::query()->create([
             'tenant_id' => $tenant->id,
@@ -49,7 +71,8 @@ trait CreatesTenantContext
     protected function createTenantUser(string $tenantId, TenantRole $role = TenantRole::StandardUser, bool $canEdit = true): User
     {
         $user = User::query()->create([
-            'name' => 'Tenant User',
+            'first_name' => 'Tenant',
+            'last_name' => 'User',
             'email' => 'user-' . Str::random(6) . '@example.com',
             'password' => Hash::make('Password123!'),
             'is_global_superadmin' => false,

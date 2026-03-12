@@ -16,16 +16,33 @@ class RenewalStatusServiceTest extends TestCase
         $this->service = new RenewalStatusService();
     }
 
-    // ── Expired ────────────────────────────────────────────────────────────────
+    // ── Critical (expired, not closed) ────────────────────────────────────────
 
-    public function test_it_returns_expired_for_past_dates(): void
+    public function test_it_returns_critical_for_past_dates(): void
     {
-        $this->assertSame('Expired', $this->service->fromExpiration(Carbon::now()->subDay()));
+        $this->assertSame('Critical', $this->service->fromExpiration(Carbon::now()->subDay()));
     }
 
-    public function test_it_returns_expired_for_far_past(): void
+    public function test_it_returns_critical_for_far_past(): void
     {
-        $this->assertSame('Expired', $this->service->fromExpiration(Carbon::now()->subDays(365)));
+        $this->assertSame('Critical', $this->service->fromExpiration(Carbon::now()->subDays(365)));
+    }
+
+    public function test_it_returns_critical_for_expired_with_non_closed_workflow_status(): void
+    {
+        $this->assertSame('Critical', $this->service->fromExpiration(Carbon::now()->subDay(), 'In Progress'));
+    }
+
+    // ── Expired (past + Closed workflow) ───────────────────────────────────────
+
+    public function test_it_returns_expired_for_past_dates_with_closed_workflow(): void
+    {
+        $this->assertSame('Expired', $this->service->fromExpiration(Carbon::now()->subDay(), 'Closed'));
+    }
+
+    public function test_it_returns_expired_for_far_past_with_closed_workflow(): void
+    {
+        $this->assertSame('Expired', $this->service->fromExpiration(Carbon::now()->subDays(365), 'Closed'));
     }
 
     // ── Urgent ─────────────────────────────────────────────────────────────────

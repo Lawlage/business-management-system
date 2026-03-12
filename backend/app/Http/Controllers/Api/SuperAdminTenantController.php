@@ -33,7 +33,7 @@ class SuperAdminTenantController extends Controller
 
     public function users(): JsonResponse
     {
-        return new JsonResponse(User::query()->orderBy('name')->get(['id', 'name', 'email', 'is_global_superadmin']));
+        return new JsonResponse(User::query()->orderBy('last_name')->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'email', 'is_global_superadmin']));
     }
 
     public function store(Request $request): JsonResponse
@@ -41,7 +41,8 @@ class SuperAdminTenantController extends Controller
         $payload = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:64', 'alpha_dash', 'unique:tenants,slug'],
-            'tenant_admin.name' => ['required', 'string', 'max:255'],
+            'tenant_admin.first_name' => ['required', 'string', 'max:255'],
+            'tenant_admin.last_name' => ['required', 'string', 'max:255'],
             'tenant_admin.email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'tenant_admin.password' => ['required', 'string', 'min:12', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'],
         ]);
@@ -67,7 +68,8 @@ class SuperAdminTenantController extends Controller
         // never created if the membership insert fails.
         $tenantAdmin = DB::transaction(function () use ($payload, $tenant): User {
             $user = User::query()->create([
-                'name' => $payload['tenant_admin']['name'],
+                'first_name' => $payload['tenant_admin']['first_name'],
+                'last_name' => $payload['tenant_admin']['last_name'],
                 'email' => $payload['tenant_admin']['email'],
                 'password' => Hash::make($payload['tenant_admin']['password']),
                 'is_global_superadmin' => false,
@@ -105,7 +107,8 @@ class SuperAdminTenantController extends Controller
             'tenant' => $tenant,
             'tenant_admin' => [
                 'id' => $tenantAdmin->id,
-                'name' => $tenantAdmin->name,
+                'first_name' => $tenantAdmin->first_name,
+                'last_name' => $tenantAdmin->last_name,
                 'email' => $tenantAdmin->email,
             ],
         ], 201);

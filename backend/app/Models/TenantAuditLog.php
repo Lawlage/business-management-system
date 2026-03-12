@@ -11,6 +11,7 @@ class TenantAuditLog extends Model
 
     protected $fillable = [
         'user_id',
+        'triggered_by_name',
         'event',
         'entity_type',
         'entity_id',

@@ -11,6 +11,16 @@ export function formatDateTime(value?: string | null, timezone = 'UTC'): string 
   }).format(date)
 }
 
+export function formatDate(value?: string | null, timezone = 'UTC'): string {
+  if (!value) return 'N/A'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('en-NZ', {
+    dateStyle: 'medium',
+    timeZone: timezone,
+  }).format(date)
+}
+
 export function formatRenewalCategory(value?: string | null): string {
   if (!value) return 'Uncategorized'
   const option = renewalCategoryOptions.find((entry) => entry.value === value)

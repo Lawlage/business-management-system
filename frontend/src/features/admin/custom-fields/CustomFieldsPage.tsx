@@ -42,6 +42,7 @@ export function CustomFieldsPage() {
     queryFn: () =>
       authedFetch<CustomField[]>('/api/custom-fields', { tenantScoped: true }),
     enabled: !!selectedTenantId,
+    staleTime: 0,
   })
 
   const createMutation = useMutation({

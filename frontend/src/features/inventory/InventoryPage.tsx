@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
 import { useNotice } from '../../contexts/NoticeContext'
-import { formatDateTime } from '../../lib/format'
+import { formatDate } from '../../lib/format'
 import { Card } from '../../components/Card'
 import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/Button'
@@ -38,6 +38,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
         tenantScoped: true,
       }),
     enabled: !!selectedTenantId,
+    staleTime: 0,
   })
 
   useEffect(() => {
@@ -68,7 +69,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
       }),
     onSuccess: (_, variables) => {
       showNotice('Stock updated.')
-      setAdjustQtys((prev) => ({ ...prev, [variables.id]: 0 }))
+      setAdjustQtys((prev) => ({ ...prev, [variables.id]: 1 }))
       void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard', selectedTenantId] })
     },
@@ -81,8 +82,8 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
   })
 
   const handleAdjust = (item: InventoryItem, type: 'check_in' | 'check_out') => {
-    const qty = adjustQtys[item.id] ?? 0
-    if (qty <= 0) return
+    const qty = adjustQtys[item.id] ?? 1
+    if (qty < 1) return
     adjustMutation.mutate({ id: item.id, type, quantity: qty })
   }
 
@@ -153,19 +154,19 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
                 <span className="text-sm text-[var(--ui-muted)]">{item.minimum_on_hand}</span>
 
                 <span className="text-xs text-[var(--ui-muted)]">
-                  {formatDateTime(item.created_at, tenantTimezone)}
+                  {formatDate(item.created_at, tenantTimezone)}
                 </span>
 
                 {/* Stock adjustment */}
                 <div className="flex items-center gap-2 justify-end">
                   <input
                     type="number"
-                    min={0}
-                    value={adjustQtys[item.id] ?? 0}
+                    min={1}
+                    value={adjustQtys[item.id] ?? 1}
                     onChange={(e) =>
                       setAdjustQtys((prev) => ({
                         ...prev,
-                        [item.id]: Math.max(0, Number(e.target.value)),
+                        [item.id]: Math.max(1, Number(e.target.value)),
                       }))
                     }
                     className="w-16 rounded-md border border-[var(--ui-border)] px-2 py-1.5 text-sm app-panel"

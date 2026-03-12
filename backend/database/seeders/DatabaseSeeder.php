@@ -21,7 +21,8 @@ class DatabaseSeeder extends Seeder
         $superadmin = User::query()->updateOrCreate(
             ['email' => 'superadmin@example.com'],
             [
-                'name' => 'Global Superadmin',
+                'first_name' => 'Global',
+                'last_name' => 'Superadmin',
                 'password' => Hash::make('Superadmin123!'),
                 'is_global_superadmin' => true,
             ],
@@ -30,7 +31,8 @@ class DatabaseSeeder extends Seeder
         $tenantAdmin = User::query()->updateOrCreate(
             ['email' => 'tenantadmin@example.com'],
             [
-                'name' => 'Tenant Admin',
+                'first_name' => 'Tenant',
+                'last_name' => 'Admin',
                 'password' => Hash::make('Tenantadmin123!'),
                 'is_global_superadmin' => false,
             ],

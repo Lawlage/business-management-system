@@ -107,6 +107,7 @@ function AppContent() {
     queryKey: ['superadmin-tenants'],
     queryFn: () => authedFetch<{ id: string; name: string; slug: string; status: string }[]>('/api/superadmin/tenants'),
     enabled: superAdminTenantsEnabled,
+    staleTime: 0,
   })
   useEffect(() => {
     if (!superTenantsData) return
@@ -128,6 +129,7 @@ function AppContent() {
         tenantScoped: true,
       }),
     enabled: tenantSettingsEnabled,
+    staleTime: 0,
   })
   useEffect(() => {
     if (!settingsData) return

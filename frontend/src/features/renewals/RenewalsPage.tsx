@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
-import { formatDateTime, formatRenewalCategory } from '../../lib/format'
+import { formatDate, formatRenewalCategory } from '../../lib/format'
 import { Card } from '../../components/Card'
 import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/Button'
@@ -36,6 +36,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
         tenantScoped: true,
       }),
     enabled: !!selectedTenantId,
+    staleTime: 0,
   })
 
   useEffect(() => {
@@ -121,7 +122,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
                 </span>
 
                 <span className="text-sm text-[var(--ui-muted)]">
-                  {formatDateTime(renewal.expiration_date, tenantTimezone)}
+                  {formatDate(renewal.expiration_date, tenantTimezone)}
                 </span>
               </div>
             </button>

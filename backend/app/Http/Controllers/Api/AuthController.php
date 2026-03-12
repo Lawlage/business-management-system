@@ -39,7 +39,7 @@ class AuthController extends Controller
 
         return new JsonResponse([
             'token' => $token,
-            'user' => $user->only(['id', 'name', 'email', 'is_global_superadmin']),
+            'user' => $user->only(['id', 'first_name', 'last_name', 'email', 'is_global_superadmin']),
         ]);
     }
 

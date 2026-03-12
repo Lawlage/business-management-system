@@ -43,6 +43,7 @@ class InventoryController extends Controller
         $this->auditLogger->tenant($request, 'inventory.created', $request->user(), [
             'entity_type' => 'inventory',
             'entity_id' => $item->id,
+            'entity_title' => $item->name,
         ]);
 
         return new JsonResponse($item, 201);
@@ -70,6 +71,7 @@ class InventoryController extends Controller
         $this->auditLogger->tenant($request, 'inventory.updated', $request->user(), [
             'entity_type' => 'inventory',
             'entity_id' => $item->id,
+            'entity_title' => $item->name,
         ]);
 
         return new JsonResponse($item->fresh());
@@ -83,6 +85,7 @@ class InventoryController extends Controller
         $this->auditLogger->tenant($request, 'inventory.deleted', $request->user(), [
             'entity_type' => 'inventory',
             'entity_id' => $item->id,
+            'entity_title' => $item->name,
         ]);
 
         return new JsonResponse(['message' => 'Inventory item moved to recycle bin.']);
@@ -122,6 +125,7 @@ class InventoryController extends Controller
         $this->auditLogger->tenant($request, 'inventory.stock_adjusted', $request->user(), [
             'entity_type' => 'inventory',
             'entity_id' => $item->id,
+            'entity_title' => $item->name,
             'type' => $payload['type'],
             'quantity' => $quantity,
         ]);

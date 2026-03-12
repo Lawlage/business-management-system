@@ -56,7 +56,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/inventory', [InventoryController::class, 'store'])->middleware('tenant.permission:create_inventory');
         Route::put('/inventory/{id}', [InventoryController::class, 'update'])->middleware('tenant.permission:edit_existing');
         Route::delete('/inventory/{id}', [InventoryController::class, 'destroy'])->middleware('tenant.permission:delete_record');
-        Route::post('/inventory/{id}/adjust-stock', [InventoryController::class, 'adjustStock'])->middleware('tenant.permission:edit_existing');
+        Route::post('/inventory/{id}/adjust-stock', [InventoryController::class, 'adjustStock'])->middleware('tenant.permission:adjust_stock');
 
         Route::get('/tenant-users', [TenantUserController::class, 'index'])->middleware('tenant.permission:manage_users');
         Route::post('/tenant-users', [TenantUserController::class, 'store'])->middleware('tenant.permission:manage_users');

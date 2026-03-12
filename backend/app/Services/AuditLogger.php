@@ -13,6 +13,7 @@ class AuditLogger
     {
         GlobalAuditLog::query()->create([
             'user_id' => $user?->id,
+            'triggered_by_name' => $user?->name,
             'tenant_id' => $tenantId,
             'event' => $event,
             'entity_type' => $meta['entity_type'] ?? null,
@@ -27,6 +28,7 @@ class AuditLogger
     {
         TenantAuditLog::query()->create([
             'user_id' => $user?->id,
+            'triggered_by_name' => $user?->name,
             'event' => $event,
             'entity_type' => $meta['entity_type'] ?? null,
             'entity_id' => isset($meta['entity_id']) ? (string) $meta['entity_id'] : null,

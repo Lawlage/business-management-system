@@ -44,7 +44,8 @@ class TenantUserControllerTest extends TestCase
         [$admin, $tenant] = $this->createTenantAdminContext();
 
         $response = $this->actingAs($admin)->postJson('/api/tenant-users', [
-            'name' => 'New Member',
+            'first_name' => 'New',
+            'last_name' => 'Member',
             'email' => 'member@example.com',
             'password' => 'StrongPass1!',
             'role' => TenantRole::StandardUser->value,
@@ -64,7 +65,8 @@ class TenantUserControllerTest extends TestCase
         [$admin, $tenant] = $this->createTenantAdminContext();
 
         $response = $this->actingAs($admin)->postJson('/api/tenant-users', [
-            'name' => 'New Member',
+            'first_name' => 'New',
+            'last_name' => 'Member',
             'email' => 'weak@example.com',
             'password' => 'weakpassword',
             'role' => TenantRole::StandardUser->value,
@@ -78,14 +80,16 @@ class TenantUserControllerTest extends TestCase
         [$admin, $tenant] = $this->createTenantAdminContext();
 
         $this->actingAs($admin)->postJson('/api/tenant-users', [
-            'name' => 'First',
+            'first_name' => 'First',
+            'last_name' => 'User',
             'email' => 'dupe@example.com',
             'password' => 'Password123!',
             'role' => TenantRole::StandardUser->value,
         ], $this->tenantHeaders($tenant));
 
         $response = $this->actingAs($admin)->postJson('/api/tenant-users', [
-            'name' => 'Second',
+            'first_name' => 'Second',
+            'last_name' => 'User',
             'email' => 'dupe@example.com',
             'password' => 'Password123!',
             'role' => TenantRole::StandardUser->value,
@@ -133,7 +137,8 @@ class TenantUserControllerTest extends TestCase
         [$admin, $tenant] = $this->createTenantAdminContext();
 
         $outsider = User::query()->create([
-            'name' => 'Outsider',
+            'first_name' => 'Out',
+            'last_name' => 'Sider',
             'email' => 'outsider@example.com',
             'password' => Hash::make('Password123!'),
         ]);

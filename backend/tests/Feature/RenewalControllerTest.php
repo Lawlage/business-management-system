@@ -128,7 +128,7 @@ class RenewalControllerTest extends TestCase
         $response->assertOk()->assertJsonPath('status', 'Urgent');
     }
 
-    public function test_standard_user_with_can_edit_can_update_renewal(): void
+    public function test_standard_user_cannot_update_renewal(): void
     {
         [$admin, $tenant] = $this->createTenantAdminContext();
 
@@ -146,7 +146,7 @@ class RenewalControllerTest extends TestCase
             'title' => 'Updated by Standard',
         ], $this->tenantHeaders($tenant));
 
-        $response->assertOk();
+        $response->assertForbidden();
     }
 
     public function test_standard_user_with_can_edit_false_cannot_update(): void

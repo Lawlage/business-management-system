@@ -54,14 +54,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const canManageTenantAdminPages =
     role === 'tenant_admin' || (role === 'global_superadmin' && isSuperadminTenantWorkspace)
 
-  // standard_user can edit only when can_edit flag is true on their membership
-  const canEditRecords = useMemo(() => {
-    if (role !== 'standard_user') return true
-    const membership = selectedTenantId
-      ? user?.tenant_memberships.find((m) => m.tenant_id === selectedTenantId)
-      : user?.tenant_memberships[0]
-    return membership?.can_edit ?? true
-  }, [role, user, selectedTenantId])
+  const canEditRecords = role !== 'standard_user'
 
   const setSelectedTenantId = (id: string) => {
     setSelectedTenantIdRaw(id)
