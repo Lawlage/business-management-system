@@ -168,6 +168,6 @@ class CustomFieldControllerTest extends TestCase
             $this->tenantHeaders($tenant)
         );
 
-        $response->assertOk()->assertJsonPath('message', 'Custom field deleted.');
+        $response->assertOk()->assertJsonPath('message', 'Custom field moved to recycle bin.');
     }
 }

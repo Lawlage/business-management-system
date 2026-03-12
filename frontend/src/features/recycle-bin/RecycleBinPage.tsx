@@ -10,7 +10,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import type { RecycleBinData } from '../../types'
 
-type Tab = 'renewals' | 'inventory'
+type Tab = 'renewals' | 'inventory' | 'custom_fields'
 
 export function RecycleBinPage() {
   const { selectedTenantId } = useTenant()
@@ -34,11 +34,14 @@ export function RecycleBinPage() {
         method: 'POST',
         tenantScoped: true,
       }),
-    onSuccess: () => {
+    onSuccess: (_, { entityType }) => {
       showNotice('Record restored.')
       void queryClient.invalidateQueries({ queryKey: ['recycle-bin', selectedTenantId] })
       void queryClient.invalidateQueries({ queryKey: ['renewals', selectedTenantId] })
       void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
+      if (entityType === 'custom_field') {
+        void queryClient.invalidateQueries({ queryKey: ['custom-fields', selectedTenantId] })
+      }
     },
     onError: (error: unknown) => {
       showNotice(
@@ -71,6 +74,9 @@ export function RecycleBinPage() {
         </button>
         <button className={tabClass('inventory')} onClick={() => setActiveTab('inventory')}>
           Inventory Items
+        </button>
+        <button className={tabClass('custom_fields')} onClick={() => setActiveTab('custom_fields')}>
+          Custom Fields
         </button>
       </div>
 
@@ -129,6 +135,43 @@ export function RecycleBinPage() {
                   size="sm"
                   isLoading={restoreMutation.isPending}
                   onClick={() => handleRestore('inventory', item.id)}
+                >
+                  Restore
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Custom Fields tab */}
+      {activeTab === 'custom_fields' && (
+        <div className="space-y-2">
+          {isLoading ? (
+            <>
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+            </>
+          ) : !data || data.custom_fields.data.length === 0 ? (
+            <EmptyState message="No custom fields in the recycle bin." />
+          ) : (
+            data.custom_fields.data.map((field) => (
+              <div
+                key={field.id}
+                className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2"
+              >
+                <div>
+                  <span className="text-sm text-[var(--ui-muted)]">{field.name}</span>
+                  <span className="ml-2 text-xs text-[var(--ui-muted)] opacity-60">
+                    ({field.entity_type} — {field.field_type})
+                  </span>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  isLoading={restoreMutation.isPending}
+                  onClick={() => handleRestore('custom_field', field.id)}
                 >
                   Restore
                 </Button>

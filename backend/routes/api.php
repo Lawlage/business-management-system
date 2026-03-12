@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\BreakGlassController;
 use App\Http\Controllers\Api\CustomFieldController;
+use App\Http\Controllers\Api\CustomFieldValueController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\RecycleBinController;
@@ -66,7 +67,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         Route::get('/custom-fields', [CustomFieldController::class, 'index']);
         Route::post('/custom-fields', [CustomFieldController::class, 'store'])->middleware('tenant.permission:manage_custom_fields');
+        Route::put('/custom-fields/{id}', [CustomFieldController::class, 'update'])->middleware('tenant.permission:manage_custom_fields');
         Route::delete('/custom-fields/{id}', [CustomFieldController::class, 'destroy'])->middleware('tenant.permission:manage_custom_fields');
+
+        Route::get('/custom-field-values/{entityType}/{entityId}', [CustomFieldValueController::class, 'index']);
+        Route::put('/custom-field-values/{entityType}/{entityId}', [CustomFieldValueController::class, 'upsert'])->middleware('tenant.permission:edit_existing');
 
         Route::get('/tenant-settings', [TenantSettingsController::class, 'show'])->middleware('tenant.permission:manage_users');
         Route::put('/tenant-settings', [TenantSettingsController::class, 'update'])->middleware('tenant.permission:manage_users');

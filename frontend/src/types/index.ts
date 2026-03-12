@@ -58,10 +58,15 @@ export type InventoryItem = {
 
 export type CustomField = {
   id: number
-  entity_type: 'renewal' | 'inventory'
+  entity_type: 'renewal' | 'inventory' | 'both'
   name: string
   key: string
   field_type: string
+}
+
+export type CustomFieldValueResponse = {
+  definition_id: number
+  value: string | number | boolean | null
 }
 
 export type TenantUserMembership = {
@@ -102,6 +107,7 @@ export type DashboardData = {
 export type RecycleBinData = {
   renewals: PaginatedResponse<Renewal>
   inventory_items: PaginatedResponse<InventoryItem>
+  custom_fields: PaginatedResponse<CustomField>
 }
 
 export type TenantAuditData = {

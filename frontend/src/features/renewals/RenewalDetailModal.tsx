@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
+import { useTenant } from '../../contexts/TenantContext'
 import { useNotice } from '../../contexts/NoticeContext'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import { Modal } from '../../components/Modal'
@@ -9,7 +10,7 @@ import { Input } from '../../components/Input'
 import { Select } from '../../components/Select'
 import { Textarea } from '../../components/Textarea'
 import { renewalCategoryOptions, renewalWorkflowOptions } from '../../types'
-import type { Renewal } from '../../types'
+import type { Renewal, CustomField, CustomFieldValueResponse } from '../../types'
 
 type RenewalDetailModalProps = {
   renewal: Renewal
@@ -36,6 +37,7 @@ export function RenewalDetailModal({
   canEdit,
 }: RenewalDetailModalProps) {
   const { authedFetch } = useApi()
+  const { selectedTenantId } = useTenant()
   const { showNotice } = useNotice()
   const confirm = useConfirm()
 
@@ -48,17 +50,58 @@ export function RenewalDetailModal({
     notes: renewal.notes ?? '',
   })
 
+  const [customValues, setCustomValues] = useState<Record<number, string | number | boolean | null>>({})
+
   const setField = <K extends keyof RenewalForm>(key: K, value: RenewalForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  // Fetch custom field definitions for renewals
+  const { data: customFields } = useQuery<CustomField[]>({
+    queryKey: ['custom-fields', selectedTenantId, 'renewal'],
+    queryFn: () =>
+      authedFetch<CustomField[]>('/api/custom-fields?entity_type=renewal', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 0,
+  })
+
+  // Fetch existing custom field values for this renewal
+  const { data: customFieldValues } = useQuery<CustomFieldValueResponse[]>({
+    queryKey: ['custom-field-values', selectedTenantId, 'renewal', renewal.id],
+    queryFn: () =>
+      authedFetch<CustomFieldValueResponse[]>(
+        `/api/custom-field-values/renewal/${renewal.id}`,
+        { tenantScoped: true },
+      ),
+    enabled: !!selectedTenantId,
+    staleTime: 0,
+  })
+
+  // Seed customValues state from fetched values
+  useEffect(() => {
+    if (!customFieldValues) return
+    const map: Record<number, string | number | boolean | null> = {}
+    for (const v of customFieldValues) {
+      map[v.definition_id] = v.value
+    }
+    setCustomValues(map)
+  }, [customFieldValues])
+
   const saveMutation = useMutation({
-    mutationFn: () =>
-      authedFetch(`/api/renewals/${renewal.id}`, {
+    mutationFn: async () => {
+      await authedFetch(`/api/renewals/${renewal.id}`, {
         method: 'PUT',
         body: JSON.stringify(form),
         tenantScoped: true,
-      }),
+      })
+      if (customFields && customFields.length > 0) {
+        await authedFetch(`/api/custom-field-values/renewal/${renewal.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ values: customValues }),
+          tenantScoped: true,
+        })
+      }
+    },
     onSuccess: () => {
       showNotice('Renewal updated.')
       onUpdated()
@@ -105,6 +148,109 @@ export function RenewalDetailModal({
     if (confirmed) {
       deleteMutation.mutate()
     }
+  }
+
+  function renderCustomField(field: CustomField) {
+    const rawValue = customValues[field.id] ?? null
+
+    if (field.field_type === 'boolean') {
+      return (
+        <div key={field.id} className="flex items-center">
+          <label className="flex items-center gap-2 text-sm text-[var(--ui-text)]">
+            <input
+              type="checkbox"
+              checked={rawValue === true}
+              onChange={(e) =>
+                setCustomValues((prev) => ({ ...prev, [field.id]: e.target.checked }))
+              }
+              disabled={!canEdit}
+              className="rounded border-[var(--ui-border)]"
+            />
+            {field.name}
+          </label>
+        </div>
+      )
+    }
+
+    if (field.field_type === 'currency') {
+      return (
+        <div key={field.id}>
+          {canEdit ? (
+            <Input
+              label={`${field.name} ($)`}
+              type="number"
+              step="0.01"
+              value={rawValue !== null ? String(rawValue) : ''}
+              onChange={(e) =>
+                setCustomValues((prev) => ({
+                  ...prev,
+                  [field.id]: e.target.value === '' ? null : e.target.value,
+                }))
+              }
+            />
+          ) : (
+            <Input
+              label={field.name}
+              value={rawValue !== null ? `$${Number(rawValue).toFixed(2)}` : ''}
+              disabled
+            />
+          )}
+        </div>
+      )
+    }
+
+    if (field.field_type === 'number') {
+      return (
+        <Input
+          key={field.id}
+          label={field.name}
+          type="number"
+          step="any"
+          value={rawValue !== null ? String(rawValue) : ''}
+          onChange={(e) =>
+            setCustomValues((prev) => ({
+              ...prev,
+              [field.id]: e.target.value === '' ? null : e.target.value,
+            }))
+          }
+          disabled={!canEdit}
+        />
+      )
+    }
+
+    if (field.field_type === 'date') {
+      return (
+        <Input
+          key={field.id}
+          label={field.name}
+          type="date"
+          value={rawValue !== null ? String(rawValue) : ''}
+          onChange={(e) =>
+            setCustomValues((prev) => ({
+              ...prev,
+              [field.id]: e.target.value || null,
+            }))
+          }
+          disabled={!canEdit}
+        />
+      )
+    }
+
+    // text / json / fallback
+    return (
+      <Input
+        key={field.id}
+        label={field.name}
+        value={rawValue !== null ? String(rawValue) : ''}
+        onChange={(e) =>
+          setCustomValues((prev) => ({
+            ...prev,
+            [field.id]: e.target.value || null,
+          }))
+        }
+        disabled={!canEdit}
+      />
+    )
   }
 
   return (
@@ -202,6 +348,17 @@ export function RenewalDetailModal({
             Auto-renews
           </label>
         </div>
+
+        {customFields && customFields.length > 0 && (
+          <>
+            <div className="md:col-span-2 border-t border-[var(--ui-border)] pt-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+                Custom Fields
+              </p>
+            </div>
+            {customFields.map((field) => renderCustomField(field))}
+          </>
+        )}
       </div>
     </Modal>
   )
