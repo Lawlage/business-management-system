@@ -34,6 +34,8 @@ const AuditLogsPage = lazy(() => import('./features/admin/audit/AuditLogsPage').
 const TenantsPage = lazy(() => import('./features/superadmin/TenantsPage').then((m) => ({ default: m.TenantsPage })))
 const GlobalAuditPage = lazy(() => import('./features/superadmin/GlobalAuditPage').then((m) => ({ default: m.GlobalAuditPage })))
 const BreakGlassPage = lazy(() => import('./features/superadmin/BreakGlassPage').then((m) => ({ default: m.BreakGlassPage })))
+const StockAllocationsPage = lazy(() => import('./features/stock-allocations/StockAllocationsPage').then((m) => ({ default: m.StockAllocationsPage })))
+const ReportsPage = lazy(() => import('./features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })))
 
 // Lazy-loaded modals (only needed when opened from dashboard)
 const RenewalDetailModal = lazy(() => import('./features/renewals/RenewalDetailModal').then((m) => ({ default: m.RenewalDetailModal })))
@@ -253,6 +255,22 @@ function AppContent() {
                     role === 'global_superadmin' && !isSuperadminTenantWorkspace
                       ? <Navigate to="/superadmin/access" replace />
                       : <RecycleBinPage />
+                  }
+                />
+                <Route
+                  path="/app/allocations"
+                  element={
+                    role === 'global_superadmin' && !isSuperadminTenantWorkspace
+                      ? <Navigate to="/superadmin/access" replace />
+                      : <StockAllocationsPage />
+                  }
+                />
+                <Route
+                  path="/app/reports"
+                  element={
+                    role === 'global_superadmin' && !isSuperadminTenantWorkspace
+                      ? <Navigate to="/superadmin/access" replace />
+                      : <ReportsPage />
                   }
                 />
 

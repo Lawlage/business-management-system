@@ -13,6 +13,7 @@ import { LoadMoreButton } from '../../components/LoadMoreButton'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { Input } from '../../components/Input'
 import { CreateInventoryModal } from './CreateInventoryModal'
+import { AllocateStockModal } from './AllocateStockModal'
 import type { InventoryItem, PaginatedResponse } from '../../types'
 
 type InventoryPageProps = {
@@ -28,11 +29,13 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
   const [page, setPage] = useState(1)
   const [allItems, setAllItems] = useState<InventoryItem[]>([])
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [allocatingItem, setAllocatingItem] = useState<InventoryItem | null>(null)
   const [adjustQtys, setAdjustQtys] = useState<Record<number, number>>({})
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
   const canCreate = role !== 'standard_user'
+  const canAllocate = role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'
 
   // Debounce search
   useEffect(() => {
@@ -152,6 +155,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
             <span>Created</span>
           </div>
           <div className="w-[220px] shrink-0 text-right pr-1">Adjust Stock</div>
+          {canAllocate && <div className="w-[90px] shrink-0" />}
         </div>
       )}
 
@@ -224,6 +228,15 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
                   In
                 </Button>
               </div>
+              {canAllocate && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setAllocatingItem(item)}
+                >
+                  Allocate
+                </Button>
+              )}
             </div>
           ))
         )}
@@ -241,6 +254,14 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
         <CreateInventoryModal
           onClose={() => setIsCreateOpen(false)}
           onCreated={handleCreated}
+        />
+      )}
+
+      {allocatingItem && (
+        <AllocateStockModal
+          item={allocatingItem}
+          onClose={() => setAllocatingItem(null)}
+          onAllocated={handleCreated}
         />
       )}
     </Card>

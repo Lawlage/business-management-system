@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
 import { useNotice } from '../../contexts/NoticeContext'
@@ -8,7 +8,10 @@ import { Modal } from '../../components/Modal'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { Textarea } from '../../components/Textarea'
-import type { InventoryItem, CustomField, CustomFieldValueResponse } from '../../types'
+import { Badge } from '../../components/Badge'
+import { formatDate } from '../../lib/format'
+import { AllocateStockModal } from './AllocateStockModal'
+import type { InventoryItem, CustomField, CustomFieldValueResponse, StockAllocation, PaginatedResponse } from '../../types'
 
 type InventoryDetailModalProps = {
   item: InventoryItem
@@ -35,9 +38,43 @@ export function InventoryDetailModal({
   canEdit,
 }: InventoryDetailModalProps) {
   const { authedFetch } = useApi()
-  const { selectedTenantId } = useTenant()
+  const { selectedTenantId, role, tenantTimezone } = useTenant()
   const { showNotice } = useNotice()
   const confirm = useConfirm()
+  const queryClient = useQueryClient()
+
+  const [activeTab, setActiveTab] = useState<'details' | 'allocations'>('details')
+  const [isAllocateOpen, setIsAllocateOpen] = useState(false)
+
+  const canAllocate = role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'
+
+  const { data: allocationsData, refetch: refetchAllocations } = useQuery<PaginatedResponse<StockAllocation>>({
+    queryKey: ['item-allocations', selectedTenantId, item.id],
+    queryFn: () =>
+      authedFetch<PaginatedResponse<StockAllocation>>(
+        `/api/stock-allocations?inventory_item_id=${item.id}`,
+        { tenantScoped: true },
+      ),
+    enabled: !!selectedTenantId && activeTab === 'allocations',
+    staleTime: 0,
+  })
+
+  const cancelAllocationMutation = useMutation({
+    mutationFn: (allocationId: number) =>
+      authedFetch(`/api/stock-allocations/${allocationId}/cancel`, {
+        method: 'POST',
+        tenantScoped: true,
+      }),
+    onSuccess: () => {
+      showNotice('Allocation cancelled.')
+      void refetchAllocations()
+      void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
+      onUpdated()
+    },
+    onError: (error: unknown) => {
+      showNotice((error as { message?: string })?.message ?? 'Cancel failed.', 'error')
+    },
+  })
 
   const [form, setForm] = useState<InventoryForm>({
     name: item.name ?? '',
@@ -257,6 +294,7 @@ export function InventoryDetailModal({
   }
 
   return (
+    <>
     <Modal
       title="Inventory Detail"
       onClose={onClose}
@@ -273,18 +311,85 @@ export function InventoryDetailModal({
               </Button>
             )}
           </div>
-          {canEdit && (
-            <Button
-              variant="primary"
-              onClick={handleSave}
-              isLoading={saveMutation.isPending}
-            >
-              Save Item
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {canAllocate && activeTab === 'details' && (
+              <Button variant="secondary" onClick={() => setIsAllocateOpen(true)}>
+                Allocate Stock
+              </Button>
+            )}
+            {canEdit && activeTab === 'details' && (
+              <Button
+                variant="primary"
+                onClick={handleSave}
+                isLoading={saveMutation.isPending}
+              >
+                Save Item
+              </Button>
+            )}
+          </div>
         </div>
       }
     >
+      {/* Tabs */}
+      <div className="mb-4 flex gap-1 border-b border-[var(--ui-border)]">
+        {(['details', 'allocations'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={[
+              'px-4 py-2 text-sm font-medium capitalize transition',
+              activeTab === tab
+                ? 'border-b-2 border-[var(--ui-button-bg)] text-[var(--ui-button-bg)]'
+                : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]',
+            ].join(' ')}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'allocations' ? (
+        <div className="space-y-2">
+          {!allocationsData || allocationsData.data.length === 0 ? (
+            <p className="py-6 text-center text-sm text-[var(--ui-muted)]">No allocations yet.</p>
+          ) : (
+            <>
+              <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_80px] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+                <span>Client</span>
+                <span>Qty</span>
+                <span>Unit Price</span>
+                <span>Total</span>
+                <span>Date</span>
+                <span />
+              </div>
+              {allocationsData.data.map((a) => (
+                <div key={a.id} className="app-inner-box flex items-center gap-3 rounded-md border border-[var(--ui-border)] p-3">
+                  <div className="grid flex-1 gap-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr]">
+                    <span className="text-sm font-medium text-[var(--ui-text)]">{a.client?.name ?? '—'}</span>
+                    <span className="text-sm text-[var(--ui-text)]">{a.quantity}</span>
+                    <span className="text-sm text-[var(--ui-muted)]">{a.unit_price ? `$${a.unit_price}` : '—'}</span>
+                    <span className="text-sm text-[var(--ui-muted)]">{a.unit_price ? `$${(a.quantity * parseFloat(a.unit_price)).toFixed(2)}` : '—'}</span>
+                    <span className="text-xs text-[var(--ui-muted)]">{formatDate(a.created_at, tenantTimezone)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge status={a.status} />
+                    {a.status === 'allocated' && canAllocate && (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => cancelAllocationMutation.mutate(a.id)}
+                        isLoading={cancelAllocationMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      ) : (
       <div className="grid gap-4 md:grid-cols-2">
         <Input
           label="Name"
@@ -353,6 +458,19 @@ export function InventoryDetailModal({
           </>
         )}
       </div>
+      )}
     </Modal>
+
+    {isAllocateOpen && (
+      <AllocateStockModal
+        item={item}
+        onClose={() => setIsAllocateOpen(false)}
+        onAllocated={() => {
+          void refetchAllocations()
+          onUpdated()
+        }}
+      />
+    )}
+    </>
   )
 }

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class InventoryItem extends Model
 {
@@ -34,5 +35,10 @@ class InventoryItem extends Model
     public function stockTransactions(): HasMany
     {
         return $this->hasMany(StockTransaction::class);
+    }
+
+    public function stockAllocations(): HasMany
+    {
+        return $this->hasMany(StockAllocation::class);
     }
 }

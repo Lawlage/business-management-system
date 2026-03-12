@@ -14,6 +14,17 @@ const statusStyles: Record<string, string> = {
   Active: 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50',
   'Expiring Soon': 'bg-amber-900/60 text-amber-300 border border-amber-700/50',
   Suspended: 'bg-slate-800/60 text-slate-400 border border-slate-600/50',
+  // Stock allocation statuses
+  allocated: 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50',
+  cancelled: 'bg-slate-800/60 text-slate-400 border border-slate-600/50',
+  // Inventory stock level
+  Low: 'bg-red-900/60 text-red-300 border border-red-700/50 font-semibold',
+  OK: 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50',
+  // Stock movement types
+  check_in: 'bg-sky-900/60 text-sky-300 border border-sky-700/50',
+  check_out: 'bg-amber-900/60 text-amber-300 border border-amber-700/50',
+  allocation: 'bg-purple-900/60 text-purple-300 border border-purple-700/50',
+  allocation_cancelled: 'bg-slate-800/60 text-slate-400 border border-slate-600/50',
 }
 
 export function Badge({ status, className = '' }: BadgeProps) {

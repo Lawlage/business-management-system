@@ -68,7 +68,7 @@ class DatabaseSeeder extends Seeder
             ['role' => TenantRole::TenantAdmin->value, 'can_edit' => true],
         );
 
-        // Seed tenant-scoped data (clients) inside the tenant database.
+        // Seed tenant-scoped data inside the tenant database.
         tenancy()->initialize($tenant);
         try {
             DB::connection('tenant')->table('clients')->insertOrIgnore([
@@ -99,6 +99,62 @@ class DatabaseSeeder extends Seeder
                     'created_at' => now(),
                     'updated_at' => now(),
                     'deleted_at' => null,
+                ],
+            ]);
+
+            DB::connection('tenant')->table('inventory_items')->insertOrIgnore([
+                [
+                    'id' => 1,
+                    'name' => 'Office Chair',
+                    'sku' => 'CHAIR-001',
+                    'classification' => 'Furniture',
+                    'quantity_on_hand' => 8,
+                    'minimum_on_hand' => 2,
+                    'location' => 'Warehouse A',
+                    'vendor' => 'Office Supplies Co.',
+                    'purchase_date' => '2025-01-15',
+                    'linked_renewal_id' => null,
+                    'notes' => 'Ergonomic mesh chairs.',
+                    'created_by' => $tenantAdmin->id,
+                    'updated_by' => $tenantAdmin->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                    'deleted_at' => null,
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Laptop - Dell XPS 15',
+                    'sku' => 'LAPTOP-DXPS15',
+                    'classification' => 'Electronics',
+                    'quantity_on_hand' => 3,
+                    'minimum_on_hand' => 1,
+                    'location' => 'IT Storage',
+                    'vendor' => 'Dell Technologies',
+                    'purchase_date' => '2025-06-01',
+                    'linked_renewal_id' => null,
+                    'notes' => null,
+                    'created_by' => $tenantAdmin->id,
+                    'updated_by' => $tenantAdmin->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                    'deleted_at' => null,
+                ],
+            ]);
+
+            DB::connection('tenant')->table('stock_allocations')->insertOrIgnore([
+                [
+                    'id' => 1,
+                    'inventory_item_id' => 1,
+                    'client_id' => 1,
+                    'quantity' => 2,
+                    'unit_price' => 299.00,
+                    'notes' => 'Supplied for new office setup.',
+                    'status' => 'allocated',
+                    'allocated_by' => $tenantAdmin->id,
+                    'cancelled_by' => null,
+                    'cancelled_at' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ],
             ]);
         } finally {

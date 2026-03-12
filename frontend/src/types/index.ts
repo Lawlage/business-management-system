@@ -105,6 +105,23 @@ export type AuditLog = {
   created_at: string
 }
 
+export type StockAllocation = {
+  id: number
+  inventory_item_id: number
+  client_id: number
+  quantity: number
+  unit_price: string | null
+  notes: string | null
+  status: 'allocated' | 'cancelled'
+  allocated_by: number
+  cancelled_by: number | null
+  cancelled_at: string | null
+  created_at: string
+  updated_at: string
+  inventory_item?: { id: number; name: string; sku: string }
+  client?: { id: number; name: string }
+}
+
 export type PaginatedResponse<T> = {
   data: T[]
   current_page: number

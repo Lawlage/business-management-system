@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\RecycleBinController;
 use App\Http\Controllers\Api\RenewalController;
+use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\StockAllocationController;
 use App\Http\Controllers\Api\SuperAdminTenantController;
 use App\Http\Controllers\Api\TenantSettingsController;
 use App\Http\Controllers\Api\TenantUserController;
@@ -86,5 +88,19 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/recycle-bin/{entityType}/{id}/restore', [RecycleBinController::class, 'restore'])->middleware('tenant.permission:delete_record');
         Route::delete('/recycle-bin/{entityType}/{id}', [RecycleBinController::class, 'forceDelete'])->middleware('tenant.permission:delete_record');
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('tenant.permission:view_audit_logs');
+
+        Route::get('/stock-allocations', [StockAllocationController::class, 'index']);
+        Route::post('/stock-allocations', [StockAllocationController::class, 'store'])->middleware('tenant.permission:allocate_stock');
+        Route::post('/stock-allocations/{id}/cancel', [StockAllocationController::class, 'cancel'])->middleware('tenant.permission:allocate_stock');
+
+        Route::middleware('tenant.permission:view_reports')->group(function () {
+            Route::get('/reports/renewal-status', [ReportController::class, 'renewalStatusSummary']);
+            Route::get('/reports/renewals-by-client', [ReportController::class, 'renewalsByClient']);
+            Route::get('/reports/renewals-expiring', [ReportController::class, 'renewalsExpiring']);
+            Route::get('/reports/inventory-summary', [ReportController::class, 'inventorySummary']);
+            Route::get('/reports/stock-movements', [ReportController::class, 'stockMovements']);
+            Route::get('/reports/stock-allocations', [ReportController::class, 'stockAllocations']);
+            Route::get('/reports/client-portfolio', [ReportController::class, 'clientPortfolio']);
+        });
     });
 });

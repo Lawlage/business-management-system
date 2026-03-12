@@ -10,6 +10,8 @@ import {
   ShieldAlert,
   Building2,
   Contact,
+  ArrowRightLeft,
+  BarChart2,
 } from 'lucide-react'
 import type { AppRole } from '../types'
 
@@ -51,6 +53,12 @@ export function Sidebar({ role, isSuperadminTenantWorkspace }: SidebarProps) {
     { to: '/app/clients', label: 'Clients', icon: <Contact size={16} /> },
     { to: '/app/renewals', label: 'Renewals', icon: <RefreshCw size={16} /> },
     { to: '/app/inventory', label: 'Inventory', icon: <Package size={16} /> },
+    ...(role !== 'standard_user'
+      ? [{ to: '/app/allocations', label: 'Allocations', icon: <ArrowRightLeft size={16} /> }]
+      : []),
+    ...(role !== 'standard_user'
+      ? [{ to: '/app/reports', label: 'Reports', icon: <BarChart2 size={16} /> }]
+      : []),
     { to: '/app/recycle-bin', label: 'Recycle Bin', icon: <Trash2 size={16} /> },
   ]
 

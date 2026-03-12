@@ -7,6 +7,7 @@ use App\Enums\TenantRole;
 class TenantPermissionMap
 {
     public const ADJUST_STOCK = 'adjust_stock';
+    public const ALLOCATE_STOCK = 'allocate_stock';
     public const EDIT_EXISTING = 'edit_existing';
     public const CREATE_RENEWAL = 'create_renewal';
     public const CREATE_INVENTORY = 'create_inventory';
@@ -15,6 +16,7 @@ class TenantPermissionMap
     public const MANAGE_USERS = 'manage_users';
     public const MANAGE_CUSTOM_FIELDS = 'manage_custom_fields';
     public const VIEW_AUDIT_LOGS = 'view_audit_logs';
+    public const VIEW_REPORTS = 'view_reports';
 
     /**
      * @return array<string, list<string>>
@@ -27,13 +29,16 @@ class TenantPermissionMap
             ],
             TenantRole::SubAdmin->value => [
                 self::ADJUST_STOCK,
+                self::ALLOCATE_STOCK,
                 self::EDIT_EXISTING,
                 self::CREATE_RENEWAL,
                 self::CREATE_INVENTORY,
                 self::CREATE_CLIENT,
+                self::VIEW_REPORTS,
             ],
             TenantRole::TenantAdmin->value => [
                 self::ADJUST_STOCK,
+                self::ALLOCATE_STOCK,
                 self::EDIT_EXISTING,
                 self::CREATE_RENEWAL,
                 self::CREATE_INVENTORY,
@@ -42,6 +47,7 @@ class TenantPermissionMap
                 self::MANAGE_USERS,
                 self::MANAGE_CUSTOM_FIELDS,
                 self::VIEW_AUDIT_LOGS,
+                self::VIEW_REPORTS,
             ],
         ];
     }

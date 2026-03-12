@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
+import { useTenant } from '../../contexts/TenantContext'
 import { useNotice } from '../../contexts/NoticeContext'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import { Modal } from '../../components/Modal'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { Textarea } from '../../components/Textarea'
-import type { Client } from '../../types'
+import { Badge } from '../../components/Badge'
+import { formatDate } from '../../lib/format'
+import type { Client, Renewal, StockAllocation, PaginatedResponse } from '../../types'
 
 type ClientDetailModalProps = {
   client: Client
@@ -34,8 +37,52 @@ export function ClientDetailModal({
   canEdit,
 }: ClientDetailModalProps) {
   const { authedFetch } = useApi()
+  const { selectedTenantId, tenantTimezone, role } = useTenant()
   const { showNotice } = useNotice()
   const confirm = useConfirm()
+  const queryClient = useQueryClient()
+
+  const [activeTab, setActiveTab] = useState<'details' | 'renewals' | 'allocations'>('details')
+
+  const canAllocate = role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'
+
+  const { data: renewalsData } = useQuery<PaginatedResponse<Renewal>>({
+    queryKey: ['client-renewals', selectedTenantId, client.id],
+    queryFn: () =>
+      authedFetch<PaginatedResponse<Renewal>>(
+        `/api/renewals?client_id=${client.id}&page=1`,
+        { tenantScoped: true },
+      ),
+    enabled: !!selectedTenantId && activeTab === 'renewals',
+    staleTime: 0,
+  })
+
+  const { data: allocationsData, refetch: refetchAllocations } = useQuery<PaginatedResponse<StockAllocation>>({
+    queryKey: ['client-allocations', selectedTenantId, client.id],
+    queryFn: () =>
+      authedFetch<PaginatedResponse<StockAllocation>>(
+        `/api/stock-allocations?client_id=${client.id}`,
+        { tenantScoped: true },
+      ),
+    enabled: !!selectedTenantId && activeTab === 'allocations',
+    staleTime: 0,
+  })
+
+  const cancelAllocationMutation = useMutation({
+    mutationFn: (allocationId: number) =>
+      authedFetch(`/api/stock-allocations/${allocationId}/cancel`, {
+        method: 'POST',
+        tenantScoped: true,
+      }),
+    onSuccess: () => {
+      showNotice('Allocation cancelled.')
+      void refetchAllocations()
+      void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
+    },
+    onError: (error: unknown) => {
+      showNotice((error as { message?: string })?.message ?? 'Cancel failed.', 'error')
+    },
+  })
 
   const [form, setForm] = useState<ClientForm>({
     name: client.name ?? '',
@@ -113,7 +160,7 @@ export function ClientDetailModal({
       footer={
         <div className="flex items-center justify-between">
           <div>
-            {canDelete && (
+            {canDelete && activeTab === 'details' && (
               <Button
                 variant="danger"
                 onClick={() => void handleDelete()}
@@ -123,7 +170,7 @@ export function ClientDetailModal({
               </Button>
             )}
           </div>
-          {canEdit && (
+          {canEdit && activeTab === 'details' && (
             <Button
               variant="primary"
               onClick={handleSave}
@@ -135,6 +182,78 @@ export function ClientDetailModal({
         </div>
       }
     >
+      {/* Tabs */}
+      <div className="mb-4 flex gap-1 border-b border-[var(--ui-border)]">
+        {(['details', 'renewals', 'allocations'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={[
+              'px-4 py-2 text-sm font-medium capitalize transition',
+              activeTab === tab
+                ? 'border-b-2 border-[var(--ui-button-bg)] text-[var(--ui-button-bg)]'
+                : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]',
+            ].join(' ')}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'renewals' && (
+        <div className="space-y-2">
+          {!renewalsData || renewalsData.data.length === 0 ? (
+            <p className="py-6 text-center text-sm text-[var(--ui-muted)]">No renewals linked to this client.</p>
+          ) : (
+            renewalsData.data.map((r) => (
+              <div key={r.id} className="app-inner-box flex items-center justify-between gap-3 rounded-md border border-[var(--ui-border)] p-3">
+                <div>
+                  <p className="text-sm font-medium text-[var(--ui-text)]">{r.title}</p>
+                  <p className="text-xs text-[var(--ui-muted)]">{r.category} · Expires {formatDate(r.expiration_date)}</p>
+                </div>
+                <Badge status={r.status} />
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {activeTab === 'allocations' && (
+        <div className="space-y-2">
+          {!allocationsData || allocationsData.data.length === 0 ? (
+            <p className="py-6 text-center text-sm text-[var(--ui-muted)]">No stock allocations for this client.</p>
+          ) : (
+            allocationsData.data.map((a) => (
+              <div key={a.id} className="app-inner-box flex items-center gap-3 rounded-md border border-[var(--ui-border)] p-3">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-[var(--ui-text)]">{a.inventory_item?.name ?? '—'}</p>
+                  <p className="text-xs text-[var(--ui-muted)]">
+                    {a.inventory_item?.sku} · Qty: {a.quantity}
+                    {a.unit_price ? ` · $${a.unit_price} ea` : ''}
+                    {a.unit_price ? ` · Total: $${(a.quantity * parseFloat(a.unit_price)).toFixed(2)}` : ''}
+                    {' · '}{formatDate(a.created_at, tenantTimezone)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge status={a.status} />
+                  {a.status === 'allocated' && canAllocate && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => cancelAllocationMutation.mutate(a.id)}
+                      isLoading={cancelAllocationMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {activeTab === 'details' && (
       <div className="grid gap-4 md:grid-cols-2">
         <Input
           label="Name"
@@ -185,6 +304,7 @@ export function ClientDetailModal({
           disabled={!canEdit}
         />
       </div>
+      )}
     </Modal>
   )
 }
