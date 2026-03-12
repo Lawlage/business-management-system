@@ -52,4 +52,26 @@ class RecycleBinController extends Controller
 
         return new JsonResponse(['message' => 'Record restored.']);
     }
+
+    public function forceDelete(Request $request, string $entityType, int $id): JsonResponse
+    {
+        if (! in_array($entityType, self::ALLOWED_ENTITY_TYPES, true)) {
+            return new JsonResponse(['message' => 'Invalid entity type.'], 422);
+        }
+
+        $entity = match ($entityType) {
+            'renewal' => Renewal::onlyTrashed()->findOrFail($id),
+            'inventory' => InventoryItem::onlyTrashed()->findOrFail($id),
+            'custom_field' => CustomFieldDefinition::onlyTrashed()->findOrFail($id),
+        };
+
+        $entity->forceDelete();
+
+        $this->auditLogger->tenant($request, 'recycle_bin.permanently_deleted', $request->user(), [
+            'entity_type' => $entityType,
+            'entity_id' => $id,
+        ]);
+
+        return new JsonResponse(['message' => 'Record permanently deleted.']);
+    }
 }

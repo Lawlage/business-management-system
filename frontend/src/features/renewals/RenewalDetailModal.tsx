@@ -187,6 +187,11 @@ export function RenewalDetailModal({
                   [field.id]: e.target.value === '' ? null : e.target.value,
                 }))
               }
+              onBlur={(e) => {
+                if (e.target.value === '') return
+                const rounded = parseFloat(e.target.value).toFixed(2)
+                setCustomValues((prev) => ({ ...prev, [field.id]: rounded }))
+              }}
             />
           ) : (
             <Input

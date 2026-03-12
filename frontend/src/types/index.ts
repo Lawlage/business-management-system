@@ -163,4 +163,7 @@ export const inventoryDefaults = {
   sku: '',
   quantity_on_hand: 0,
   minimum_on_hand: 0,
+  location: '',
+  vendor: '',
+  notes: '',
 }

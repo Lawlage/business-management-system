@@ -78,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         Route::get('/recycle-bin', [RecycleBinController::class, 'index'])->middleware('tenant.permission:view_audit_logs');
         Route::post('/recycle-bin/{entityType}/{id}/restore', [RecycleBinController::class, 'restore'])->middleware('tenant.permission:delete_record');
+        Route::delete('/recycle-bin/{entityType}/{id}', [RecycleBinController::class, 'forceDelete'])->middleware('tenant.permission:delete_record');
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('tenant.permission:view_audit_logs');
     });
 });

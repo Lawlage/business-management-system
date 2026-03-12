@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
 import { useNotice } from '../../contexts/NoticeContext'
+import { useConfirm } from '../../contexts/ConfirmContext'
 import { Card } from '../../components/Card'
 import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/Button'
@@ -16,6 +17,7 @@ export function RecycleBinPage() {
   const { selectedTenantId } = useTenant()
   const { authedFetch } = useApi()
   const { showNotice } = useNotice()
+  const confirm = useConfirm()
   const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState<Tab>('renewals')
@@ -53,6 +55,36 @@ export function RecycleBinPage() {
 
   const handleRestore = (entityType: string, id: number) => {
     restoreMutation.mutate({ entityType, id })
+  }
+
+  const forceDeleteMutation = useMutation({
+    mutationFn: ({ entityType, id }: { entityType: string; id: number }) =>
+      authedFetch(`/api/recycle-bin/${entityType}/${id}`, {
+        method: 'DELETE',
+        tenantScoped: true,
+      }),
+    onSuccess: () => {
+      showNotice('Record permanently deleted.')
+      void queryClient.invalidateQueries({ queryKey: ['recycle-bin', selectedTenantId] })
+    },
+    onError: (error: unknown) => {
+      showNotice(
+        (error as { message?: string })?.message ?? 'Request failed',
+        'error',
+      )
+    },
+  })
+
+  const handleForceDelete = async (entityType: string, id: number) => {
+    const confirmed = await confirm({
+      title: 'Permanently delete?',
+      message: 'This cannot be undone. The record will be gone forever.',
+      confirmLabel: 'Delete Forever',
+      variant: 'danger',
+    })
+    if (confirmed) {
+      forceDeleteMutation.mutate({ entityType, id })
+    }
   }
 
   const tabClass = (tab: Tab) =>
@@ -98,14 +130,24 @@ export function RecycleBinPage() {
                 className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2"
               >
                 <span className="text-sm text-[var(--ui-muted)]">{renewal.title}</span>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  isLoading={restoreMutation.isPending}
-                  onClick={() => handleRestore('renewal', renewal.id)}
-                >
-                  Restore
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    isLoading={restoreMutation.isPending}
+                    onClick={() => handleRestore('renewal', renewal.id)}
+                  >
+                    Restore
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    isLoading={forceDeleteMutation.isPending}
+                    onClick={() => void handleForceDelete('renewal', renewal.id)}
+                  >
+                    Delete Forever
+                  </Button>
+                </div>
               </div>
             ))
           )}
@@ -130,14 +172,24 @@ export function RecycleBinPage() {
                 className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2"
               >
                 <span className="text-sm text-[var(--ui-muted)]">{item.name}</span>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  isLoading={restoreMutation.isPending}
-                  onClick={() => handleRestore('inventory', item.id)}
-                >
-                  Restore
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    isLoading={restoreMutation.isPending}
+                    onClick={() => handleRestore('inventory', item.id)}
+                  >
+                    Restore
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    isLoading={forceDeleteMutation.isPending}
+                    onClick={() => void handleForceDelete('inventory', item.id)}
+                  >
+                    Delete Forever
+                  </Button>
+                </div>
               </div>
             ))
           )}
@@ -167,14 +219,24 @@ export function RecycleBinPage() {
                     ({field.entity_type} — {field.field_type})
                   </span>
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  isLoading={restoreMutation.isPending}
-                  onClick={() => handleRestore('custom_field', field.id)}
-                >
-                  Restore
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    isLoading={restoreMutation.isPending}
+                    onClick={() => handleRestore('custom_field', field.id)}
+                  >
+                    Restore
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    isLoading={forceDeleteMutation.isPending}
+                    onClick={() => void handleForceDelete('custom_field', field.id)}
+                  >
+                    Delete Forever
+                  </Button>
+                </div>
               </div>
             ))
           )}
