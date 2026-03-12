@@ -6,20 +6,20 @@ use Carbon\CarbonInterface;
 
 class RenewalStatusService
 {
-    public function fromExpiration(CarbonInterface $expirationDate, ?string $workflowStatus = null): string
+    public function fromExpiration(CarbonInterface $expirationDate, ?string $workflowStatus = null, bool $autoRenews = false): string
     {
         $days = now()->startOfDay()->diffInDays($expirationDate->startOfDay(), false);
 
         if ($days < 0) {
-            return $workflowStatus === 'Closed' ? 'Expired' : 'Critical';
+            return 'Expired';
         }
 
         if ($days <= 7) {
-            return 'Urgent';
+            return $autoRenews ? 'Upcoming' : 'Urgent';
         }
 
         if ($days <= 30) {
-            return 'Action Required';
+            return $autoRenews ? 'Upcoming' : 'Action Required';
         }
 
         if ($days <= 60) {

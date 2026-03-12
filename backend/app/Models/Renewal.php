@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Renewal extends Model
@@ -11,8 +12,17 @@ class Renewal extends Model
     use HasFactory;
     use SoftDeletes;
 
+    /**
+     * @return BelongsTo<Client, $this>
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+
     protected $fillable = [
         'title',
+        'client_id',
         'category',
         'owner',
         'vendor',

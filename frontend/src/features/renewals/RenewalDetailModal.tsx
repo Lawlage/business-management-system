@@ -22,6 +22,7 @@ type RenewalDetailModalProps = {
 
 type RenewalForm = {
   title: string
+  client_id: number | null
   category: string
   expiration_date: string
   workflow_status: string
@@ -43,6 +44,7 @@ export function RenewalDetailModal({
 
   const [form, setForm] = useState<RenewalForm>({
     title: renewal.title ?? '',
+    client_id: renewal.client_id ?? null,
     category: renewal.category ?? '',
     expiration_date: renewal.expiration_date ?? '',
     workflow_status: renewal.workflow_status ?? '',
@@ -55,6 +57,15 @@ export function RenewalDetailModal({
   const setField = <K extends keyof RenewalForm>(key: K, value: RenewalForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
+
+  // Fetch clients for the dropdown
+  const { data: clientList } = useQuery({
+    queryKey: ['clients-all', selectedTenantId],
+    queryFn: () =>
+      authedFetch<{ id: number; name: string }[]>('/api/clients?all=1', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
 
   // Fetch custom field definitions for renewals
   const { data: customFields } = useQuery<CustomField[]>({
@@ -295,6 +306,18 @@ export function RenewalDetailModal({
           onChange={(e) => setField('title', e.target.value)}
           disabled={!canEdit}
         />
+
+        <Select
+          label="Client"
+          value={form.client_id !== null ? String(form.client_id) : ''}
+          onChange={(e) => setField('client_id', e.target.value ? Number(e.target.value) : null)}
+          disabled={!canEdit}
+        >
+          <option value="">— No client —</option>
+          {clientList?.map((c) => (
+            <option key={c.id} value={String(c.id)}>{c.name}</option>
+          ))}
+        </Select>
 
         <Select
           label="Type"

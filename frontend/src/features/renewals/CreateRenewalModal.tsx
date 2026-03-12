@@ -29,6 +29,15 @@ export function CreateRenewalModal({ onClose, onCreated }: CreateRenewalModalPro
   const [errors, setErrors] = useState<ValidationErrors<RenewalForm>>({})
   const [customValues, setCustomValues] = useState<Record<number, string | number | boolean | null>>({})
 
+  // Fetch clients for the dropdown
+  const { data: clientList } = useQuery({
+    queryKey: ['clients-all', selectedTenantId],
+    queryFn: () =>
+      authedFetch<{ id: number; name: string }[]>('/api/clients?all=1', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
+
   const { data: customFields } = useQuery<CustomField[]>({
     queryKey: ['custom-fields', selectedTenantId, 'renewal'],
     queryFn: () =>
@@ -202,6 +211,17 @@ export function CreateRenewalModal({ onClose, onCreated }: CreateRenewalModalPro
           value={form.title}
           onChange={(e) => setField('title', e.target.value)}
         />
+
+        <Select
+          label="Client"
+          value={form.client_id !== null ? String(form.client_id) : ''}
+          onChange={(e) => setField('client_id', e.target.value ? Number(e.target.value) : null)}
+        >
+          <option value="">— No client —</option>
+          {clientList?.map((c) => (
+            <option key={c.id} value={String(c.id)}>{c.name}</option>
+          ))}
+        </Select>
 
         <Select
           label="Type"

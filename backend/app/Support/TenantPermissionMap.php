@@ -10,6 +10,7 @@ class TenantPermissionMap
     public const EDIT_EXISTING = 'edit_existing';
     public const CREATE_RENEWAL = 'create_renewal';
     public const CREATE_INVENTORY = 'create_inventory';
+    public const CREATE_CLIENT = 'create_client';
     public const DELETE_RECORD = 'delete_record';
     public const MANAGE_USERS = 'manage_users';
     public const MANAGE_CUSTOM_FIELDS = 'manage_custom_fields';
@@ -29,12 +30,14 @@ class TenantPermissionMap
                 self::EDIT_EXISTING,
                 self::CREATE_RENEWAL,
                 self::CREATE_INVENTORY,
+                self::CREATE_CLIENT,
             ],
             TenantRole::TenantAdmin->value => [
                 self::ADJUST_STOCK,
                 self::EDIT_EXISTING,
                 self::CREATE_RENEWAL,
                 self::CREATE_INVENTORY,
+                self::CREATE_CLIENT,
                 self::DELETE_RECORD,
                 self::MANAGE_USERS,
                 self::MANAGE_CUSTOM_FIELDS,

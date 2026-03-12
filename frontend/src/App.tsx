@@ -10,7 +10,7 @@ import { ConfirmProvider, useConfirm } from './contexts/ConfirmContext'
 import { applyUiTheme, normalizeUiSettings } from './uiSettings'
 import { useApi } from './hooks/useApi'
 
-import type { Renewal, InventoryItem, TenantUiSettings } from './types'
+import type { Renewal, InventoryItem, Client, TenantUiSettings } from './types'
 
 import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
@@ -25,6 +25,7 @@ import { LoginPage } from './features/auth/LoginPage'
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const RenewalsPage = lazy(() => import('./features/renewals/RenewalsPage').then((m) => ({ default: m.RenewalsPage })))
 const InventoryPage = lazy(() => import('./features/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })))
+const ClientsPage = lazy(() => import('./features/clients/ClientsPage').then((m) => ({ default: m.ClientsPage })))
 const RecycleBinPage = lazy(() => import('./features/recycle-bin/RecycleBinPage').then((m) => ({ default: m.RecycleBinPage })))
 const UsersPage = lazy(() => import('./features/admin/users/UsersPage').then((m) => ({ default: m.UsersPage })))
 const CustomFieldsPage = lazy(() => import('./features/admin/custom-fields/CustomFieldsPage').then((m) => ({ default: m.CustomFieldsPage })))
@@ -37,6 +38,7 @@ const BreakGlassPage = lazy(() => import('./features/superadmin/BreakGlassPage')
 // Lazy-loaded modals (only needed when opened from dashboard)
 const RenewalDetailModal = lazy(() => import('./features/renewals/RenewalDetailModal').then((m) => ({ default: m.RenewalDetailModal })))
 const InventoryDetailModal = lazy(() => import('./features/inventory/InventoryDetailModal').then((m) => ({ default: m.InventoryDetailModal })))
+const ClientDetailModal = lazy(() => import('./features/clients/ClientDetailModal').then((m) => ({ default: m.ClientDetailModal })))
 
 function PageLoader() {
   return (
@@ -83,9 +85,10 @@ function AppContent() {
     })
   }
 
-  // Modals opened from dashboard
+  // Modals opened from dashboard / list pages
   const [dashboardRenewal, setDashboardRenewal] = useState<Renewal | null>(null)
   const [dashboardInventory, setDashboardInventory] = useState<InventoryItem | null>(null)
+  const [dashboardClient, setDashboardClient] = useState<Client | null>(null)
 
   // Auto-select first tenant for regular users after login
   useEffect(() => {
@@ -221,6 +224,14 @@ function AppContent() {
                   }
                 />
                 <Route
+                  path="/app/clients"
+                  element={
+                    role === 'global_superadmin' && !isSuperadminTenantWorkspace
+                      ? <Navigate to="/superadmin/access" replace />
+                      : <ClientsPage onOpenClient={setDashboardClient} />
+                  }
+                />
+                <Route
                   path="/app/renewals"
                   element={
                     role === 'global_superadmin' && !isSuperadminTenantWorkspace
@@ -284,6 +295,19 @@ function AppContent() {
                 onUpdated={() => {
                   void queryClient.invalidateQueries({ queryKey: ['dashboard', selectedTenantId] })
                   void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
+                }}
+                canDelete={role === 'tenant_admin' || role === 'global_superadmin'}
+                canEdit={canEditRecords}
+              />
+            </Suspense>
+          )}
+          {dashboardClient && (
+            <Suspense fallback={null}>
+              <ClientDetailModal
+                client={dashboardClient}
+                onClose={() => setDashboardClient(null)}
+                onUpdated={() => {
+                  void queryClient.invalidateQueries({ queryKey: ['clients', selectedTenantId] })
                 }}
                 canDelete={role === 'tenant_admin' || role === 'global_superadmin'}
                 canEdit={canEditRecords}

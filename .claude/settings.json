@@ -14,7 +14,21 @@
       "Bash(bash platform.sh start)",
       "Bash(find /home/jacob/business-management-system/backend/database/migrations/tenant -type f -name *.php)",
       "Bash(php -l app/Http/Controllers/Api/RecycleBinController.php)",
-      "Bash(php -l app/Http/Controllers/Api/CustomFieldValueController.php)"
+      "Bash(php -l app/Http/Controllers/Api/CustomFieldValueController.php)",
+      "Bash(php -l app/Models/Client.php)",
+      "Bash(php -l app/Models/Renewal.php)",
+      "Bash(php -l app/Http/Controllers/Api/ClientController.php)",
+      "Bash(php -l app/Http/Controllers/Api/RenewalController.php)",
+      "Bash(php -l app/Http/Controllers/Api/InventoryController.php)",
+      "Bash(php -l routes/api.php)",
+      "Bash(php -l database/seeders/DatabaseSeeder.php)",
+      "Bash(php -l app/Support/TenantPermissionMap.php)",
+      "Bash(php -l tests/Feature/ClientControllerTest.php)",
+      "Bash(php -l tests/Feature/RenewalControllerTest.php)",
+      "Bash(php -l tests/Feature/InventoryControllerTest.php)",
+      "Bash(php -l tests/Feature/RecycleBinControllerTest.php)",
+      "Bash(npx vitest:*)",
+      "Bash(./node_modules/.bin/tsc -p tsconfig.app.json --noEmit)"
     ]
   }
 }

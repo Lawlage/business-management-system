@@ -215,4 +215,73 @@ class InventoryControllerTest extends TestCase
 
         $response->assertUnprocessable()->assertJsonValidationErrors(['quantity']);
     }
+
+    // ── Search ─────────────────────────────────────────────────────────────────
+
+    public function test_search_by_name(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/inventory', [
+            'name' => 'Laptop Stand',
+            'sku' => 'LS-001',
+            'quantity_on_hand' => 5,
+            'minimum_on_hand' => 1,
+        ], $this->tenantHeaders($tenant));
+
+        $this->actingAs($user)->postJson('/api/inventory', [
+            'name' => 'Mouse Pad',
+            'sku' => 'MP-001',
+            'quantity_on_hand' => 10,
+            'minimum_on_hand' => 2,
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson('/api/inventory?search=Laptop', $this->tenantHeaders($tenant));
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('Laptop Stand', $response->json('data.0.name'));
+    }
+
+    public function test_search_by_sku(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/inventory', [
+            'name' => 'Item A',
+            'sku' => 'UNIQUE-SKU-99',
+            'quantity_on_hand' => 5,
+            'minimum_on_hand' => 1,
+        ], $this->tenantHeaders($tenant));
+
+        $this->actingAs($user)->postJson('/api/inventory', [
+            'name' => 'Item B',
+            'sku' => 'OTHER-001',
+            'quantity_on_hand' => 10,
+            'minimum_on_hand' => 2,
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson('/api/inventory?search=UNIQUE-SKU', $this->tenantHeaders($tenant));
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('UNIQUE-SKU-99', $response->json('data.0.sku'));
+    }
+
+    public function test_search_no_results(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/inventory', [
+            'name' => 'Something',
+            'sku' => 'STH-001',
+            'quantity_on_hand' => 1,
+            'minimum_on_hand' => 0,
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson('/api/inventory?search=NonExistent', $this->tenantHeaders($tenant));
+
+        $response->assertOk();
+        $this->assertCount(0, $response->json('data'));
+    }
 }

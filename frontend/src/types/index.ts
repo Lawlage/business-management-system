@@ -31,9 +31,22 @@ export type AuthUser = {
   tenant_memberships: TenantMembership[]
 }
 
+export type Client = {
+  id: number
+  name: string
+  contact_name?: string | null
+  email?: string | null
+  phone?: string | null
+  website?: string | null
+  notes?: string | null
+  created_at?: string
+}
+
 export type Renewal = {
   id: number
   title: string
+  client_id?: number | null
+  client?: { id: number; name: string } | null
   status: string
   workflow_status?: string | null
   auto_renews?: boolean
@@ -108,6 +121,7 @@ export type RecycleBinData = {
   renewals: PaginatedResponse<Renewal>
   inventory_items: PaginatedResponse<InventoryItem>
   custom_fields: PaginatedResponse<CustomField>
+  clients: PaginatedResponse<Client>
 }
 
 export type TenantAuditData = {
@@ -151,10 +165,20 @@ export const renewalWorkflowOptions = [
 
 export const renewalDefaults = {
   title: '',
+  client_id: null as number | null,
   category: 'contract',
   expiration_date: '',
   workflow_status: '',
   auto_renews: false,
+  notes: '',
+}
+
+export const clientDefaults = {
+  name: '',
+  contact_name: '',
+  email: '',
+  phone: '',
+  website: '',
   notes: '',
 }
 

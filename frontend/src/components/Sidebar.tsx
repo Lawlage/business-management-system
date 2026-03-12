@@ -9,6 +9,7 @@ import {
   ClipboardList,
   ShieldAlert,
   Building2,
+  Contact,
 } from 'lucide-react'
 import type { AppRole } from '../types'
 
@@ -47,6 +48,7 @@ export function Sidebar({ role, isSuperadminTenantWorkspace }: SidebarProps) {
 
   const mainLinks: NavLink[] = [
     { to: '/app', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
+    { to: '/app/clients', label: 'Clients', icon: <Contact size={16} /> },
     { to: '/app/renewals', label: 'Renewals', icon: <RefreshCw size={16} /> },
     { to: '/app/inventory', label: 'Inventory', icon: <Package size={16} /> },
     { to: '/app/recycle-bin', label: 'Recycle Bin', icon: <Trash2 size={16} /> },

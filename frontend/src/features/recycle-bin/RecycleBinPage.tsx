@@ -11,7 +11,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import type { RecycleBinData } from '../../types'
 
-type Tab = 'renewals' | 'inventory' | 'custom_fields'
+type Tab = 'renewals' | 'inventory' | 'custom_fields' | 'clients'
 
 export function RecycleBinPage() {
   const { selectedTenantId } = useTenant()
@@ -41,6 +41,7 @@ export function RecycleBinPage() {
       void queryClient.invalidateQueries({ queryKey: ['recycle-bin', selectedTenantId] })
       void queryClient.invalidateQueries({ queryKey: ['renewals', selectedTenantId] })
       void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
+      void queryClient.invalidateQueries({ queryKey: ['clients', selectedTenantId] })
       if (entityType === 'custom_field') {
         void queryClient.invalidateQueries({ queryKey: ['custom-fields', selectedTenantId] })
       }
@@ -109,6 +110,9 @@ export function RecycleBinPage() {
         </button>
         <button className={tabClass('custom_fields')} onClick={() => setActiveTab('custom_fields')}>
           Custom Fields
+        </button>
+        <button className={tabClass('clients')} onClick={() => setActiveTab('clients')}>
+          Clients
         </button>
       </div>
 
@@ -233,6 +237,48 @@ export function RecycleBinPage() {
                     size="sm"
                     isLoading={forceDeleteMutation.isPending}
                     onClick={() => void handleForceDelete('custom_field', field.id)}
+                  >
+                    Delete Forever
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Clients tab */}
+      {activeTab === 'clients' && (
+        <div className="space-y-2">
+          {isLoading ? (
+            <>
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+            </>
+          ) : !data || data.clients.data.length === 0 ? (
+            <EmptyState message="No clients in the recycle bin." />
+          ) : (
+            data.clients.data.map((client) => (
+              <div
+                key={client.id}
+                className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2"
+              >
+                <span className="text-sm text-[var(--ui-muted)]">{client.name}</span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    isLoading={restoreMutation.isPending}
+                    onClick={() => handleRestore('client', client.id)}
+                  >
+                    Restore
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    isLoading={forceDeleteMutation.isPending}
+                    onClick={() => void handleForceDelete('client', client.id)}
                   >
                     Delete Forever
                   </Button>

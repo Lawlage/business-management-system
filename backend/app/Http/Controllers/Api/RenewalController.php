@@ -20,16 +20,54 @@ class RenewalController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Renewal::query();
+        $query = Renewal::query()->with('client:id,name');
+
+        if ($request->filled('search')) {
+            $term = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], (string) $request->string('search'));
+            $query->where(function ($q) use ($term) {
+                $q->where('title', 'like', '%' . $term . '%')
+                    ->orWhereHas('client', function ($cq) use ($term) {
+                        $cq->where('name', 'like', '%' . $term . '%');
+                    });
+            });
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
         }
 
-        if ($request->filled('search')) {
-            // Escape LIKE metacharacters so users searching for '%' or '_' are treated literally.
-            $term = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], (string) $request->string('search'));
-            $query->where('title', 'like', '%' . $term . '%');
+        if ($request->filled('category')) {
+            $query->where('category', $request->string('category'));
+        }
+
+        if ($request->filled('workflow_status')) {
+            $query->where('workflow_status', $request->string('workflow_status'));
+        }
+
+        if ($request->has('auto_renews') && $request->input('auto_renews') !== '' && $request->input('auto_renews') !== null) {
+            $query->where('auto_renews', $request->input('auto_renews') === '1');
+        }
+
+        if ($request->filled('client_id')) {
+            $query->where('client_id', (int) $request->input('client_id'));
+        }
+
+        if ($request->filled('expiry_preset')) {
+            $preset = (string) $request->string('expiry_preset');
+            $today = Carbon::today();
+
+            $end = match ($preset) {
+                'next_30_days' => $today->copy()->addDays(30),
+                'next_3_months' => $today->copy()->addMonths(3),
+                'next_6_months' => $today->copy()->addMonths(6),
+                'next_12_months' => $today->copy()->addMonths(12),
+                'custom' => $today->copy()->addMonths(max(1, min(60, (int) $request->input('expiry_months', 1)))),
+                default => null,
+            };
+
+            if ($end !== null) {
+                $query->whereBetween('expiration_date', [$today, $end]);
+            }
         }
 
         return new JsonResponse($query->orderBy('expiration_date')->paginate(20));
@@ -39,6 +77,7 @@ class RenewalController extends Controller
     {
         $payload = $request->validate([
             'title' => ['required', 'string', 'max:255'],
+            'client_id' => ['nullable', 'integer'],
             'category' => ['required', 'string', 'max:255'],
             'owner' => ['nullable', 'string', 'max:255'],
             'vendor' => ['nullable', 'string', 'max:255'],
@@ -55,6 +94,7 @@ class RenewalController extends Controller
         $payload['status'] = $this->statusService->fromExpiration(
             Carbon::parse($payload['expiration_date']),
             $payload['workflow_status'] ?? null,
+            $payload['auto_renews'],
         );
         $payload['created_by'] = $request->user()->id;
         $payload['updated_by'] = $request->user()->id;
@@ -76,6 +116,7 @@ class RenewalController extends Controller
 
         $payload = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
+            'client_id' => ['nullable', 'integer'],
             'category' => ['sometimes', 'string', 'max:255'],
             'owner' => ['nullable', 'string', 'max:255'],
             'vendor' => ['nullable', 'string', 'max:255'],
@@ -87,12 +128,15 @@ class RenewalController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        if (isset($payload['expiration_date']) || array_key_exists('workflow_status', $payload)) {
+        if (isset($payload['expiration_date']) || array_key_exists('workflow_status', $payload) || array_key_exists('auto_renews', $payload)) {
             $expirationDate = Carbon::parse($payload['expiration_date'] ?? $renewal->expiration_date);
             $workflowStatus = array_key_exists('workflow_status', $payload)
                 ? $payload['workflow_status']
                 : $renewal->workflow_status;
-            $payload['status'] = $this->statusService->fromExpiration($expirationDate, $workflowStatus);
+            $autoRenews = array_key_exists('auto_renews', $payload)
+                ? (bool) $payload['auto_renews']
+                : (bool) $renewal->auto_renews;
+            $payload['status'] = $this->statusService->fromExpiration($expirationDate, $workflowStatus, $autoRenews);
         }
 
         $payload['updated_by'] = $request->user()->id;

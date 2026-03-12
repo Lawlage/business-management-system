@@ -122,4 +122,38 @@ class RecycleBinControllerTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    // ── Restore Client ──────────────────────────────────────────────────────
+
+    public function test_tenant_admin_can_restore_soft_deleted_client(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $create = $this->actingAs($user)->postJson('/api/clients', [
+            'name' => 'Restorable Client',
+        ], $this->tenantHeaders($tenant));
+
+        $id = $create->json('id');
+        $this->actingAs($user)->deleteJson("/api/clients/{$id}", [], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->postJson(
+            "/api/recycle-bin/client/{$id}/restore",
+            [],
+            $this->tenantHeaders($tenant)
+        );
+
+        $response->assertOk()->assertJsonPath('message', 'Record restored.');
+    }
+
+    // ── Recycle bin index includes clients ───────────────────────────────────
+
+    public function test_recycle_bin_index_includes_clients(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $response = $this->actingAs($user)->getJson('/api/recycle-bin', $this->tenantHeaders($tenant));
+
+        $response->assertOk()
+            ->assertJsonStructure(['renewals', 'inventory_items', 'clients']);
+    }
 }

@@ -69,5 +69,42 @@ class DatabaseSeeder extends Seeder
             ['tenant_id' => $tenant->id, 'user_id' => $tenantAdmin->id],
             ['role' => TenantRole::TenantAdmin->value, 'can_edit' => true],
         );
+
+        // Seed tenant-scoped data (clients) inside the tenant database.
+        tenancy()->initialize($tenant);
+        try {
+            DB::connection('tenant')->table('clients')->insertOrIgnore([
+                [
+                    'id' => 1,
+                    'name' => 'Acme Industries',
+                    'contact_name' => 'John Smith',
+                    'email' => 'john@acme-industries.example.com',
+                    'phone' => '+64 21 555 0100',
+                    'website' => 'https://acme-industries.example.com',
+                    'notes' => 'Primary manufacturing partner.',
+                    'created_by' => $tenantAdmin->id,
+                    'updated_by' => $tenantAdmin->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                    'deleted_at' => null,
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Globex Corporation',
+                    'contact_name' => 'Jane Doe',
+                    'email' => 'jane@globex.example.com',
+                    'phone' => '+64 21 555 0200',
+                    'website' => 'https://globex.example.com',
+                    'notes' => null,
+                    'created_by' => $tenantAdmin->id,
+                    'updated_by' => $tenantAdmin->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                    'deleted_at' => null,
+                ],
+            ]);
+        } finally {
+            tenancy()->end();
+        }
     }
 }

@@ -274,4 +274,281 @@ class RenewalControllerTest extends TestCase
 
         $response->assertNotFound();
     }
+
+    // ── Client integration ──────────────────────────────────────────────────
+
+    public function test_create_renewal_with_client_id(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $client = $this->actingAs($user)->postJson('/api/clients', [
+            'name' => 'Test Client',
+        ], $this->tenantHeaders($tenant));
+
+        $clientId = $client->json('id');
+
+        $response = $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Renewal with Client',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+            'client_id' => $clientId,
+        ], $this->tenantHeaders($tenant));
+
+        $response->assertCreated()->assertJsonPath('client_id', $clientId);
+    }
+
+    public function test_update_renewal_client_id(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $client = $this->actingAs($user)->postJson('/api/clients', [
+            'name' => 'Test Client',
+        ], $this->tenantHeaders($tenant));
+        $clientId = $client->json('id');
+
+        $create = $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Renewal',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+        ], $this->tenantHeaders($tenant));
+        $id = $create->json('id');
+
+        $response = $this->actingAs($user)->putJson("/api/renewals/{$id}", [
+            'client_id' => $clientId,
+        ], $this->tenantHeaders($tenant));
+
+        $response->assertOk()->assertJsonPath('client_id', $clientId);
+    }
+
+    public function test_index_eager_loads_client(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $client = $this->actingAs($user)->postJson('/api/clients', [
+            'name' => 'Loaded Client',
+        ], $this->tenantHeaders($tenant));
+        $clientId = $client->json('id');
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Renewal with Client',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+            'client_id' => $clientId,
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson('/api/renewals', $this->tenantHeaders($tenant));
+
+        $response->assertOk();
+        $data = $response->json('data.0');
+        $this->assertSame('Loaded Client', $data['client']['name']);
+    }
+
+    public function test_search_by_client_name(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $client = $this->actingAs($user)->postJson('/api/clients', [
+            'name' => 'UniqueClientSearch',
+        ], $this->tenantHeaders($tenant));
+        $clientId = $client->json('id');
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Some Renewal',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+            'client_id' => $clientId,
+        ], $this->tenantHeaders($tenant));
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Other Renewal',
+            'category' => 'license',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson('/api/renewals?search=UniqueClientSearch', $this->tenantHeaders($tenant));
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+    }
+
+    // ── Filters ─────────────────────────────────────────────────────────────
+
+    public function test_filter_by_category(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'License Renewal',
+            'category' => 'license',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+        ], $this->tenantHeaders($tenant));
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Contract Renewal',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson('/api/renewals?category=license', $this->tenantHeaders($tenant));
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('License Renewal', $response->json('data.0.title'));
+    }
+
+    public function test_filter_by_workflow_status(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Active Renewal',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+            'workflow_status' => 'Active - paid and in force',
+        ], $this->tenantHeaders($tenant));
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Closed Renewal',
+            'category' => 'contract',
+            'expiration_date' => now()->subDays(10)->toDateString(),
+            'workflow_status' => 'Closed',
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson(
+            '/api/renewals?' . http_build_query(['workflow_status' => 'Active - paid and in force']),
+            $this->tenantHeaders($tenant),
+        );
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('Active Renewal', $response->json('data.0.title'));
+    }
+
+    public function test_filter_by_auto_renews(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Auto Renewal',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+            'auto_renews' => true,
+        ], $this->tenantHeaders($tenant));
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Manual Renewal',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+            'auto_renews' => false,
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson('/api/renewals?auto_renews=1', $this->tenantHeaders($tenant));
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('Auto Renewal', $response->json('data.0.title'));
+    }
+
+    public function test_filter_by_client_id(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $client = $this->actingAs($user)->postJson('/api/clients', [
+            'name' => 'Filter Client',
+        ], $this->tenantHeaders($tenant));
+        $clientId = $client->json('id');
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'With Client',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+            'client_id' => $clientId,
+        ], $this->tenantHeaders($tenant));
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Without Client',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson("/api/renewals?client_id={$clientId}", $this->tenantHeaders($tenant));
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('With Client', $response->json('data.0.title'));
+    }
+
+    public function test_filter_by_expiry_preset_next_30_days(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Soon',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(15)->toDateString(),
+        ], $this->tenantHeaders($tenant));
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Far Away',
+            'category' => 'contract',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson('/api/renewals?expiry_preset=next_30_days', $this->tenantHeaders($tenant));
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('Soon', $response->json('data.0.title'));
+    }
+
+    public function test_filter_by_expiry_preset_custom(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'In 2 Months',
+            'category' => 'contract',
+            'expiration_date' => now()->addMonths(2)->toDateString(),
+        ], $this->tenantHeaders($tenant));
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'In 6 Months',
+            'category' => 'contract',
+            'expiration_date' => now()->addMonths(6)->toDateString(),
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson('/api/renewals?expiry_preset=custom&expiry_months=3', $this->tenantHeaders($tenant));
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('In 2 Months', $response->json('data.0.title'));
+    }
+
+    public function test_combined_filters(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Match Both',
+            'category' => 'license',
+            'expiration_date' => now()->addDays(15)->toDateString(),
+            'auto_renews' => true,
+        ], $this->tenantHeaders($tenant));
+
+        $this->actingAs($user)->postJson('/api/renewals', [
+            'title' => 'Match Category Only',
+            'category' => 'license',
+            'expiration_date' => now()->addDays(90)->toDateString(),
+            'auto_renews' => false,
+        ], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->getJson(
+            '/api/renewals?category=license&auto_renews=1',
+            $this->tenantHeaders($tenant),
+        );
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('Match Both', $response->json('data.0.title'));
+    }
 }

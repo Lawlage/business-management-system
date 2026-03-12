@@ -11,6 +11,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import { LoadMoreButton } from '../../components/LoadMoreButton'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
+import { Input } from '../../components/Input'
 import { CreateInventoryModal } from './CreateInventoryModal'
 import type { InventoryItem, PaginatedResponse } from '../../types'
 
@@ -28,15 +29,40 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
   const [allItems, setAllItems] = useState<InventoryItem[]>([])
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [adjustQtys, setAdjustQtys] = useState<Record<number, number>>({})
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
   const canCreate = role !== 'standard_user'
 
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Reset on tenant switch
+  useEffect(() => {
+    setSearch('')
+    setDebouncedSearch('')
+    setPage(1)
+    setAllItems([])
+  }, [selectedTenantId])
+
+  // Reset pagination on search change
+  useEffect(() => {
+    setPage(1)
+    setAllItems([])
+  }, [debouncedSearch])
+
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['inventory', selectedTenantId, page],
-    queryFn: () =>
-      authedFetch<PaginatedResponse<InventoryItem>>(`/api/inventory?page=${page}`, {
+    queryKey: ['inventory', selectedTenantId, debouncedSearch, page],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page) })
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      return authedFetch<PaginatedResponse<InventoryItem>>(`/api/inventory?${params.toString()}`, {
         tenantScoped: true,
-      }),
+      })
+    },
     enabled: !!selectedTenantId,
     staleTime: 0,
   })
@@ -108,14 +134,24 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
         }
       />
 
-      {/* Table header — hidden on mobile */}
+      <div className="mb-4">
+        <Input
+          placeholder="Search inventory..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* Table header -- hidden on mobile */}
       {allItems.length > 0 && (
-        <div className="mb-2 hidden md:grid md:grid-cols-[minmax(0,2fr)_110px_110px_220px_280px] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
-          <span>Item</span>
-          <span>On Hand</span>
-          <span>Minimum</span>
-          <span>Created</span>
-          <span>Actions</span>
+        <div className="mb-2 hidden md:flex md:items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+          <div className="flex-1 grid grid-cols-[minmax(0,2fr)_110px_110px_220px] gap-3">
+            <span>Item</span>
+            <span>On Hand</span>
+            <span>Minimum</span>
+            <span>Created</span>
+          </div>
+          <div className="w-[220px] shrink-0 text-right pr-1">Adjust Stock</div>
         </div>
       )}
 
@@ -124,9 +160,9 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
           Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={5} />)
         ) : allItems.length === 0 ? (
           <EmptyState
-            message="No inventory items found. Create your first item to get started."
+            message={debouncedSearch ? 'No inventory items match your search.' : 'No inventory items found. Create your first item to get started.'}
             action={
-              canCreate ? (
+              canCreate && !debouncedSearch ? (
                 <Button onClick={() => setIsCreateOpen(true)} variant="primary" size="sm">
                   Create Item
                 </Button>
@@ -135,62 +171,58 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
           />
         ) : (
           allItems.map((item) => (
-            <div
-              key={item.id}
-              className="app-inner-box rounded-md border border-[var(--ui-border)] p-3"
-            >
-              <div className="grid gap-2 md:grid-cols-[minmax(0,2fr)_110px_110px_220px_280px] items-center">
-                {/* Item name + SKU — clickable */}
-                <button
-                  className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60 rounded"
-                  onClick={() => onOpenItem(item)}
-                >
-                  <p className="font-medium text-sm text-[var(--ui-text)] truncate">{item.name}</p>
-                  <p className="text-xs text-[var(--ui-muted)]">{item.sku}</p>
-                </button>
-
-                <span className="text-sm text-[var(--ui-text)]">{item.quantity_on_hand}</span>
-
-                <span className="text-sm text-[var(--ui-muted)]">{item.minimum_on_hand}</span>
-
-                <span className="text-xs text-[var(--ui-muted)]">
-                  {formatDate(item.created_at, tenantTimezone)}
-                </span>
-
-                {/* Stock adjustment */}
-                <div className="flex items-center gap-2 justify-end">
-                  <input
-                    type="number"
-                    min={1}
-                    value={adjustQtys[item.id] ?? 1}
-                    onChange={(e) =>
-                      setAdjustQtys((prev) => ({
-                        ...prev,
-                        [item.id]: Math.max(1, Number(e.target.value)),
-                      }))
-                    }
-                    className="w-16 rounded-md border border-[var(--ui-border)] px-2 py-1.5 text-sm app-panel"
-                    aria-label="Adjustment quantity"
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-12 justify-center"
-                    onClick={() => handleAdjust(item, 'check_out')}
-                    disabled={adjustMutation.isPending}
-                  >
-                    Out
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-12 justify-center"
-                    onClick={() => handleAdjust(item, 'check_in')}
-                    disabled={adjustMutation.isPending}
-                  >
-                    In
-                  </Button>
+            <div key={item.id} className="flex items-center gap-2">
+              {/* Clickable row */}
+              <button
+                className="app-inner-box flex-1 rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60"
+                onClick={() => onOpenItem(item)}
+              >
+                <div className="grid gap-2 md:grid-cols-[minmax(0,2fr)_110px_110px_220px] items-center">
+                  <div>
+                    <p className="font-medium text-sm text-[var(--ui-text)] truncate">{item.name}</p>
+                    <p className="text-xs text-[var(--ui-muted)]">{item.sku}</p>
+                  </div>
+                  <span className="text-sm text-[var(--ui-text)]">{item.quantity_on_hand}</span>
+                  <span className="text-sm text-[var(--ui-muted)]">{item.minimum_on_hand}</span>
+                  <span className="text-xs text-[var(--ui-muted)]">
+                    {formatDate(item.created_at, tenantTimezone)}
+                  </span>
                 </div>
+              </button>
+
+              {/* Stock adjustment — outside the clickable box */}
+              <div className="flex items-center gap-2 shrink-0">
+                <input
+                  type="number"
+                  min={1}
+                  value={adjustQtys[item.id] ?? 1}
+                  onChange={(e) =>
+                    setAdjustQtys((prev) => ({
+                      ...prev,
+                      [item.id]: Math.max(1, Number(e.target.value)),
+                    }))
+                  }
+                  className="w-16 rounded-md border border-[var(--ui-border)] px-2 py-1.5 text-sm app-panel"
+                  aria-label="Adjustment quantity"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-12 justify-center"
+                  onClick={() => handleAdjust(item, 'check_out')}
+                  disabled={adjustMutation.isPending}
+                >
+                  Out
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-12 justify-center"
+                  onClick={() => handleAdjust(item, 'check_in')}
+                  disabled={adjustMutation.isPending}
+                >
+                  In
+                </Button>
               </div>
             </div>
           ))

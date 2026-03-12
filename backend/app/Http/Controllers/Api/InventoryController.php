@@ -15,9 +15,19 @@ class InventoryController extends Controller
     {
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return new JsonResponse(InventoryItem::query()->orderBy('name')->paginate(20));
+        $query = InventoryItem::query();
+
+        if ($request->filled('search')) {
+            $term = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], (string) $request->string('search'));
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', '%' . $term . '%')
+                    ->orWhere('sku', 'like', '%' . $term . '%');
+            });
+        }
+
+        return new JsonResponse($query->orderBy('name')->paginate(20));
     }
 
     public function store(Request $request): JsonResponse

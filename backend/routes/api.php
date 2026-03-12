@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\BreakGlassController;
+use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CustomFieldController;
 use App\Http\Controllers\Api\CustomFieldValueController;
 use App\Http\Controllers\Api\DashboardController;
@@ -47,6 +48,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::middleware('tenant.context')->group(function (): void {
         Route::get('/dashboard', [DashboardController::class, 'index']);
+
+        Route::get('/clients', [ClientController::class, 'index']);
+        Route::post('/clients', [ClientController::class, 'store'])->middleware('tenant.permission:create_client');
+        Route::put('/clients/{id}', [ClientController::class, 'update'])->middleware('tenant.permission:edit_existing');
+        Route::delete('/clients/{id}', [ClientController::class, 'destroy'])->middleware('tenant.permission:delete_record');
 
         Route::get('/renewals', [RenewalController::class, 'index']);
         Route::post('/renewals', [RenewalController::class, 'store'])->middleware('tenant.permission:create_renewal');
