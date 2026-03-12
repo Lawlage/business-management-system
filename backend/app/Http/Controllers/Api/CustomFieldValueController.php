@@ -37,7 +37,7 @@ class CustomFieldValueController extends Controller
         }
 
         $payload = $request->validate([
-            'values' => ['required', 'array'],
+            'values' => ['present', 'array'],
             'values.*' => ['nullable'],
         ]);
 

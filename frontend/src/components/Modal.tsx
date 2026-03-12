@@ -26,6 +26,7 @@ export function Modal({
   footer,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const backdropMouseDownRef = useRef(false)
 
   // Escape key handler
   useEffect(() => {
@@ -58,7 +59,8 @@ export function Modal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-      onClick={onClose}
+      onMouseDown={(e) => { backdropMouseDownRef.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (backdropMouseDownRef.current && e.target === e.currentTarget) onClose() }}
     >
       <div
         ref={dialogRef}

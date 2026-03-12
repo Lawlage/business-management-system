@@ -13,7 +13,8 @@
       "Bash(bash -c 'source /home/jacob/.nvm/nvm.sh && nvm use 20 && npm run test 2>&1')",
       "Bash(bash platform.sh start)",
       "Bash(find /home/jacob/business-management-system/backend/database/migrations/tenant -type f -name *.php)",
-      "Bash(php -l app/Http/Controllers/Api/RecycleBinController.php)"
+      "Bash(php -l app/Http/Controllers/Api/RecycleBinController.php)",
+      "Bash(php -l app/Http/Controllers/Api/CustomFieldValueController.php)"
     ]
   }
 }

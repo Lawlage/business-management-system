@@ -36,4 +36,4 @@ tasks/
 logs/
 
 # Claude's personal files
-/.claude
+.claude/settings.json
