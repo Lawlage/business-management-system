@@ -34,3 +34,6 @@ tasks/
 
 # Local runtime logs
 logs/
+
+# Claude's personal files
+.claude/
