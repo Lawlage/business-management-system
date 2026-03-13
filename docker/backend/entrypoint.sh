@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -e
 
+# In dev the host volume overlays the image's vendor/. Install deps if missing.
+if [ ! -f vendor/autoload.php ]; then
+  echo "vendor/ not found — running composer install..."
+  composer install --no-scripts --no-interaction
+fi
+
 # Wait for MySQL
 until mysqladmin ping -h"${DB_HOST:-mysql}" -u"${DB_USERNAME}" -p"${DB_PASSWORD}" --skip-ssl --silent 2>/dev/null; do
   echo "Waiting for MySQL..." && sleep 2
