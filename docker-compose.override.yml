@@ -35,4 +35,3 @@ services:
   nginx:
     ports:
       - "8090:80"
-      - "5173:5173"
