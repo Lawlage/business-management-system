@@ -227,7 +227,7 @@ function AppContent() {
         />
 
         <main className="min-w-0 flex-1 overflow-y-auto overflow-x-auto p-4 md:p-6">
-          <div className="min-w-[340px] space-y-4">
+          <div className="min-w-max space-y-4">
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
