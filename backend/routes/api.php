@@ -30,10 +30,14 @@ use Illuminate\Support\Facades\Route;
 
 // Login is rate-limited to 6 attempts per minute per IP to prevent brute-force.
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');
+Route::post('/auth/reset-password', [AuthController::class, 'resetPasswordViaToken']);
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
+    Route::put('/auth/password', [AuthController::class, 'changePassword']);
 
     Route::prefix('superadmin')->middleware('superadmin')->group(function (): void {
         Route::get('/tenants', [SuperAdminTenantController::class, 'index']);
@@ -88,6 +92,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/recycle-bin/{entityType}/{id}/restore', [RecycleBinController::class, 'restore'])->middleware('tenant.permission:delete_record');
         Route::delete('/recycle-bin/{entityType}/{id}', [RecycleBinController::class, 'forceDelete'])->middleware('tenant.permission:delete_record');
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('tenant.permission:view_audit_logs');
+        Route::get('/audit-logs/export', [AuditLogController::class, 'export'])->middleware('tenant.permission:view_audit_logs');
 
         Route::get('/stock-allocations', [StockAllocationController::class, 'index']);
         Route::post('/stock-allocations', [StockAllocationController::class, 'store'])->middleware('tenant.permission:allocate_stock');
