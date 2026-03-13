@@ -226,7 +226,8 @@ function AppContent() {
           onClose={() => setSidebarOpen(false)}
         />
 
-        <main className="min-w-0 flex-1 space-y-4 overflow-y-auto p-4 md:p-6">
+        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-auto p-4 md:p-6">
+          <div className="min-w-[340px] space-y-4">
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
@@ -352,6 +353,7 @@ function AppContent() {
               />
             </Suspense>
           )}
+          </div>
         </main>
       </div> {/* flex row: sidebar + main */}
 
