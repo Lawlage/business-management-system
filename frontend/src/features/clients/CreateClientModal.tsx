@@ -25,10 +25,10 @@ export function CreateClientModal({ onClose, onCreated }: CreateClientModalProps
   const [errors, setErrors] = useState<ValidationErrors<ClientForm>>({})
 
   const mutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (data: ClientForm) => {
       await authedFetch('/api/clients', {
         method: 'POST',
-        body: JSON.stringify(form),
+        body: JSON.stringify(data),
         tenantScoped: true,
       })
     },
@@ -54,7 +54,12 @@ export function CreateClientModal({ onClose, onCreated }: CreateClientModalProps
     setErrors(newErrors)
     if (hasErrors(newErrors)) return
 
-    mutation.mutate()
+    const submittedForm = { ...form }
+    if (submittedForm.website && !/^https?:\/\//i.test(submittedForm.website)) {
+      submittedForm.website = `https://${submittedForm.website}`
+    }
+
+    mutation.mutate(submittedForm)
   }
 
   const setField = <K extends keyof ClientForm>(key: K, value: ClientForm[K]) => {

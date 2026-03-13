@@ -98,10 +98,10 @@ export function ClientDetailModal({
   }
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (data: ClientForm) => {
       await authedFetch(`/api/clients/${client.id}`, {
         method: 'PUT',
-        body: JSON.stringify(form),
+        body: JSON.stringify(data),
         tenantScoped: true,
       })
     },
@@ -138,7 +138,11 @@ export function ClientDetailModal({
   })
 
   const handleSave = () => {
-    saveMutation.mutate()
+    const submittedForm = { ...form }
+    if (submittedForm.website && !/^https?:\/\//i.test(submittedForm.website)) {
+      submittedForm.website = `https://${submittedForm.website}`
+    }
+    saveMutation.mutate(submittedForm)
   }
 
   const handleDelete = async () => {
