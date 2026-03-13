@@ -18,6 +18,8 @@ import type { AppRole } from '../types'
 type SidebarProps = {
   role: AppRole
   isSuperadminTenantWorkspace: boolean
+  isOpen: boolean
+  onClose: () => void
 }
 
 type NavLink = {
@@ -26,7 +28,7 @@ type NavLink = {
   icon: React.ReactNode
 }
 
-export function Sidebar({ role, isSuperadminTenantWorkspace }: SidebarProps) {
+export function Sidebar({ role, isSuperadminTenantWorkspace, isOpen, onClose }: SidebarProps) {
   const location = useLocation()
 
   const isActive = (to: string) => location.pathname === to
@@ -76,7 +78,27 @@ export function Sidebar({ role, isSuperadminTenantWorkspace }: SidebarProps) {
   ]
 
   return (
-    <aside className="app-panel flex h-full w-60 flex-shrink-0 flex-col overflow-y-auto border-r border-[var(--ui-border)]">
+    <>
+      {/* Mobile backdrop — tapping it closes the drawer */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={[
+          // Base: fixed overlay drawer (mobile default)
+          'fixed inset-y-0 left-0 z-50 flex h-full w-60 flex-col overflow-y-auto',
+          'transform transition-transform duration-200 ease-in-out',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          // Desktop: revert to normal flex-flow item
+          'md:relative md:translate-x-0 md:flex-shrink-0',
+          'app-panel border-r border-[var(--ui-border)]',
+        ].join(' ')}
+      >
       <div className="px-4 pb-3 pt-5">
         <span className="text-lg font-bold tracking-tight text-[var(--ui-text)]">BMS</span>
       </div>
@@ -87,7 +109,7 @@ export function Sidebar({ role, isSuperadminTenantWorkspace }: SidebarProps) {
           <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">Main</p>
           <nav className="space-y-1">
             {mainLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={linkClass(link.to)}>
+              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose}>
                 {link.icon}
                 {link.label}
               </Link>
@@ -101,7 +123,7 @@ export function Sidebar({ role, isSuperadminTenantWorkspace }: SidebarProps) {
           <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">Admin Settings</p>
           <nav className="space-y-1">
             {adminLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={linkClass(link.to)}>
+              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose}>
                 {link.icon}
                 {link.label}
               </Link>
@@ -115,7 +137,7 @@ export function Sidebar({ role, isSuperadminTenantWorkspace }: SidebarProps) {
           <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">Superadmin</p>
           <nav className="space-y-1">
             {superadminLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={linkClass(link.to)}>
+              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose}>
                 {link.icon}
                 {link.label}
               </Link>
@@ -124,6 +146,7 @@ export function Sidebar({ role, isSuperadminTenantWorkspace }: SidebarProps) {
         </div>
       )}
       </div> {/* flex-1 nav area */}
-    </aside>
+      </aside>
+    </>
   )
 }

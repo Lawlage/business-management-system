@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { LogOut, Moon, Settings, ShieldAlert, Sun } from 'lucide-react'
+import { LogOut, Menu, Moon, Settings, ShieldAlert, Sun } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
 import { roleLabels } from '../types'
@@ -10,9 +10,10 @@ type TopBarProps = {
   onStopBreakGlass: () => void
   colorMode: 'light' | 'dark'
   onToggleColorMode: () => void
+  onToggleSidebar: () => void
 }
 
-export function TopBar({ onLogout, onStopBreakGlass, colorMode, onToggleColorMode }: TopBarProps) {
+export function TopBar({ onLogout, onStopBreakGlass, colorMode, onToggleColorMode, onToggleSidebar }: TopBarProps) {
   const { user } = useAuth()
   const { role, selectedTenant, isSuperadminTenantWorkspace, breakGlassToken } = useTenant()
 
@@ -31,16 +32,27 @@ export function TopBar({ onLogout, onStopBreakGlass, colorMode, onToggleColorMod
   return (
     <>
       <header className="border-b border-[var(--ui-border)] app-panel">
-        <div className="flex items-center justify-between px-6 py-3">
-          <div>
-            <p className="font-semibold text-[var(--ui-text)]">{portalTitle}</p>
-            {user && (
-              <p className="text-xs text-[var(--ui-muted)]">
-                {user.first_name} {user.last_name}
-                {' · '}
-                {roleLabels[role]}
-              </p>
-            )}
+        <div className="flex items-center justify-between px-4 py-3 md:px-6">
+          <div className="flex items-center gap-2">
+            {/* Hamburger — mobile only */}
+            <button
+              onClick={onToggleSidebar}
+              className="md:hidden theme-toggle-link rounded-md p-1.5"
+              aria-label="Toggle navigation"
+            >
+              <Menu size={20} />
+            </button>
+
+            <div className="min-w-0">
+              <p className="truncate max-w-[160px] sm:max-w-none font-semibold text-[var(--ui-text)]">{portalTitle}</p>
+              {user && (
+                <p className="truncate max-w-[160px] sm:max-w-none text-xs text-[var(--ui-muted)]">
+                  {user.first_name} {user.last_name}
+                  {' · '}
+                  {roleLabels[role]}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -64,8 +76,8 @@ export function TopBar({ onLogout, onStopBreakGlass, colorMode, onToggleColorMod
             {isSuperadmin && !isSuperadminTenantWorkspace && (
               <Link to="/superadmin/access">
                 <Button variant="secondary" size="sm">
-                  <ShieldAlert size={14} className="mr-1" />
-                  Tenant Access
+                  <ShieldAlert size={14} className="sm:mr-1" />
+                  <span className="hidden sm:inline">Tenant Access</span>
                 </Button>
               </Link>
             )}
@@ -77,8 +89,8 @@ export function TopBar({ onLogout, onStopBreakGlass, colorMode, onToggleColorMod
             )}
 
             <Button variant="secondary" size="sm" onClick={onLogout}>
-              <LogOut size={14} className="mr-1" />
-              Sign Out
+              <LogOut size={14} className="sm:mr-1" />
+              <span className="hidden sm:inline">Sign Out</span>
             </Button>
           </div>
         </div>

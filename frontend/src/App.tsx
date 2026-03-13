@@ -78,6 +78,12 @@ function AppContent() {
   const { showNotice } = useNotice()
   const confirm = useConfirm()
 
+  // Sidebar open/close (mobile drawer)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Close drawer whenever route changes
+  useEffect(() => { setSidebarOpen(false) }, [location.pathname])
+
   // Light/dark mode — defaults to light, persisted in localStorage
   const [colorMode, setColorMode] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('colorMode') as 'light' | 'dark') ?? 'light'
@@ -209,12 +215,18 @@ function AppContent() {
         onStopBreakGlass={() => void handleStopBreakGlass()}
         colorMode={colorMode}
         onToggleColorMode={toggleColorMode}
+        onToggleSidebar={() => setSidebarOpen(prev => !prev)}
       />
 
       <div className="flex flex-1 min-h-0">
-        <Sidebar role={role} isSuperadminTenantWorkspace={isSuperadminTenantWorkspace} />
+        <Sidebar
+          role={role}
+          isSuperadminTenantWorkspace={isSuperadminTenantWorkspace}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
 
-        <main className="min-w-0 flex-1 space-y-4 overflow-y-auto p-6">
+        <main className="min-w-0 flex-1 space-y-4 overflow-y-auto p-4 md:p-6">
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
