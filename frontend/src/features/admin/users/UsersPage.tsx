@@ -6,7 +6,6 @@ import { useConfirm } from '../../../contexts/ConfirmContext'
 import { useApi } from '../../../hooks/useApi'
 import type { ApiError } from '../../../hooks/useApi'
 import type { TenantUserMembership, AppRole } from '../../../types'
-import { roleLabels } from '../../../types'
 import { Button } from '../../../components/Button'
 import { Card } from '../../../components/Card'
 import { Modal } from '../../../components/Modal'
@@ -69,8 +68,8 @@ export function UsersPage() {
   })
 
   const removeMutation = useMutation({
-    mutationFn: (id: number) =>
-      authedFetch(`/api/tenant-users/${id}`, {
+    mutationFn: (userId: number) =>
+      authedFetch(`/api/tenant-users/${userId}`, {
         method: 'DELETE',
         tenantScoped: true,
       }),
@@ -83,15 +82,15 @@ export function UsersPage() {
     },
   })
 
-  const toggleEditMutation = useMutation({
-    mutationFn: ({ id, can_edit }: { id: number; can_edit: boolean }) =>
-      authedFetch(`/api/tenant-users/${id}`, {
+  const changeRoleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: number; role: AppRole }) =>
+      authedFetch(`/api/tenant-users/${userId}`, {
         method: 'PUT',
-        body: JSON.stringify({ can_edit }),
+        body: JSON.stringify({ role }),
         tenantScoped: true,
       }),
     onSuccess: () => {
-      showNotice('User permissions updated.')
+      showNotice('Role updated.')
       void queryClient.invalidateQueries({ queryKey: ['tenant-users', selectedTenantId] })
     },
     onError: (error: ApiError | Error) => {
@@ -99,7 +98,7 @@ export function UsersPage() {
     },
   })
 
-  async function handleRemove(id: number) {
+  async function handleRemove(userId: number) {
     const ok = await confirm({
       title: 'Remove user?',
       message: 'The user will be removed from this tenant.',
@@ -107,11 +106,7 @@ export function UsersPage() {
       variant: 'danger',
     })
     if (!ok) return
-    removeMutation.mutate(id)
-  }
-
-  function handleToggleEdit(id: number, currentCanEdit: boolean) {
-    toggleEditMutation.mutate({ id, can_edit: !currentCanEdit })
+    removeMutation.mutate(userId)
   }
 
   function handleCreate() {
@@ -155,34 +150,40 @@ export function UsersPage() {
                   <span className="text-[var(--ui-muted)]">({membership.user.email})</span>
                 </p>
                 <p className="mt-0.5 text-xs text-[var(--ui-muted)]">
-                  {roleLabels[membership.role]} &mdash;{' '}
-                  {membership.can_edit ? 'Can edit' : 'Read only'}
+                  Last login:{' '}
+                  {membership.user.last_login_at
+                    ? new Date(membership.user.last_login_at).toLocaleString()
+                    : 'Never'}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleToggleEdit(membership.id, membership.can_edit)}
-                  isLoading={
-                    toggleEditMutation.isPending &&
-                    (toggleEditMutation.variables as { id: number } | undefined)?.id ===
-                      membership.id
+                <select
+                  className="rounded border border-[var(--ui-border)] bg-[var(--ui-panel)] px-2 py-1 text-xs text-[var(--ui-text)]"
+                  value={membership.role}
+                  disabled={
+                    changeRoleMutation.isPending &&
+                    changeRoleMutation.variables?.userId === membership.user.id
+                  }
+                  onChange={(e) =>
+                    changeRoleMutation.mutate({ userId: membership.user.id, role: e.target.value as AppRole })
                   }
                 >
-                  {membership.can_edit ? 'Revoke Edit' : 'Allow Edit'}
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => void handleRemove(membership.id)}
-                  isLoading={
+                  <option value="standard_user">Standard User</option>
+                  <option value="sub_admin">Sub Admin</option>
+                  <option value="tenant_admin">Tenant Admin</option>
+                </select>
+                <button
+                  className="rounded border border-red-500 bg-transparent px-2 py-1 text-xs text-red-500 hover:bg-red-500 hover:text-white disabled:opacity-50"
+                  onClick={() => void handleRemove(membership.user.id)}
+                  disabled={
                     removeMutation.isPending &&
-                    (removeMutation.variables as number | undefined) === membership.id
+                    removeMutation.variables === membership.user.id
                   }
                 >
-                  Remove
-                </Button>
+                  {removeMutation.isPending && removeMutation.variables === membership.user.id
+                    ? '…'
+                    : 'Remove'}
+                </button>
               </div>
             </div>
           ))}

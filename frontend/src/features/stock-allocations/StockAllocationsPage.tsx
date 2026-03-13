@@ -131,28 +131,26 @@ function StockAllocationsContent() {
           allAllocations.map((a) => (
             <div
               key={a.id}
-              className="app-inner-box flex items-center gap-3 rounded-md border border-[var(--ui-border)] p-3"
+              className="app-inner-box grid items-center gap-3 rounded-md border border-[var(--ui-border)] p-3 md:grid-cols-[2fr_2fr_1fr_1fr_1fr_1fr_80px]"
             >
-              <div className="grid flex-1 gap-2 md:grid-cols-[2fr_2fr_1fr_1fr_1fr_1fr]">
-                <div>
-                  <p className="text-sm font-medium text-[var(--ui-text)] truncate">
-                    {a.inventory_item?.name ?? '—'}
-                  </p>
-                  <p className="text-xs text-[var(--ui-muted)]">{a.inventory_item?.sku ?? ''}</p>
-                </div>
-                <span className="text-sm text-[var(--ui-text)] truncate">{a.client?.name ?? '—'}</span>
-                <span className="text-sm text-[var(--ui-text)]">{a.quantity}</span>
-                <span className="text-sm text-[var(--ui-muted)]">
-                  {a.unit_price ? `$${a.unit_price}` : '—'}
-                </span>
-                <span className="text-sm text-[var(--ui-muted)]">
-                  {a.unit_price ? `$${(a.quantity * parseFloat(a.unit_price)).toFixed(2)}` : '—'}
-                </span>
-                <span className="text-xs text-[var(--ui-muted)]">
-                  {formatDate(a.created_at, tenantTimezone)}
-                </span>
+              <div>
+                <p className="text-sm font-medium text-[var(--ui-text)] truncate">
+                  {a.inventory_item?.name ?? '—'}
+                </p>
+                <p className="text-xs text-[var(--ui-muted)]">{a.inventory_item?.sku ?? ''}</p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <span className="text-sm text-[var(--ui-text)] truncate">{a.client?.name ?? '—'}</span>
+              <span className="text-sm text-[var(--ui-text)]">{a.quantity}</span>
+              <span className="text-sm text-[var(--ui-muted)]">
+                {a.unit_price ? `$${a.unit_price}` : '—'}
+              </span>
+              <span className="text-sm text-[var(--ui-muted)]">
+                {a.unit_price ? `$${(a.quantity * parseFloat(a.unit_price)).toFixed(2)}` : '—'}
+              </span>
+              <span className="text-xs text-[var(--ui-muted)]">
+                {formatDate(a.created_at, tenantTimezone)}
+              </span>
+              <div className="flex items-center justify-end gap-2">
                 <Badge status={a.status} />
                 {a.status === 'allocated' && canAllocate && (
                   <Button

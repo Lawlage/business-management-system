@@ -141,14 +141,26 @@ class TenantUserController extends Controller
             ->where('user_id', $userId)
             ->firstOrFail();
 
+        $targetUser = User::query()->findOrFail($userId);
+
+        $changes = [];
+        if (isset($payload['role']) && $payload['role'] !== $membership->role) {
+            $changes['role_from'] = $membership->role;
+            $changes['role_to'] = $payload['role'];
+        }
+        if (isset($payload['can_edit']) && $payload['can_edit'] !== $membership->can_edit) {
+            $changes['can_edit_from'] = $membership->can_edit ? 'true' : 'false';
+            $changes['can_edit_to'] = $payload['can_edit'] ? 'true' : 'false';
+        }
+
         $membership->update(array_filter($payload, fn ($value) => $value !== null));
 
-        $this->auditLogger->tenant($request, 'tenant.membership_updated', $request->user(), [
-            'entity_type' => 'tenant_membership',
-            'entity_id' => (string) $membership->id,
-            'role' => $membership->role,
-            'can_edit' => $membership->can_edit,
-        ]);
+        $this->auditLogger->tenant($request, 'tenant.membership_updated', $request->user(), array_merge([
+            'entity_type' => 'user',
+            'entity_id' => (string) $targetUser->id,
+            'entity_title' => $targetUser->name,
+            'email' => $targetUser->email,
+        ], $changes));
 
         return new JsonResponse($membership);
     }

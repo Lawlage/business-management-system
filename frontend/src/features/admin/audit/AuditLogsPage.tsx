@@ -9,6 +9,8 @@ import { EmptyState } from '../../../components/EmptyState'
 import { SkeletonRow } from '../../../components/SkeletonRow'
 import { formatDateTime, formatAuditEvent } from '../../../lib/format'
 import { AuditLogDetailModal } from './AuditLogDetailModal'
+import { AuditLogExportModal } from './AuditLogExportModal'
+import { Button } from '../../../components/Button'
 
 type Tab = 'tenant' | 'break-glass'
 
@@ -22,6 +24,7 @@ export function AuditLogsPage() {
   const [tenantEvents, setTenantEvents] = useState<AuditLog[]>([])
   const [bgEvents, setBgEvents] = useState<AuditLog[]>([])
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
+  const [isExportOpen, setIsExportOpen] = useState(false)
 
   const { data, isLoading } = useQuery<TenantAuditData>({
     queryKey: ['tenant-audit', selectedTenantId, tenantPage, bgPage],
@@ -137,7 +140,14 @@ export function AuditLogsPage() {
 
   return (
     <Card>
-      <PageHeader title="Audit Logs" />
+      <PageHeader
+        title="Audit Logs"
+        action={
+          <Button variant="secondary" size="sm" onClick={() => setIsExportOpen(true)}>
+            Export CSV
+          </Button>
+        }
+      />
 
       {/* Tabs */}
       <div className="mb-4 flex gap-1 border-b border-[var(--ui-border)]">
@@ -168,6 +178,13 @@ export function AuditLogsPage() {
           log={selectedLog}
           timezone={tenantTimezone}
           onClose={() => setSelectedLog(null)}
+        />
+      )}
+
+      {isExportOpen && (
+        <AuditLogExportModal
+          defaultType={activeTab === 'break-glass' ? 'break_glass' : 'tenant'}
+          onClose={() => setIsExportOpen(false)}
         />
       )}
     </Card>

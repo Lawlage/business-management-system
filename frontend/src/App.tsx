@@ -20,6 +20,8 @@ import { SkeletonRow } from './components/SkeletonRow'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 import { LoginPage } from './features/auth/LoginPage'
+import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 
 // Lazy-loaded feature pages (Phase 7: code splitting)
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
@@ -36,6 +38,7 @@ const GlobalAuditPage = lazy(() => import('./features/superadmin/GlobalAuditPage
 const BreakGlassPage = lazy(() => import('./features/superadmin/BreakGlassPage').then((m) => ({ default: m.BreakGlassPage })))
 const StockAllocationsPage = lazy(() => import('./features/stock-allocations/StockAllocationsPage').then((m) => ({ default: m.StockAllocationsPage })))
 const ReportsPage = lazy(() => import('./features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })))
+const AccountPage = lazy(() => import('./features/account/AccountPage').then((m) => ({ default: m.AccountPage })))
 
 // Lazy-loaded modals (only needed when opened from dashboard)
 const RenewalDetailModal = lazy(() => import('./features/renewals/RenewalDetailModal').then((m) => ({ default: m.RenewalDetailModal })))
@@ -187,6 +190,8 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
+    if (location.pathname === '/forgot-password') return <ForgotPasswordPage />
+    if (location.pathname === '/reset-password') return <ResetPasswordPage />
     if (location.pathname !== '/login') return <Navigate to="/login" replace />
     return <LoginPage />
   }
@@ -273,6 +278,9 @@ function AppContent() {
                       : <ReportsPage />
                   }
                 />
+
+                {/* Account (accessible to all authenticated users) */}
+                <Route path="/app/account" element={<AccountPage />} />
 
                 {/* Admin routes */}
                 <Route path="/app/admin/users" element={canManageTenantAdminPages ? <UsersPage /> : <Navigate to="/app" replace />} />

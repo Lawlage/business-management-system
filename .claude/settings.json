@@ -35,7 +35,11 @@
       "Bash(php -l app/Models/StockAllocation.php)",
       "Bash(php -l app/Http/Controllers/Api/StockAllocationController.php)",
       "Bash(php -l app/Http/Controllers/Api/ReportController.php)",
-      "Bash(php -l app/Services/ReportService.php)"
+      "Bash(php -l app/Services/ReportService.php)",
+      "Bash(ls /home/jacob/business-management-system/backend/database/migrations/2026_03_13*)",
+      "Bash(bash -c 'source /home/jacob/.nvm/nvm.sh && nvm use 20 && npm run build 2>&1')",
+      "Bash(curl -s -X POST http://localhost:8090/api/auth/forgot-password -H \"Content-Type: application/json\" -H \"Accept: application/json\" -d '{\"\"email\"\":\"\"superadmin@example.com\"\"}')",
+      "Bash(docker compose exec backend php artisan tinker --execute=\":*)"
     ]
   }
 }

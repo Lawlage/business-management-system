@@ -28,6 +28,7 @@ export type AuthUser = {
   last_name: string
   email: string
   is_global_superadmin: boolean
+  last_login_at: string | null
   tenant_memberships: TenantMembership[]
 }
 
@@ -91,6 +92,7 @@ export type TenantUserMembership = {
     first_name: string
     last_name: string
     email: string
+    last_login_at: string | null
   }
 }
 

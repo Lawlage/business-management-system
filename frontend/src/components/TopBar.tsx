@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { LogOut, Moon, ShieldAlert, Sun } from 'lucide-react'
+import { LogOut, Moon, Settings, ShieldAlert, Sun } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
 import { roleLabels } from '../types'
@@ -36,7 +36,7 @@ export function TopBar({ onLogout, onStopBreakGlass, colorMode, onToggleColorMod
             <p className="font-semibold text-[var(--ui-text)]">{portalTitle}</p>
             {user && (
               <p className="text-xs text-[var(--ui-muted)]">
-                {user.email}
+                {user.first_name} {user.last_name}
                 {' · '}
                 {roleLabels[role]}
               </p>
@@ -51,6 +51,15 @@ export function TopBar({ onLogout, onStopBreakGlass, colorMode, onToggleColorMod
             >
               {colorMode === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
+
+            <Link to="/app/account">
+              <button
+                className="theme-toggle-link rounded-md p-1.5"
+                aria-label="Account settings"
+              >
+                <Settings size={16} />
+              </button>
+            </Link>
 
             {isSuperadmin && !isSuperadminTenantWorkspace && (
               <Link to="/superadmin/access">
