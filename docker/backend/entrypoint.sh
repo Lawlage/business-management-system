@@ -7,7 +7,7 @@ until mysqladmin ping -h"${DB_HOST:-mysql}" -u"${DB_USERNAME}" -p"${DB_PASSWORD}
 done
 
 php artisan migrate --force
-php artisan tenants:migrate --force
+php artisan tenants:migrate --force || [ "$?" -eq 255 ]
 
 # Seed only if the users table is empty (idempotent).
 # Force QUEUE_CONNECTION=sync so tenant DB creation runs synchronously during seeding.
