@@ -24,12 +24,17 @@ class InventoryItem extends Model
         'purchase_date',
         'linked_renewal_id',
         'notes',
+        'cost_price',
+        'sale_price',
+        'barcode',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
         'purchase_date' => 'date',
+        'cost_price' => 'decimal:2',
+        'sale_price' => 'decimal:2',
     ];
 
     public function stockTransactions(): HasMany

@@ -78,6 +78,7 @@ class RenewalController extends Controller
         $payload = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'client_id' => ['nullable', 'integer'],
+            'department_id' => ['nullable', 'integer'],
             'category' => ['required', 'string', 'max:255'],
             'owner' => ['nullable', 'string', 'max:255'],
             'vendor' => ['nullable', 'string', 'max:255'],
@@ -87,6 +88,8 @@ class RenewalController extends Controller
             'workflow_status' => ['nullable', 'string', 'max:255'],
             'auto_renews' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
+            'cost_price' => ['nullable', 'numeric', 'min:0'],
+            'sale_price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $payload['auto_renews'] = (bool) ($payload['auto_renews'] ?? false);
@@ -117,6 +120,7 @@ class RenewalController extends Controller
         $payload = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
             'client_id' => ['nullable', 'integer'],
+            'department_id' => ['nullable', 'integer'],
             'category' => ['sometimes', 'string', 'max:255'],
             'owner' => ['nullable', 'string', 'max:255'],
             'vendor' => ['nullable', 'string', 'max:255'],
@@ -126,6 +130,8 @@ class RenewalController extends Controller
             'workflow_status' => ['nullable', 'string', 'max:255'],
             'auto_renews' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
+            'cost_price' => ['nullable', 'numeric', 'min:0'],
+            'sale_price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         if (isset($payload['expiration_date']) || array_key_exists('workflow_status', $payload) || array_key_exists('auto_renews', $payload)) {

@@ -18,10 +18,14 @@ Build and maintain a production-grade, enterprise-grade multi-tenant business ma
 - UI: Tailwind CSS
 - Database: MySQL
 
-## 3) Core Modules (Initial Scope)
+## 3) Core Modules
 
 1. Renewal object management
 2. Inventory management
+3. Client management (full-page detail, allocation history, document attachments)
+4. SLA Items (product catalog + per-client SLA allocations)
+5. Departments (tenant-scoped grouping for renewals and allocations)
+6. Attachment management (documents on renewals, inventory, clients, SLA items)
 
 ## 4) Non-Negotiable Platform Capabilities
 
@@ -140,12 +144,14 @@ Required fields:
 - renewal date
 - expiration date
 - status
+- cost_price, sale_price
+- department (optional, linked to tenant Departments list)
 - notes
 - attachments
 - tenant
 - created_by
 - updated_by
-- custom fields
+- custom fields (including dropdown type)
 
 Statuses (standardized):
 
@@ -195,10 +201,12 @@ Required fields:
 - supplier/vendor
 - purchase date
 - optional renewal/warranty linkage
+- cost_price, sale_price
+- barcode (optional)
 - notes
 - attachments
 - tenant
-- custom fields
+- custom fields (including dropdown type)
 
 Rules:
 
@@ -214,10 +222,12 @@ Tenants can define custom fields for:
 
 - renewal objects
 - inventory items
+- both (applies to either entity type)
 
 Must support:
 
-- multiple data types
+- multiple data types: text, number, currency, date, boolean, JSON, dropdown
+- dropdown fields require a non-empty options list (`dropdown_options: string[]` stored as JSON)
 - validation rules
 - filtering and searching
 - per-tenant configuration
@@ -226,6 +236,38 @@ Design mandate:
 
 - maintainable architecture
 - avoid fragile JSON-only hacks
+
+## 9a) SLA Items Module
+
+Product-catalog-style SLA definitions that can be applied to clients.
+
+Required fields:
+
+- name
+- SKU (unique per tenant)
+- tier (optional, e.g. Gold / Platinum)
+- response_time, resolution_time (optional strings)
+- cost_price, sale_price
+- notes
+- attachments
+- soft-delete with recycle-bin support
+
+SLA Allocations (applying an SLA item to a client):
+
+- sla_item_id, client_id, department_id (optional)
+- quantity, unit_price (optional)
+- status: active | cancelled
+- cancellation tracked (cancelled_by, cancelled_at)
+
+## 9b) Departments
+
+Simple name-only list per tenant. Departments can be assigned to:
+
+- renewals (department_id on Renewal)
+- stock allocations (department_id on StockAllocation)
+- SLA allocations (department_id on SlaAllocation)
+
+Only tenant admins can create/delete departments.
 
 ## 10) Reference Data Model
 

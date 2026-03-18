@@ -43,17 +43,27 @@ export type Client = {
   created_at?: string
 }
 
+export type Department = {
+  id: number
+  name: string
+  created_at?: string
+}
+
 export type Renewal = {
   id: number
   title: string
   client_id?: number | null
   client?: { id: number; name: string } | null
+  department_id?: number | null
+  department?: { id: number; name: string } | null
   status: string
   workflow_status?: string | null
   auto_renews?: boolean
   category: string
   expiration_date: string
   notes?: string | null
+  cost_price?: string | null
+  sale_price?: string | null
   created_at?: string
 }
 
@@ -67,15 +77,61 @@ export type InventoryItem = {
   vendor?: string | null
   purchase_date?: string | null
   notes?: string | null
+  cost_price?: string | null
+  sale_price?: string | null
+  barcode?: string | null
   created_at?: string
+}
+
+export type SlaItem = {
+  id: number
+  name: string
+  sku: string
+  tier?: string | null
+  response_time?: string | null
+  resolution_time?: string | null
+  cost_price: string
+  sale_price: string
+  notes?: string | null
+  created_at?: string
+}
+
+export type SlaAllocation = {
+  id: number
+  sla_item_id: number
+  client_id: number
+  department_id?: number | null
+  quantity: number
+  unit_price: string | null
+  notes: string | null
+  status: 'active' | 'cancelled'
+  allocated_by: number
+  cancelled_by: number | null
+  cancelled_at: string | null
+  created_at: string
+  updated_at: string
+  sla_item?: { id: number; name: string; sku: string }
+  client?: { id: number; name: string }
+  department?: { id: number; name: string } | null
+}
+
+export type Attachment = {
+  id: number
+  attachment_id: number
+  original_name: string
+  mime_type: string | null
+  size: number
+  uploaded_by: number
+  created_at: string
 }
 
 export type CustomField = {
   id: number
-  entity_type: 'renewal' | 'inventory' | 'both'
+  entity_type: string[]
   name: string
   key: string
   field_type: string
+  dropdown_options?: string[] | null
 }
 
 export type CustomFieldValueResponse = {
@@ -111,6 +167,7 @@ export type StockAllocation = {
   id: number
   inventory_item_id: number
   client_id: number
+  department_id?: number | null
   quantity: number
   unit_price: string | null
   notes: string | null
@@ -122,6 +179,7 @@ export type StockAllocation = {
   updated_at: string
   inventory_item?: { id: number; name: string; sku: string }
   client?: { id: number; name: string }
+  department?: { id: number; name: string } | null
 }
 
 export type PaginatedResponse<T> = {
@@ -141,6 +199,7 @@ export type RecycleBinData = {
   inventory_items: PaginatedResponse<InventoryItem>
   custom_fields: PaginatedResponse<CustomField>
   clients: PaginatedResponse<Client>
+  sla_items: PaginatedResponse<SlaItem>
 }
 
 export type TenantAuditData = {
@@ -185,11 +244,14 @@ export const renewalWorkflowOptions = [
 export const renewalDefaults = {
   title: '',
   client_id: null as number | null,
+  department_id: null as number | null,
   category: 'contract',
   expiration_date: '',
   workflow_status: '',
   auto_renews: false,
   notes: '',
+  cost_price: '0.00',
+  sale_price: '0.00',
 }
 
 export const clientDefaults = {
@@ -208,5 +270,17 @@ export const inventoryDefaults = {
   minimum_on_hand: 0,
   location: '',
   vendor: '',
+  notes: '',
+  cost_price: '0.00',
+  sale_price: '0.00',
+  barcode: '',
+}
+
+export const slaItemDefaults = {
+  name: '',
+  sku: '',
+  tier: '',
+  cost_price: '0.00',
+  sale_price: '0.00',
   notes: '',
 }

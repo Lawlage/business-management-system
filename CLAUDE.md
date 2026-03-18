@@ -154,7 +154,7 @@ All routes are in `backend/routes/api.php`. Three groups:
 
 1. **Public** — `POST /api/auth/login`
 2. **Superadmin** (`auth:sanctum` + `superadmin`) — tenant CRUD, break-glass, global audit logs
-3. **Tenant-scoped** (`auth:sanctum` + `tenant.context`) — renewals, inventory, users, custom fields, settings, recycle bin, audit logs
+3. **Tenant-scoped** (`auth:sanctum` + `tenant.context`) — renewals, inventory, clients, SLA items, SLA allocations, stock allocations, departments, attachments, users, custom fields, settings, recycle bin, audit logs
 
 Individual routes are further protected with `tenant.permission:<permission>` middleware.
 
@@ -202,9 +202,14 @@ frontend/src/
     auth/                  # login page
     dashboard/
     renewals/              # RenewalsPage, RenewalDetailModal, CreateRenewalModal
-    inventory/             # InventoryPage, InventoryDetailModal, CreateInventoryModal
+    inventory/             # InventoryPage, InventoryDetailModal, CreateInventoryModal, AllocateStockModal
+    clients/               # ClientsPage, ClientDetailPage (full-page /clients/:id with tabs)
+    sla-items/             # SlaItemsPage, CreateSlaItemModal, SlaItemDetailModal, ApplySlaModal
     recycle-bin/
-    admin/                 # tenant admin settings
+    admin/
+      custom-fields/       # CustomFieldsPage (includes dropdown type with options editor)
+      departments/         # DepartmentsPage
+      settings/            # TenantSettingsPage
     superadmin/            # global superadmin portal
 ```
 
@@ -213,7 +218,8 @@ frontend/src/
 - API calls: `useApi()` from `hooks/useApi.ts` — sets `X-Tenant-Id` and `X-Break-Glass-Token` automatically
 - UI theming: CSS custom properties via `applyUiTheme()` in `uiSettings.ts`; settings include `theme_preset`, `density`, `font_family`, custom colour tokens
 - All feature pages are lazy-loaded (`React.lazy`)
-- Test wrapper requires `QueryClientProvider` + `BrowserRouter` around components
+- Test wrapper requires `QueryClientProvider` + `BrowserRouter` (or `MemoryRouter`) around components — see `frontend/src/test/helpers.tsx` for `createWrapper()`
+- Tests that need route params (`useParams`) must render inside `<Routes><Route path="..." /></Routes>` with the appropriate initial URL
 
 ### Scheduled Tasks
 
@@ -221,9 +227,13 @@ frontend/src/
 
 ### Key Models
 
-Tenant-scoped (use `SoftDeletes`): `Renewal`, `InventoryItem`, `CustomFieldDefinition`, `CustomFieldValue`, `TenantAuditLog`
+Tenant-scoped (use `SoftDeletes`): `Renewal`, `InventoryItem`, `Client`, `SlaItem`, `SlaAllocation`, `StockAllocation`, `Department`, `Attachment`, `AttachmentLink`, `CustomFieldDefinition`, `CustomFieldValue`, `TenantAuditLog`
 
 Central DB: `Tenant`, `User`, `TenantMembership`, `GlobalAuditLog`, `BreakGlassAccess`
+
+### Attachment Storage
+
+Uploaded files are stored at `storage/app/tenants/{tenant_id}/attachments/{uuid}.{ext}` on a private local disk. An `Attachment` record holds the file metadata; `AttachmentLink` associates the file with a specific entity (`entity_type` ∈ `renewal|inventory|client|sla_item`, `entity_id`). Download streams the file through the API (`GET /api/attachments/{id}/download`) with tenant-membership verification.
 
 ### Key Config Files
 

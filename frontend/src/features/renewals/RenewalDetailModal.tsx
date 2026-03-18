@@ -9,8 +9,10 @@ import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { Select } from '../../components/Select'
 import { Textarea } from '../../components/Textarea'
+import { CurrencyInput } from '../../components/CurrencyInput'
+import { AttachmentList } from '../../components/AttachmentList'
 import { renewalCategoryOptions, renewalWorkflowOptions } from '../../types'
-import type { Renewal, CustomField, CustomFieldValueResponse } from '../../types'
+import type { Renewal, CustomField, CustomFieldValueResponse, Department } from '../../types'
 
 type RenewalDetailModalProps = {
   renewal: Renewal
@@ -23,11 +25,14 @@ type RenewalDetailModalProps = {
 type RenewalForm = {
   title: string
   client_id: number | null
+  department_id: number | null
   category: string
   expiration_date: string
   workflow_status: string
   auto_renews: boolean
   notes: string
+  cost_price: string
+  sale_price: string
 }
 
 export function RenewalDetailModal({
@@ -42,14 +47,19 @@ export function RenewalDetailModal({
   const { showNotice } = useNotice()
   const confirm = useConfirm()
 
+  const [activeTab, setActiveTab] = useState<'details' | 'documents'>('details')
+
   const [form, setForm] = useState<RenewalForm>({
     title: renewal.title ?? '',
     client_id: renewal.client_id ?? null,
+    department_id: renewal.department_id ?? null,
     category: renewal.category ?? '',
     expiration_date: renewal.expiration_date ?? '',
     workflow_status: renewal.workflow_status ?? '',
     auto_renews: renewal.auto_renews ?? false,
     notes: renewal.notes ?? '',
+    cost_price: renewal.cost_price ?? '0.00',
+    sale_price: renewal.sale_price ?? '0.00',
   })
 
   const [customValues, setCustomValues] = useState<Record<number, string | number | boolean | null>>({})
@@ -63,6 +73,13 @@ export function RenewalDetailModal({
     queryKey: ['clients-all', selectedTenantId],
     queryFn: () =>
       authedFetch<{ id: number; name: string }[]>('/api/clients?all=1', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
+
+  const { data: departments = [] } = useQuery<Department[]>({
+    queryKey: ['departments', selectedTenantId],
+    queryFn: () => authedFetch<Department[]>('/api/departments', { tenantScoped: true }),
     enabled: !!selectedTenantId,
     staleTime: 30_000,
   })
@@ -252,6 +269,28 @@ export function RenewalDetailModal({
       )
     }
 
+    if (field.field_type === 'dropdown' && field.dropdown_options) {
+      return (
+        <Select
+          key={field.id}
+          label={field.name}
+          value={rawValue !== null ? String(rawValue) : ''}
+          onChange={(e) =>
+            setCustomValues((prev) => ({
+              ...prev,
+              [field.id]: e.target.value || null,
+            }))
+          }
+          disabled={!canEdit}
+        >
+          <option value="">— Select —</option>
+          {field.dropdown_options.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </Select>
+      )
+    }
+
     // text / json / fallback
     return (
       <Input
@@ -276,7 +315,7 @@ export function RenewalDetailModal({
       footer={
         <div className="flex items-center justify-between">
           <div>
-            {canDelete && (
+            {canDelete && activeTab === 'details' && (
               <Button
                 variant="danger"
                 onClick={() => void handleDelete()}
@@ -286,7 +325,7 @@ export function RenewalDetailModal({
               </Button>
             )}
           </div>
-          {canEdit && (
+          {canEdit && activeTab === 'details' && (
             <Button
               variant="primary"
               onClick={handleSave}
@@ -298,6 +337,25 @@ export function RenewalDetailModal({
         </div>
       }
     >
+      {/* Tabs */}
+      <div className="mb-4 flex gap-1 border-b border-[var(--ui-border)]">
+        {(['details', 'documents'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={[
+              'px-4 py-2 text-sm font-medium capitalize transition',
+              activeTab === tab
+                ? 'border-b-2 border-[var(--ui-button-bg)] text-[var(--ui-button-bg)]'
+                : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]',
+            ].join(' ')}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'details' && (
       <div className="grid gap-4 md:grid-cols-2">
         <Input
           label="Title"
@@ -318,6 +376,20 @@ export function RenewalDetailModal({
             <option key={c.id} value={String(c.id)}>{c.name}</option>
           ))}
         </Select>
+
+        {departments.length > 0 && (
+          <Select
+            label="Department"
+            value={form.department_id !== null ? String(form.department_id) : ''}
+            onChange={(e) => setField('department_id', e.target.value ? Number(e.target.value) : null)}
+            disabled={!canEdit}
+          >
+            <option value="">— No department —</option>
+            {departments.map((d) => (
+              <option key={d.id} value={String(d.id)}>{d.name}</option>
+            ))}
+          </Select>
+        )}
 
         <Select
           label="Type"
@@ -355,6 +427,20 @@ export function RenewalDetailModal({
           ))}
         </Select>
 
+        <CurrencyInput
+          label="Cost Price"
+          value={form.cost_price}
+          onChange={(v) => setField('cost_price', v)}
+          disabled={!canEdit}
+        />
+
+        <CurrencyInput
+          label="Sale Price"
+          value={form.sale_price}
+          onChange={(v) => setField('sale_price', v)}
+          disabled={!canEdit}
+        />
+
         <Textarea
           label="Notes"
           className="md:col-span-2"
@@ -388,6 +474,15 @@ export function RenewalDetailModal({
           </>
         )}
       </div>
+      )}
+
+      {activeTab === 'documents' && (
+        <AttachmentList
+          entityType="renewal"
+          entityId={renewal.id}
+          canEdit={canEdit}
+        />
+      )}
     </Modal>
   )
 }

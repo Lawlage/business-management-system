@@ -7,8 +7,11 @@ import { useConfirm } from '../../contexts/ConfirmContext'
 import { Modal } from '../../components/Modal'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
+import { Select } from '../../components/Select'
 import { Textarea } from '../../components/Textarea'
 import { Badge } from '../../components/Badge'
+import { CurrencyInput } from '../../components/CurrencyInput'
+import { AttachmentList } from '../../components/AttachmentList'
 import { formatDate } from '../../lib/format'
 import { AllocateStockModal } from './AllocateStockModal'
 import type { InventoryItem, CustomField, CustomFieldValueResponse, StockAllocation, PaginatedResponse } from '../../types'
@@ -28,6 +31,9 @@ type InventoryForm = {
   location: string
   vendor: string
   notes: string
+  cost_price: string
+  sale_price: string
+  barcode: string
 }
 
 export function InventoryDetailModal({
@@ -43,7 +49,7 @@ export function InventoryDetailModal({
   const confirm = useConfirm()
   const queryClient = useQueryClient()
 
-  const [activeTab, setActiveTab] = useState<'details' | 'allocations'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'allocations' | 'documents'>('details')
   const [isAllocateOpen, setIsAllocateOpen] = useState(false)
 
   const canAllocate = role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'
@@ -83,6 +89,9 @@ export function InventoryDetailModal({
     location: item.location ?? '',
     vendor: item.vendor ?? '',
     notes: item.notes ?? '',
+    cost_price: item.cost_price ?? '0.00',
+    sale_price: item.sale_price ?? '0.00',
+    barcode: item.barcode ?? '',
   })
 
   const [customValues, setCustomValues] = useState<Record<number, string | number | boolean | null>>({})
@@ -276,6 +285,28 @@ export function InventoryDetailModal({
       )
     }
 
+    if (field.field_type === 'dropdown' && field.dropdown_options) {
+      return (
+        <Select
+          key={field.id}
+          label={field.name}
+          value={rawValue !== null ? String(rawValue) : ''}
+          onChange={(e) =>
+            setCustomValues((prev) => ({
+              ...prev,
+              [field.id]: e.target.value || null,
+            }))
+          }
+          disabled={!canEdit}
+        >
+          <option value="">— Select —</option>
+          {field.dropdown_options.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </Select>
+      )
+    }
+
     // text / json / fallback
     return (
       <Input
@@ -332,7 +363,7 @@ export function InventoryDetailModal({
     >
       {/* Tabs */}
       <div className="mb-4 flex gap-1 border-b border-[var(--ui-border)]">
-        {(['details', 'allocations'] as const).map((tab) => (
+        {(['details', 'allocations', 'documents'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -347,6 +378,14 @@ export function InventoryDetailModal({
           </button>
         ))}
       </div>
+
+      {activeTab === 'documents' && (
+        <AttachmentList
+          entityType="inventory"
+          entityId={item.id}
+          canEdit={canEdit}
+        />
+      )}
 
       {activeTab === 'allocations' ? (
         <div className="space-y-2">
@@ -435,6 +474,30 @@ export function InventoryDetailModal({
           label="Vendor"
           value={form.vendor}
           onChange={(e) => setField('vendor', e.target.value)}
+          disabled={!canEdit}
+        />
+
+        <Input
+          label="Barcode / EAN"
+          value={form.barcode}
+          onChange={(e) => setField('barcode', e.target.value)}
+          disabled={!canEdit}
+          placeholder="e.g. 5901234123457"
+        />
+
+        <div /> {/* grid spacer */}
+
+        <CurrencyInput
+          label="Cost Price"
+          value={form.cost_price}
+          onChange={(v) => setField('cost_price', v)}
+          disabled={!canEdit}
+        />
+
+        <CurrencyInput
+          label="Sale Price"
+          value={form.sale_price}
+          onChange={(v) => setField('sale_price', v)}
           disabled={!canEdit}
         />
 

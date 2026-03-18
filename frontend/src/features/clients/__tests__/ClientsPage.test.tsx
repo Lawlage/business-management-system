@@ -32,17 +32,13 @@ function renderPage() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  const onOpenClient = vi.fn()
-  return {
-    onOpenClient,
-    ...render(
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <ClientsPage onOpenClient={onOpenClient} />
-        </BrowserRouter>
-      </QueryClientProvider>,
-    ),
-  }
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ClientsPage />
+      </BrowserRouter>
+    </QueryClientProvider>,
+  )
 }
 
 describe('ClientsPage', () => {

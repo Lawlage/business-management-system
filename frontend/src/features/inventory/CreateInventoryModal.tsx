@@ -6,7 +6,9 @@ import { useNotice } from '../../contexts/NoticeContext'
 import { Modal } from '../../components/Modal'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
+import { Select } from '../../components/Select'
 import { Textarea } from '../../components/Textarea'
+import { CurrencyInput } from '../../components/CurrencyInput'
 import { validate, hasErrors } from '../../lib/validation'
 import type { ValidationErrors } from '../../lib/validation'
 import type { CustomField } from '../../types'
@@ -168,6 +170,27 @@ export function CreateInventoryModal({ onClose, onCreated }: CreateInventoryModa
       )
     }
 
+    if (field.field_type === 'dropdown' && field.dropdown_options) {
+      return (
+        <Select
+          key={field.id}
+          label={field.name}
+          value={rawValue !== null ? String(rawValue) : ''}
+          onChange={(e) =>
+            setCustomValues((prev) => ({
+              ...prev,
+              [field.id]: e.target.value || null,
+            }))
+          }
+        >
+          <option value="">— Select —</option>
+          {field.dropdown_options.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </Select>
+      )
+    }
+
     return (
       <Input
         key={field.id}
@@ -240,6 +263,27 @@ export function CreateInventoryModal({ onClose, onCreated }: CreateInventoryModa
           label="Vendor"
           value={form.vendor}
           onChange={(e) => setField('vendor', e.target.value)}
+        />
+
+        <Input
+          label="Barcode / EAN"
+          value={form.barcode}
+          onChange={(e) => setField('barcode', e.target.value)}
+          placeholder="e.g. 5901234123457"
+        />
+
+        <div /> {/* grid spacer */}
+
+        <CurrencyInput
+          label="Cost Price"
+          value={form.cost_price}
+          onChange={(v) => setField('cost_price', v)}
+        />
+
+        <CurrencyInput
+          label="Sale Price"
+          value={form.sale_price}
+          onChange={(v) => setField('sale_price', v)}
         />
 
         <Textarea

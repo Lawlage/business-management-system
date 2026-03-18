@@ -8,9 +8,10 @@ import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { Select } from '../../components/Select'
 import { Textarea } from '../../components/Textarea'
+import { CurrencyInput } from '../../components/CurrencyInput'
 import { validate, hasErrors } from '../../lib/validation'
 import type { ValidationErrors } from '../../lib/validation'
-import type { CustomField } from '../../types'
+import type { CustomField, Department } from '../../types'
 import { renewalCategoryOptions, renewalWorkflowOptions, renewalDefaults } from '../../types'
 
 type CreateRenewalModalProps = {
@@ -34,6 +35,13 @@ export function CreateRenewalModal({ onClose, onCreated }: CreateRenewalModalPro
     queryKey: ['clients-all', selectedTenantId],
     queryFn: () =>
       authedFetch<{ id: number; name: string }[]>('/api/clients?all=1', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
+
+  const { data: departments = [] } = useQuery<Department[]>({
+    queryKey: ['departments', selectedTenantId],
+    queryFn: () => authedFetch<Department[]>('/api/departments', { tenantScoped: true }),
     enabled: !!selectedTenantId,
     staleTime: 30_000,
   })
@@ -176,6 +184,27 @@ export function CreateRenewalModal({ onClose, onCreated }: CreateRenewalModalPro
       )
     }
 
+    if (field.field_type === 'dropdown' && field.dropdown_options) {
+      return (
+        <Select
+          key={field.id}
+          label={field.name}
+          value={rawValue !== null ? String(rawValue) : ''}
+          onChange={(e) =>
+            setCustomValues((prev) => ({
+              ...prev,
+              [field.id]: e.target.value || null,
+            }))
+          }
+        >
+          <option value="">— Select —</option>
+          {field.dropdown_options.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </Select>
+      )
+    }
+
     return (
       <Input
         key={field.id}
@@ -223,6 +252,19 @@ export function CreateRenewalModal({ onClose, onCreated }: CreateRenewalModalPro
           ))}
         </Select>
 
+        {departments.length > 0 && (
+          <Select
+            label="Department"
+            value={form.department_id !== null ? String(form.department_id) : ''}
+            onChange={(e) => setField('department_id', e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">— No department —</option>
+            {departments.map((d) => (
+              <option key={d.id} value={String(d.id)}>{d.name}</option>
+            ))}
+          </Select>
+        )}
+
         <Select
           label="Type"
           value={form.category}
@@ -256,6 +298,18 @@ export function CreateRenewalModal({ onClose, onCreated }: CreateRenewalModalPro
             </option>
           ))}
         </Select>
+
+        <CurrencyInput
+          label="Cost Price"
+          value={form.cost_price}
+          onChange={(v) => setField('cost_price', v)}
+        />
+
+        <CurrencyInput
+          label="Sale Price"
+          value={form.sale_price}
+          onChange={(v) => setField('sale_price', v)}
+        />
 
         <Textarea
           label="Notes"

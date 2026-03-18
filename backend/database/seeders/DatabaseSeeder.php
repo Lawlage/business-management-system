@@ -40,8 +40,18 @@ class DatabaseSeeder extends Seeder
 
         // Use firstOrCreate (not DB::table) so Eloquent model events fire and
         // stancl/tenancy's CreateDatabase pipeline runs on first seed.
+        //
+        // Guard against the case where the central DB was reset (migrate:fresh)
+        // but the MySQL tenant database persists from a previous run — in that
+        // scenario CreateDatabase would throw TenantDatabaseAlreadyExistsException.
+        // Drop the orphaned database first so we can re-provision cleanly.
+        $demoTenantId = '00000000-0000-0000-0000-000000000001';
+        if (!Tenant::query()->find($demoTenantId)) {
+            DB::statement("DROP DATABASE IF EXISTS `tenant{$demoTenantId}`");
+        }
+
         $tenant = Tenant::firstOrCreate(
-            ['id' => '00000000-0000-0000-0000-000000000001'],
+            ['id' => $demoTenantId],
             [
                 'name' => 'Acme Corp',
                 'slug' => 'acme',
@@ -115,6 +125,9 @@ class DatabaseSeeder extends Seeder
                     'purchase_date' => '2025-01-15',
                     'linked_renewal_id' => null,
                     'notes' => 'Ergonomic mesh chairs.',
+                    'cost_price' => 199.00,
+                    'sale_price' => 299.00,
+                    'barcode' => null,
                     'created_by' => $tenantAdmin->id,
                     'updated_by' => $tenantAdmin->id,
                     'created_at' => now(),
@@ -133,6 +146,28 @@ class DatabaseSeeder extends Seeder
                     'purchase_date' => '2025-06-01',
                     'linked_renewal_id' => null,
                     'notes' => null,
+                    'cost_price' => 1499.00,
+                    'sale_price' => 1899.00,
+                    'barcode' => null,
+                    'created_by' => $tenantAdmin->id,
+                    'updated_by' => $tenantAdmin->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                    'deleted_at' => null,
+                ],
+            ]);
+
+            DB::connection('tenant')->table('sla_items')->insertOrIgnore([
+                [
+                    'id' => 1,
+                    'name' => 'Standard Support SLA',
+                    'sku' => 'SLA-STD-001',
+                    'tier' => 'Standard',
+                    'response_time' => '4 hours',
+                    'resolution_time' => '2 business days',
+                    'cost_price' => 0.00,
+                    'sale_price' => 99.00,
+                    'notes' => 'Standard business-hours support coverage.',
                     'created_by' => $tenantAdmin->id,
                     'updated_by' => $tenantAdmin->id,
                     'created_at' => now(),

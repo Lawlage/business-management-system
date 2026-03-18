@@ -145,6 +145,61 @@ class CustomFieldControllerTest extends TestCase
         $response->assertUnprocessable()->assertJsonValidationErrors(['field_type']);
     }
 
+    // ── Dropdown type ──────────────────────────────────────────────────────────
+
+    public function test_can_create_dropdown_custom_field_with_options(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $response = $this->actingAs($user)->postJson('/api/custom-fields', [
+            'entity_type' => 'renewal',
+            'name' => 'Priority',
+            'key' => 'priority',
+            'field_type' => 'dropdown',
+            'is_required' => false,
+            'validation_rules' => [],
+            'dropdown_options' => ['Low', 'Medium', 'High'],
+        ], $this->tenantHeaders($tenant));
+
+        $response->assertCreated()
+            ->assertJsonPath('field_type', 'dropdown')
+            ->assertJsonPath('dropdown_options.0', 'Low')
+            ->assertJsonPath('dropdown_options.2', 'High');
+    }
+
+    public function test_dropdown_field_requires_options(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/custom-fields', [
+            'entity_type' => 'renewal',
+            'name' => 'Status',
+            'key' => 'status_dropdown',
+            'field_type' => 'dropdown',
+            'is_required' => false,
+            'validation_rules' => [],
+            'dropdown_options' => [],
+        ], $this->tenantHeaders($tenant))->assertUnprocessable();
+    }
+
+    public function test_non_dropdown_field_ignores_dropdown_options(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $response = $this->actingAs($user)->postJson('/api/custom-fields', [
+            'entity_type' => 'renewal',
+            'name' => 'Notes',
+            'key' => 'extra_notes',
+            'field_type' => 'text',
+            'is_required' => false,
+            'validation_rules' => [],
+            'dropdown_options' => ['A', 'B'],
+        ], $this->tenantHeaders($tenant));
+
+        $response->assertCreated();
+        $this->assertNull($response->json('dropdown_options'));
+    }
+
     // ── Delete ─────────────────────────────────────────────────────────────────
 
     public function test_tenant_admin_can_delete_custom_field(): void

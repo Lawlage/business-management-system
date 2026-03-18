@@ -32,4 +32,9 @@ class Client extends Model
     {
         return $this->hasMany(StockAllocation::class);
     }
+
+    public function slaAllocations(): HasMany
+    {
+        return $this->hasMany(SlaAllocation::class);
+    }
 }

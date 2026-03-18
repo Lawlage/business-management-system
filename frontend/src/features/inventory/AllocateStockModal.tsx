@@ -7,7 +7,7 @@ import { Modal } from '../../components/Modal'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { Textarea } from '../../components/Textarea'
-import type { Client, InventoryItem } from '../../types'
+import type { Client, Department, InventoryItem } from '../../types'
 
 type AllocateStockModalProps = {
   item: InventoryItem
@@ -22,6 +22,7 @@ export function AllocateStockModal({ item, onClose, onAllocated }: AllocateStock
   const queryClient = useQueryClient()
 
   const [clientId, setClientId] = useState('')
+  const [departmentId, setDepartmentId] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [unitPrice, setUnitPrice] = useState('')
   const [notes, setNotes] = useState('')
@@ -34,6 +35,13 @@ export function AllocateStockModal({ item, onClose, onAllocated }: AllocateStock
     staleTime: 30000,
   })
 
+  const { data: departments = [] } = useQuery<Department[]>({
+    queryKey: ['departments', selectedTenantId],
+    queryFn: () => authedFetch<Department[]>('/api/departments', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
+
   const allocateMutation = useMutation({
     mutationFn: () =>
       authedFetch('/api/stock-allocations', {
@@ -41,6 +49,7 @@ export function AllocateStockModal({ item, onClose, onAllocated }: AllocateStock
         body: JSON.stringify({
           inventory_item_id: item.id,
           client_id: Number(clientId),
+          department_id: departmentId ? Number(departmentId) : null,
           quantity,
           unit_price: unitPrice !== '' ? Number(unitPrice) : null,
           notes: notes || null,
@@ -116,6 +125,22 @@ export function AllocateStockModal({ item, onClose, onAllocated }: AllocateStock
             ))}
           </select>
         </div>
+
+        {departments.length > 0 && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[var(--ui-text)]">Department</label>
+            <select
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+              className="w-full rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60"
+            >
+              <option value="">— No department —</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <Input

@@ -43,6 +43,9 @@ class InventoryController extends Controller
             'purchase_date' => ['nullable', 'date'],
             'linked_renewal_id' => ['nullable', 'integer'],
             'notes' => ['nullable', 'string'],
+            'cost_price' => ['nullable', 'numeric', 'min:0'],
+            'sale_price' => ['nullable', 'numeric', 'min:0'],
+            'barcode' => ['nullable', 'string', 'max:100'],
         ]);
 
         $payload['created_by'] = $request->user()->id;
@@ -73,6 +76,9 @@ class InventoryController extends Controller
             'purchase_date' => ['nullable', 'date'],
             'linked_renewal_id' => ['nullable', 'integer'],
             'notes' => ['nullable', 'string'],
+            'cost_price' => ['nullable', 'numeric', 'min:0'],
+            'sale_price' => ['nullable', 'numeric', 'min:0'],
+            'barcode' => ['nullable', 'string', 'max:100'],
         ]);
 
         $payload['updated_by'] = $request->user()->id;

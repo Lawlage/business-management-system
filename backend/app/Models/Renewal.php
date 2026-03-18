@@ -20,9 +20,16 @@ class Renewal extends Model
         return $this->belongsTo(Client::class);
     }
 
+    /** @return BelongsTo<Department, $this> */
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
     protected $fillable = [
         'title',
         'client_id',
+        'department_id',
         'category',
         'owner',
         'vendor',
@@ -33,6 +40,8 @@ class Renewal extends Model
         'workflow_status',
         'auto_renews',
         'notes',
+        'cost_price',
+        'sale_price',
         'created_by',
         'updated_by',
     ];
@@ -42,5 +51,7 @@ class Renewal extends Model
         'renewal_date' => 'date',
         'expiration_date' => 'date',
         'auto_renews' => 'boolean',
+        'cost_price' => 'decimal:2',
+        'sale_price' => 'decimal:2',
     ];
 }

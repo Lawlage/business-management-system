@@ -13,6 +13,7 @@ class StockAllocation extends Model
     protected $fillable = [
         'inventory_item_id',
         'client_id',
+        'department_id',
         'quantity',
         'unit_price',
         'notes',
@@ -37,5 +38,11 @@ class StockAllocation extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /** @return BelongsTo<Department, $this> */
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
     }
 }

@@ -12,6 +12,8 @@ import {
   Contact,
   ArrowRightLeft,
   BarChart2,
+  ShieldCheck,
+  FolderCog,
 } from 'lucide-react'
 import type { AppRole } from '../types'
 
@@ -61,12 +63,14 @@ export function Sidebar({ role, isSuperadminTenantWorkspace, isOpen, onClose }: 
     ...(role !== 'standard_user'
       ? [{ to: '/app/reports', label: 'Reports', icon: <BarChart2 size={16} /> }]
       : []),
+    { to: '/app/sla-items', label: 'SLA Items', icon: <ShieldCheck size={16} /> },
     { to: '/app/recycle-bin', label: 'Recycle Bin', icon: <Trash2 size={16} /> },
   ]
 
   const adminLinks: NavLink[] = [
     { to: '/app/admin/users', label: 'User Management', icon: <Users size={16} /> },
     { to: '/app/admin/custom-fields', label: 'Custom Fields', icon: <ClipboardList size={16} /> },
+    { to: '/app/admin/departments', label: 'Departments', icon: <FolderCog size={16} /> },
     { to: '/app/admin/tenant-settings', label: 'Tenant Settings', icon: <Settings size={16} /> },
     { to: '/app/admin/audit', label: 'Tenant Audit', icon: <ShieldAlert size={16} /> },
   ]

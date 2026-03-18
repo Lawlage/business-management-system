@@ -10,7 +10,7 @@ import { ConfirmProvider, useConfirm } from './contexts/ConfirmContext'
 import { applyUiTheme, normalizeUiSettings } from './uiSettings'
 import { useApi } from './hooks/useApi'
 
-import type { Renewal, InventoryItem, Client, TenantUiSettings } from './types'
+import type { Renewal, InventoryItem, TenantUiSettings } from './types'
 
 import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
@@ -28,6 +28,9 @@ const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').th
 const RenewalsPage = lazy(() => import('./features/renewals/RenewalsPage').then((m) => ({ default: m.RenewalsPage })))
 const InventoryPage = lazy(() => import('./features/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })))
 const ClientsPage = lazy(() => import('./features/clients/ClientsPage').then((m) => ({ default: m.ClientsPage })))
+const ClientDetailPage = lazy(() => import('./features/clients/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })))
+const SlaItemsPage = lazy(() => import('./features/sla-items/SlaItemsPage').then((m) => ({ default: m.SlaItemsPage })))
+const DepartmentsPage = lazy(() => import('./features/admin/departments/DepartmentsPage').then((m) => ({ default: m.DepartmentsPage })))
 const RecycleBinPage = lazy(() => import('./features/recycle-bin/RecycleBinPage').then((m) => ({ default: m.RecycleBinPage })))
 const UsersPage = lazy(() => import('./features/admin/users/UsersPage').then((m) => ({ default: m.UsersPage })))
 const CustomFieldsPage = lazy(() => import('./features/admin/custom-fields/CustomFieldsPage').then((m) => ({ default: m.CustomFieldsPage })))
@@ -43,7 +46,6 @@ const AccountPage = lazy(() => import('./features/account/AccountPage').then((m)
 // Lazy-loaded modals (only needed when opened from dashboard)
 const RenewalDetailModal = lazy(() => import('./features/renewals/RenewalDetailModal').then((m) => ({ default: m.RenewalDetailModal })))
 const InventoryDetailModal = lazy(() => import('./features/inventory/InventoryDetailModal').then((m) => ({ default: m.InventoryDetailModal })))
-const ClientDetailModal = lazy(() => import('./features/clients/ClientDetailModal').then((m) => ({ default: m.ClientDetailModal })))
 
 function PageLoader() {
   return (
@@ -99,7 +101,6 @@ function AppContent() {
   // Modals opened from dashboard / list pages
   const [dashboardRenewal, setDashboardRenewal] = useState<Renewal | null>(null)
   const [dashboardInventory, setDashboardInventory] = useState<InventoryItem | null>(null)
-  const [dashboardClient, setDashboardClient] = useState<Client | null>(null)
 
   // Auto-select first tenant for regular users after login
   useEffect(() => {
@@ -248,7 +249,23 @@ function AppContent() {
                   element={
                     role === 'global_superadmin' && !isSuperadminTenantWorkspace
                       ? <Navigate to="/superadmin/access" replace />
-                      : <ClientsPage onOpenClient={setDashboardClient} />
+                      : <ClientsPage />
+                  }
+                />
+                <Route
+                  path="/app/clients/:id"
+                  element={
+                    role === 'global_superadmin' && !isSuperadminTenantWorkspace
+                      ? <Navigate to="/superadmin/access" replace />
+                      : <ClientDetailPage />
+                  }
+                />
+                <Route
+                  path="/app/sla-items"
+                  element={
+                    role === 'global_superadmin' && !isSuperadminTenantWorkspace
+                      ? <Navigate to="/superadmin/access" replace />
+                      : <SlaItemsPage />
                   }
                 />
                 <Route
@@ -300,6 +317,7 @@ function AppContent() {
                 <Route path="/app/admin/custom-fields" element={canManageTenantAdminPages ? <CustomFieldsPage /> : <Navigate to="/app" replace />} />
                 <Route path="/app/admin/tenant-settings" element={canManageTenantAdminPages ? <TenantSettingsPage /> : <Navigate to="/app" replace />} />
                 <Route path="/app/admin/audit" element={canManageTenantAdminPages ? <AuditLogsPage /> : <Navigate to="/app" replace />} />
+                <Route path="/app/admin/departments" element={canManageTenantAdminPages ? <DepartmentsPage /> : <Navigate to="/app" replace />} />
 
                 {/* Superadmin routes */}
                 <Route path="/superadmin" element={role === 'global_superadmin' ? <TenantsPage /> : <Navigate to="/app" replace />} />
@@ -334,19 +352,6 @@ function AppContent() {
                 onUpdated={() => {
                   void queryClient.invalidateQueries({ queryKey: ['dashboard', selectedTenantId] })
                   void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
-                }}
-                canDelete={role === 'tenant_admin' || role === 'global_superadmin'}
-                canEdit={canEditRecords}
-              />
-            </Suspense>
-          )}
-          {dashboardClient && (
-            <Suspense fallback={null}>
-              <ClientDetailModal
-                client={dashboardClient}
-                onClose={() => setDashboardClient(null)}
-                onUpdated={() => {
-                  void queryClient.invalidateQueries({ queryKey: ['clients', selectedTenantId] })
                 }}
                 canDelete={role === 'tenant_admin' || role === 'global_superadmin'}
                 canEdit={canEditRecords}

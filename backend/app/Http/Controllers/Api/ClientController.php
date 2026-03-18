@@ -34,6 +34,13 @@ class ClientController extends Controller
         return new JsonResponse($query->orderBy('name')->paginate(20));
     }
 
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $client = Client::query()->findOrFail($id);
+
+        return new JsonResponse($client);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $payload = $request->validate([

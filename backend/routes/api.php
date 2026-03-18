@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\BreakGlassController;
@@ -7,10 +8,13 @@ use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CustomFieldController;
 use App\Http\Controllers\Api\CustomFieldValueController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\RecycleBinController;
 use App\Http\Controllers\Api\RenewalController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SlaAllocationController;
+use App\Http\Controllers\Api\SlaItemController;
 use App\Http\Controllers\Api\StockAllocationController;
 use App\Http\Controllers\Api\SuperAdminTenantController;
 use App\Http\Controllers\Api\TenantSettingsController;
@@ -57,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         Route::get('/clients', [ClientController::class, 'index']);
         Route::post('/clients', [ClientController::class, 'store'])->middleware('tenant.permission:create_client');
+        Route::get('/clients/{id}', [ClientController::class, 'show']);
         Route::put('/clients/{id}', [ClientController::class, 'update'])->middleware('tenant.permission:edit_existing');
         Route::delete('/clients/{id}', [ClientController::class, 'destroy'])->middleware('tenant.permission:delete_record');
 
@@ -87,6 +92,30 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         Route::get('/tenant-settings', [TenantSettingsController::class, 'show'])->middleware('tenant.permission:manage_users');
         Route::put('/tenant-settings', [TenantSettingsController::class, 'update'])->middleware('tenant.permission:manage_users');
+
+        // Departments — managed under tenant settings (manage_users permission)
+        Route::get('/departments', [DepartmentController::class, 'index']);
+        Route::post('/departments', [DepartmentController::class, 'store'])->middleware('tenant.permission:manage_users');
+        Route::delete('/departments/{id}', [DepartmentController::class, 'destroy'])->middleware('tenant.permission:manage_users');
+
+        // SLA Items
+        Route::get('/sla-items', [SlaItemController::class, 'index']);
+        Route::post('/sla-items', [SlaItemController::class, 'store'])->middleware('tenant.permission:create_inventory');
+        Route::put('/sla-items/{id}', [SlaItemController::class, 'update'])->middleware('tenant.permission:edit_existing');
+        Route::delete('/sla-items/{id}', [SlaItemController::class, 'destroy'])->middleware('tenant.permission:delete_record');
+
+        // SLA Allocations
+        Route::get('/sla-allocations', [SlaAllocationController::class, 'index']);
+        Route::post('/sla-allocations', [SlaAllocationController::class, 'store'])->middleware('tenant.permission:allocate_stock');
+        Route::post('/sla-allocations/{id}/cancel', [SlaAllocationController::class, 'cancel'])->middleware('tenant.permission:allocate_stock');
+
+        // Attachments — files stored locally per tenant
+        // NOTE: download route is registered before the {entityType}/{entityId} pattern
+        // to prevent the wildcard from swallowing the static 'download' segment.
+        Route::get('/attachments/{id}/download', [AttachmentController::class, 'download']);
+        Route::get('/attachments/{entityType}/{entityId}', [AttachmentController::class, 'index']);
+        Route::post('/attachments', [AttachmentController::class, 'store'])->middleware('tenant.permission:edit_existing');
+        Route::delete('/attachments/{id}', [AttachmentController::class, 'destroy'])->middleware('tenant.permission:edit_existing');
 
         Route::get('/recycle-bin', [RecycleBinController::class, 'index'])->middleware('tenant.permission:view_audit_logs');
         Route::post('/recycle-bin/{entityType}/{id}/restore', [RecycleBinController::class, 'restore'])->middleware('tenant.permission:delete_record');

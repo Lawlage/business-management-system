@@ -16,8 +16,11 @@ For AI coding tools working in this repository, use `agents.md` as the source-of
 - Strict tenant context middleware (`X-Tenant-Id`) and permission middleware.
 - Role model: Global Superadmin, Tenant Admin, Sub Admin, Standard User.
 - Break-glass access for superadmins with reason + confirmation + immutable logs.
-- Renewal and inventory modules with soft deletes and recycle-bin restore.
-- Custom field definitions and typed value storage.
+- Renewal and inventory modules with soft deletes and recycle-bin restore; cost/sale pricing fields on both.
+- SLA Items product catalog with per-client SLA allocations.
+- Departments for grouping renewals and allocations within a tenant.
+- Document attachment support on renewals, inventory items, clients, and SLA items (stored on private local disk; served via authenticated API).
+- Custom field definitions and typed value storage — supports text, number, currency, date, boolean, JSON, and dropdown types.
 - Daily purge command for records in recycle bin older than 30 days.
 
 ## Security Model
@@ -148,13 +151,18 @@ docker compose exec mysql mysql -u bms_user -p   # MySQL prompt
 The frontend includes working actions (API-backed) for:
 
 - Dashboard refresh with renewal and low-stock widgets
-- Renewal create/list/delete with **Load More** pagination (20/page)
+- Renewal create/list/delete with **Load More** pagination (20/page); cost price, sale price, department assignment, and document attachments on each renewal
 - Renewal workflow status tracking (auto status + user-entered workflow status)
 - Renewal auto-renew checkbox on create/edit
-- Inventory create/list/delete with **Load More** pagination and per-item quantity input for check-in/check-out
-- Click-to-open foreground edit modals for renewal/inventory records (Escape key dismisses)
-- Recycle bin list and restore
-- Tenant admin: tenant users, edit permission toggles, custom fields (all entity types shown), tenant settings (timezone + appearance presets/colours/density/typography), tenant audit logs with **Load More** pagination
+- Inventory create/list/delete with **Load More** pagination and per-item quantity input for check-in/check-out; cost price, sale price, barcode, and document attachments on each item
+- Click-to-open foreground edit modals for renewal/inventory records (Escape key dismisses); modals have **Details / Documents** tabs
+- Stock allocation with client + department assignment
+- **Client detail page** (full-page `/clients/:id`) with tabs: Details | Renewals | Allocations | Documents; Allocations tab has **By Item** (accordion) / **By Client** toggle
+- **SLA Items** module: create/list/edit SLA product catalog items with SKU, tier, pricing, and document attachments; apply SLA items to clients via `ApplySlaModal`; cancel SLA allocations from item detail
+- **Departments** admin page: simple list with add/delete (tenant admin only); department dropdown available on renewals and stock allocations
+- **Dropdown custom field type**: create custom fields of type `dropdown` with a dynamic options editor; renders as a `<select>` when editing records
+- Recycle bin list and restore (supports `sla_item` entity type)
+- Tenant admin: tenant users, edit permission toggles, custom fields (all entity types shown), departments, tenant settings (timezone + appearance presets/colours/density/typography), tenant audit logs with **Load More** pagination
 - Superadmin: tenant create/suspend/delete (tenant creation includes new tenant-admin creation), global audit logs, break-glass session controls
 - Role is resolved from the active tenant membership (not the highest role across all tenants)
 

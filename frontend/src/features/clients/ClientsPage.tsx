@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
@@ -13,11 +14,8 @@ import { Input } from '../../components/Input'
 import { CreateClientModal } from './CreateClientModal'
 import type { Client, PaginatedResponse } from '../../types'
 
-type ClientsPageProps = {
-  onOpenClient: (client: Client) => void
-}
-
-function ClientsContent({ onOpenClient }: ClientsPageProps) {
+function ClientsContent() {
+  const navigate = useNavigate()
   const { selectedTenantId, role } = useTenant()
   const { authedFetch } = useApi()
   const queryClient = useQueryClient()
@@ -132,7 +130,7 @@ function ClientsContent({ onOpenClient }: ClientsPageProps) {
             <button
               key={client.id}
               className="app-inner-box w-full rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60"
-              onClick={() => onOpenClient(client)}
+              onClick={() => navigate(`/app/clients/${client.id}`)}
             >
               <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.5fr_1fr]">
                 <span className="font-medium text-sm text-[var(--ui-text)] truncate">{client.name}</span>
@@ -163,10 +161,10 @@ function ClientsContent({ onOpenClient }: ClientsPageProps) {
   )
 }
 
-export function ClientsPage({ onOpenClient }: ClientsPageProps) {
+export function ClientsPage() {
   return (
     <ErrorBoundary>
-      <ClientsContent onOpenClient={onOpenClient} />
+      <ClientsContent />
     </ErrorBoundary>
   )
 }

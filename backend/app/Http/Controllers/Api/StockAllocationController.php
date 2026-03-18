@@ -44,6 +44,7 @@ class StockAllocationController extends Controller
         $payload = $request->validate([
             'inventory_item_id' => ['required', 'integer'],
             'client_id' => ['required', 'integer'],
+            'department_id' => ['nullable', 'integer'],
             'quantity' => ['required', 'integer', 'min:1'],
             'unit_price' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
@@ -77,6 +78,7 @@ class StockAllocationController extends Controller
             return StockAllocation::query()->create([
                 'inventory_item_id' => $item->id,
                 'client_id' => $client->id,
+                'department_id' => isset($payload['department_id']) ? (int) $payload['department_id'] : null,
                 'quantity' => $quantity,
                 'unit_price' => $payload['unit_price'] ?? null,
                 'notes' => $payload['notes'] ?? null,

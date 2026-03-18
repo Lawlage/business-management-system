@@ -7,13 +7,14 @@ use App\Models\Client;
 use App\Models\CustomFieldDefinition;
 use App\Models\InventoryItem;
 use App\Models\Renewal;
+use App\Models\SlaItem;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class RecycleBinController extends Controller
 {
-    private const ALLOWED_ENTITY_TYPES = ['renewal', 'inventory', 'custom_field', 'client'];
+    private const ALLOWED_ENTITY_TYPES = ['renewal', 'inventory', 'custom_field', 'client', 'sla_item'];
 
     public function __construct(private readonly AuditLogger $auditLogger)
     {
@@ -30,6 +31,7 @@ class RecycleBinController extends Controller
             'inventory_items' => InventoryItem::onlyTrashed()->orderByDesc('deleted_at')->paginate(20, ['*'], 'inventory_page'),
             'custom_fields' => CustomFieldDefinition::onlyTrashed()->orderByDesc('deleted_at')->paginate(20, ['*'], 'custom_fields_page'),
             'clients' => Client::onlyTrashed()->orderByDesc('deleted_at')->paginate(20, ['*'], 'clients_page'),
+            'sla_items' => SlaItem::onlyTrashed()->orderByDesc('deleted_at')->paginate(20, ['*'], 'sla_items_page'),
         ]);
     }
 
@@ -44,6 +46,7 @@ class RecycleBinController extends Controller
             'inventory' => InventoryItem::onlyTrashed()->findOrFail($id),
             'custom_field' => CustomFieldDefinition::onlyTrashed()->findOrFail($id),
             'client' => Client::onlyTrashed()->findOrFail($id),
+            'sla_item' => SlaItem::onlyTrashed()->findOrFail($id),
         };
 
         $entity->restore();
@@ -67,6 +70,7 @@ class RecycleBinController extends Controller
             'inventory' => InventoryItem::onlyTrashed()->findOrFail($id),
             'custom_field' => CustomFieldDefinition::onlyTrashed()->findOrFail($id),
             'client' => Client::onlyTrashed()->findOrFail($id),
+            'sla_item' => SlaItem::onlyTrashed()->findOrFail($id),
         };
 
         $entity->forceDelete();
