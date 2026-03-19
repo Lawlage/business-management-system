@@ -94,7 +94,8 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* ── Renewals row ──────────────────────────────────────────────────── */}
+      <div className="grid gap-4 md:grid-cols-3">
         {/* Critical Renewals */}
         <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
           <h3 className="font-semibold text-[var(--ui-text)]">Critical Renewals</h3>
@@ -158,35 +159,6 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
           </div>
         </div>
 
-        {/* Low Stock Items */}
-        <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
-          <h3 className="font-semibold text-[var(--ui-text)]">Low Stock</h3>
-          <div className="mt-2 space-y-2">
-            {isLoading ? (
-              <>
-                <SkeletonRow cols={3} />
-                <SkeletonRow cols={3} />
-                <SkeletonRow cols={3} />
-              </>
-            ) : !data || data.low_stock_items.length === 0 ? (
-              <EmptyState message="No low stock items." />
-            ) : (
-              data.low_stock_items.map((item) => (
-                <button
-                  key={item.id}
-                  className={itemButtonClass}
-                  onClick={() => onOpenInventory(item)}
-                >
-                  <p className="font-medium text-sm text-[var(--ui-text)]">{item.name}</p>
-                  <p className="text-xs text-[var(--ui-muted)]">
-                    On hand: {item.quantity_on_hand} / Min: {item.minimum_on_hand}
-                  </p>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-
         {/* Upcoming SLA Renewals */}
         <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
           <h3 className="font-semibold text-[var(--ui-text)]">Upcoming SLA Renewals</h3>
@@ -225,6 +197,33 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── Inventory row ─────────────────────────────────────────────────── */}
+      <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
+        <h3 className="mb-2 font-semibold text-[var(--ui-text)]">Low Stock</h3>
+        {isLoading ? (
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} cols={3} />)}
+          </div>
+        ) : !data || data.low_stock_items.length === 0 ? (
+          <EmptyState message="No low stock items." />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {data.low_stock_items.map((item) => (
+              <button
+                key={item.id}
+                className={itemButtonClass}
+                onClick={() => onOpenInventory(item)}
+              >
+                <p className="font-medium text-sm text-[var(--ui-text)]">{item.name}</p>
+                <p className="text-xs text-[var(--ui-muted)]">
+                  On hand: {item.quantity_on_hand} / Min: {item.minimum_on_hand}
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </Card>
   )
