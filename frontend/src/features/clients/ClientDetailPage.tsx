@@ -316,7 +316,7 @@ function ClientDetailContent() {
               <>
                 {/* Backdrop to close menu */}
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-9 z-20 min-w-[180px] rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)] shadow-lg py-1">
+                <div className="absolute right-0 top-9 z-20 min-w-[180px] rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-bg)] shadow-lg py-1">
                   {canEdit && (
                     <button
                       className="w-full px-4 py-2 text-left text-sm text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition"

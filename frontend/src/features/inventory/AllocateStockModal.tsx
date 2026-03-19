@@ -7,6 +7,7 @@ import { Modal } from '../../components/Modal'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { Textarea } from '../../components/Textarea'
+import { SearchCombobox } from '../../components/SearchCombobox'
 import type { Client, Department, InventoryItem } from '../../types'
 
 type AllocateStockModalProps = {
@@ -29,7 +30,6 @@ export function AllocateStockModal({ item, presetClientId, presetClientName, onC
   const [unitPrice, setUnitPrice] = useState('')
   const [notes, setNotes] = useState('')
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(item ?? null)
-  const [itemSearch, setItemSearch] = useState('')
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['clients-all', selectedTenantId],
@@ -46,18 +46,21 @@ export function AllocateStockModal({ item, presetClientId, presetClientName, onC
     staleTime: 30_000,
   })
 
-  const { data: inventorySearchData } = useQuery<{ data: InventoryItem[] }>({
-    queryKey: ['inventory-search', selectedTenantId, itemSearch],
+  // Fetch all inventory items upfront so the combobox can scroll + filter client-side
+  const { data: allInventory, isLoading: loadingInventory } = useQuery<{ data: InventoryItem[] }>({
+    queryKey: ['inventory-all', selectedTenantId],
     queryFn: () =>
-      authedFetch<{ data: InventoryItem[] }>(
-        `/api/inventory?search=${encodeURIComponent(itemSearch)}&per_page=20`,
-        { tenantScoped: true },
-      ),
-    enabled: !!selectedTenantId && !item && itemSearch.length > 0,
-    staleTime: 5_000,
+      authedFetch<{ data: InventoryItem[] }>('/api/inventory?per_page=200', { tenantScoped: true }),
+    enabled: !!selectedTenantId && !item,
+    staleTime: 30_000,
   })
 
-  const inventoryResults = inventorySearchData?.data ?? []
+  const inventoryOptions = (allInventory?.data ?? []).map((inv) => ({
+    id: inv.id,
+    label: inv.name,
+    sublabel: `${inv.sku} · On hand: ${inv.quantity_on_hand}`,
+    _raw: inv,
+  }))
 
   const availableQty = selectedItem?.quantity_on_hand ?? Infinity
 
@@ -135,49 +138,19 @@ export function AllocateStockModal({ item, presetClientId, presetClientName, onC
       <div className="grid gap-4">
         {/* Inventory item picker — only shown when no item preset */}
         {!item && (
-          <div>
-            <label className="mb-1 block text-sm font-medium text-[var(--ui-text)]">
-              Inventory Item <span className="text-red-500">*</span>
-            </label>
-            {selectedItem ? (
-              <div className="flex items-center gap-2 rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-text)]">
-                <span className="flex-1">{selectedItem.name} <span className="text-[var(--ui-muted)]">({selectedItem.sku})</span></span>
-                <button
-                  type="button"
-                  onClick={() => { setSelectedItem(null); setItemSearch('') }}
-                  className="text-xs text-[var(--ui-muted)] hover:text-[var(--ui-text)]"
-                >
-                  Change
-                </button>
-              </div>
-            ) : (
-              <div>
-                <input
-                  type="text"
-                  placeholder="Search by name or SKU..."
-                  value={itemSearch}
-                  onChange={(e) => setItemSearch(e.target.value)}
-                  className="w-full rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60"
-                />
-                {inventoryResults.length > 0 && (
-                  <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)]">
-                    {inventoryResults.map((inv) => (
-                      <li key={inv.id}>
-                        <button
-                          type="button"
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-[var(--ui-border)] text-[var(--ui-text)]"
-                          onClick={() => { setSelectedItem(inv); setItemSearch('') }}
-                        >
-                          {inv.name} <span className="text-[var(--ui-muted)]">({inv.sku})</span>
-                          <span className="ml-2 text-xs text-[var(--ui-muted)]">On hand: {inv.quantity_on_hand}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
+          <SearchCombobox
+            label="Inventory Item"
+            required
+            placeholder="Search by name or SKU…"
+            options={inventoryOptions}
+            value={selectedItem ? { id: selectedItem.id, label: selectedItem.name, sublabel: `${selectedItem.sku} · On hand: ${selectedItem.quantity_on_hand}` } : null}
+            onChange={(opt) => {
+              const raw = inventoryOptions.find((o) => o.id === opt.id)?._raw ?? null
+              setSelectedItem(raw)
+            }}
+            onClear={() => setSelectedItem(null)}
+            isLoading={loadingInventory}
+          />
         )}
 
         {/* Client selector */}
@@ -189,13 +162,13 @@ export function AllocateStockModal({ item, presetClientId, presetClientName, onC
             <input
               value={presetClientName ?? String(presetClientId)}
               disabled
-              className="w-full rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-muted)] opacity-70"
+              className="w-full rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-bg)] px-3 py-2 text-sm text-[var(--ui-muted)] opacity-70"
             />
           ) : (
             <select
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
-              className="w-full rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60"
+              className="w-full rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-bg)] px-3 py-2 text-sm text-[var(--ui-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60"
             >
               <option value="">— Select client —</option>
               {clients.map((c) => (
@@ -213,7 +186,7 @@ export function AllocateStockModal({ item, presetClientId, presetClientName, onC
             <select
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
-              className="w-full rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60"
+              className="w-full rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-bg)] px-3 py-2 text-sm text-[var(--ui-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60"
             >
               <option value="">— No department —</option>
               {departments.map((d) => (
