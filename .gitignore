@@ -40,3 +40,4 @@ logs/
 
 # Tenant attachment storage (user-uploaded files)
 backend/storage/tenant*/
+.claude/settings.json

@@ -40,7 +40,10 @@
       "Bash(bash -c 'source /home/jacob/.nvm/nvm.sh && nvm use 20 && npm run build 2>&1')",
       "Bash(curl -s -X POST http://localhost:8090/api/auth/forgot-password -H \"Content-Type: application/json\" -H \"Accept: application/json\" -d '{\"\"email\"\":\"\"superadmin@example.com\"\"}')",
       "Bash(docker compose exec backend php artisan tinker --execute=\":*)",
-      "Bash(composer show:*)"
+      "Bash(composer show:*)",
+      "Bash(find /home/jacob/business-management-system/backend -name *RenewalController* -o -name *SlaItemController* -o -name *SlaAllocationController*)",
+      "Bash(bash -c 'source /home/jacob/.nvm/nvm.sh && nvm use 20 && ./node_modules/.bin/tsc -p tsconfig.app.json --noEmit 2>&1 | head -60')",
+      "Bash(git commit:*)"
     ]
   }
 }
