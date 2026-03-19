@@ -115,6 +115,7 @@ class InventoryController extends Controller
             'type' => ['required', 'in:check_in,check_out'],
             'quantity' => ['required', 'integer', 'min:1'],
             'reason' => ['nullable', 'string'],
+            'client_id' => ['nullable', 'integer'],
         ]);
 
         $quantity = (int) $payload['quantity'];
@@ -132,6 +133,7 @@ class InventoryController extends Controller
 
         StockTransaction::query()->create([
             'inventory_item_id' => $item->id,
+            'client_id' => isset($payload['client_id']) ? (int) $payload['client_id'] : null,
             'type' => $payload['type'],
             'quantity' => $quantity,
             'reason' => $payload['reason'] ?? null,

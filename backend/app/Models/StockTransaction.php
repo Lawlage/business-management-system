@@ -12,6 +12,7 @@ class StockTransaction extends Model
 
     protected $fillable = [
         'inventory_item_id',
+        'client_id',
         'type',
         'quantity',
         'reason',
@@ -21,5 +22,10 @@ class StockTransaction extends Model
     public function inventoryItem(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class);
+    }
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
     }
 }

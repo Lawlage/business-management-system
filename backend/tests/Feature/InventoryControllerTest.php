@@ -284,4 +284,64 @@ class InventoryControllerTest extends TestCase
         $response->assertOk();
         $this->assertCount(0, $response->json('data'));
     }
+
+    // ── adjustStock with client_id ─────────────────────────────────────────
+
+    public function test_adjust_stock_with_client_id_persists_on_transaction(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $clientId = $this->createClient($user, $tenant);
+
+        $item = $this->actingAs($user)->postJson('/api/inventory', [
+            'name' => 'Trackable Item',
+            'sku' => 'TRK-001',
+            'quantity_on_hand' => 10,
+            'minimum_on_hand' => 1,
+        ], $this->tenantHeaders($tenant))->json();
+
+        $response = $this->actingAs($user)->postJson(
+            "/api/inventory/{$item['id']}/adjust-stock",
+            ['type' => 'check_out', 'quantity' => 2, 'client_id' => $clientId],
+            $this->tenantHeaders($tenant)
+        );
+
+        $response->assertOk();
+        // Verify the transaction was persisted with client_id via the tenant DB.
+        tenancy()->initialize($tenant);
+        $this->assertDatabaseHas('stock_transactions', [
+            'inventory_item_id' => $item['id'],
+            'client_id' => $clientId,
+            'type' => 'check_out',
+            'quantity' => 2,
+        ]);
+        tenancy()->end();
+    }
+
+    public function test_adjust_stock_without_client_id_still_succeeds(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $item = $this->actingAs($user)->postJson('/api/inventory', [
+            'name' => 'Generic Item',
+            'sku' => 'GEN-001',
+            'quantity_on_hand' => 5,
+            'minimum_on_hand' => 1,
+        ], $this->tenantHeaders($tenant))->json();
+
+        $response = $this->actingAs($user)->postJson(
+            "/api/inventory/{$item['id']}/adjust-stock",
+            ['type' => 'check_in', 'quantity' => 3],
+            $this->tenantHeaders($tenant)
+        );
+
+        $response->assertOk();
+        tenancy()->initialize($tenant);
+        $this->assertDatabaseHas('stock_transactions', [
+            'inventory_item_id' => $item['id'],
+            'client_id' => null,
+            'type' => 'check_in',
+            'quantity' => 3,
+        ]);
+        tenancy()->end();
+    }
 }
