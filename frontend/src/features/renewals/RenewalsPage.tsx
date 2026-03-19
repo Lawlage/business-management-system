@@ -180,7 +180,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
 
       {/* Filter controls */}
       <div className="mb-4 flex flex-wrap gap-2 items-end">
-        <div className="w-36">
+        <div className="min-w-[9rem]">
           <Select label="Type" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
             <option value="">All</option>
             {renewalCategoryOptions.map((opt) => (
@@ -189,7 +189,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
           </Select>
         </div>
 
-        <div className="w-36">
+        <div className="min-w-[9rem]">
           <Select label="Status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             {statusOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -197,7 +197,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
           </Select>
         </div>
 
-        <div className="w-44">
+        <div className="min-w-[11rem]">
           <Select label="Workflow" value={filterWorkflow} onChange={(e) => setFilterWorkflow(e.target.value)}>
             <option value="">All</option>
             {renewalWorkflowOptions.map((opt) => (
@@ -206,7 +206,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
           </Select>
         </div>
 
-        <div className="w-28">
+        <div className="min-w-[8rem]">
           <Select label="Auto-Renews" value={filterAutoRenews} onChange={(e) => setFilterAutoRenews(e.target.value)}>
             <option value="">All</option>
             <option value="1">Yes</option>
@@ -214,7 +214,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
           </Select>
         </div>
 
-        <div className="w-40">
+        <div className="min-w-[8rem] max-w-[180px]">
           <Select label="Client" value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)}>
             <option value="">All</option>
             {clientList?.map((c) => (
@@ -223,7 +223,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
           </Select>
         </div>
 
-        <div className="w-40">
+        <div className="min-w-[9rem]">
           <Select label="Expiry" value={filterExpiryPreset} onChange={(e) => setFilterExpiryPreset(e.target.value)}>
             {expiryPresets.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -232,7 +232,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
         </div>
 
         {filterExpiryPreset === 'custom' && (
-          <div className="w-28">
+          <div className="min-w-[7rem]">
             <Input
               label="Months"
               type="number"
@@ -245,11 +245,14 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
           </div>
         )}
 
-        {hasActiveFilters && (
-          <Button variant="secondary" size="sm" onClick={clearFilters}>
-            Clear filters
-          </Button>
-        )}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={clearFilters}
+          disabled={!hasActiveFilters}
+        >
+          Clear filters
+        </Button>
       </div>
 
       {/* Table header -- hidden on mobile */}

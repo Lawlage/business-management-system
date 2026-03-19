@@ -11,7 +11,91 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import type { RecycleBinData } from '../../types'
 
-type Tab = 'renewals' | 'inventory' | 'custom_fields' | 'clients'
+type Tab = 'all' | 'renewals' | 'inventory' | 'sla_items' | 'custom_fields' | 'clients'
+
+type AllItem = {
+  id: number
+  label: string
+  subLabel?: string
+  entityType: string
+  deleted_at: string
+}
+
+function buildAllItems(data: RecycleBinData): AllItem[] {
+  const items: AllItem[] = [
+    ...data.renewals.data.map((r) => ({
+      id: r.id,
+      label: r.title,
+      subLabel: 'Renewal',
+      entityType: 'renewal',
+      deleted_at: (r as unknown as { deleted_at?: string }).deleted_at ?? '',
+    })),
+    ...data.inventory_items.data.map((i) => ({
+      id: i.id,
+      label: i.name,
+      subLabel: 'Inventory',
+      entityType: 'inventory',
+      deleted_at: (i as unknown as { deleted_at?: string }).deleted_at ?? '',
+    })),
+    ...data.sla_items.data.map((s) => ({
+      id: s.id,
+      label: s.name,
+      subLabel: 'SLA Item',
+      entityType: 'sla_item',
+      deleted_at: (s as unknown as { deleted_at?: string }).deleted_at ?? '',
+    })),
+    ...data.custom_fields.data.map((f) => ({
+      id: f.id,
+      label: f.name,
+      subLabel: `Custom Field · ${f.field_type}`,
+      entityType: 'custom_field',
+      deleted_at: (f as unknown as { deleted_at?: string }).deleted_at ?? '',
+    })),
+    ...data.clients.data.map((c) => ({
+      id: c.id,
+      label: c.name,
+      subLabel: 'Client',
+      entityType: 'client',
+      deleted_at: (c as unknown as { deleted_at?: string }).deleted_at ?? '',
+    })),
+  ]
+  return items.sort((a, b) => (a.deleted_at < b.deleted_at ? 1 : -1))
+}
+
+function RecordRow({
+  label,
+  subLabel,
+  onRestore,
+  onForceDelete,
+  isRestoring,
+  isDeleting,
+}: {
+  label: string
+  subLabel?: string
+  onRestore: () => void
+  onForceDelete: () => void
+  isRestoring: boolean
+  isDeleting: boolean
+}) {
+  return (
+    <div className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2">
+      <div>
+        <span className="text-sm text-[var(--ui-text)]">{label}</span>
+        {subLabel && (
+          <span className="ml-2 text-xs text-[var(--ui-muted)] opacity-60">{subLabel}</span>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Button variant="secondary" size="sm" isLoading={isRestoring} onClick={onRestore}>
+          Restore
+        </Button>
+        <Button variant="danger" size="sm" isLoading={isDeleting} onClick={onForceDelete}>
+          Delete Forever
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export function RecycleBinPage() {
   const { selectedTenantId } = useTenant()
@@ -20,7 +104,7 @@ export function RecycleBinPage() {
   const confirm = useConfirm()
   const queryClient = useQueryClient()
 
-  const [activeTab, setActiveTab] = useState<Tab>('renewals')
+  const [activeTab, setActiveTab] = useState<Tab>('all')
 
   const { data, isLoading } = useQuery({
     queryKey: ['recycle-bin', selectedTenantId],
@@ -45,6 +129,9 @@ export function RecycleBinPage() {
       if (entityType === 'custom_field') {
         void queryClient.invalidateQueries({ queryKey: ['custom-fields', selectedTenantId] })
       }
+      if (entityType === 'sla_item') {
+        void queryClient.invalidateQueries({ queryKey: ['sla-items', selectedTenantId] })
+      }
     },
     onError: (error: unknown) => {
       showNotice(
@@ -53,10 +140,6 @@ export function RecycleBinPage() {
       )
     },
   })
-
-  const handleRestore = (entityType: string, id: number) => {
-    restoreMutation.mutate({ entityType, id })
-  }
 
   const forceDeleteMutation = useMutation({
     mutationFn: ({ entityType, id }: { entityType: string; id: number }) =>
@@ -75,6 +158,10 @@ export function RecycleBinPage() {
       )
     },
   })
+
+  const handleRestore = (entityType: string, id: number) => {
+    restoreMutation.mutate({ entityType, id })
+  }
 
   const handleForceDelete = async (entityType: string, id: number) => {
     const confirmed = await confirm({
@@ -96,63 +183,64 @@ export function RecycleBinPage() {
         : 'border-transparent text-[var(--ui-muted)] hover:text-[var(--ui-text)]',
     ].join(' ')
 
+  const skeletonRows = (
+    <>
+      <SkeletonRow />
+      <SkeletonRow />
+      <SkeletonRow />
+    </>
+  )
+
   return (
     <Card>
       <PageHeader title="Recycle Bin" />
 
       {/* Tab bar */}
-      <div className="mb-4 flex border-b border-[var(--ui-border)]">
-        <button className={tabClass('renewals')} onClick={() => setActiveTab('renewals')}>
-          Renewals
-        </button>
-        <button className={tabClass('inventory')} onClick={() => setActiveTab('inventory')}>
-          Inventory Items
-        </button>
-        <button className={tabClass('custom_fields')} onClick={() => setActiveTab('custom_fields')}>
-          Custom Fields
-        </button>
-        <button className={tabClass('clients')} onClick={() => setActiveTab('clients')}>
-          Clients
-        </button>
+      <div className="mb-4 flex flex-wrap border-b border-[var(--ui-border)]">
+        <button className={tabClass('all')} onClick={() => setActiveTab('all')}>All</button>
+        <button className={tabClass('renewals')} onClick={() => setActiveTab('renewals')}>Renewals</button>
+        <button className={tabClass('inventory')} onClick={() => setActiveTab('inventory')}>Inventory Items</button>
+        <button className={tabClass('sla_items')} onClick={() => setActiveTab('sla_items')}>SLA Items</button>
+        <button className={tabClass('custom_fields')} onClick={() => setActiveTab('custom_fields')}>Custom Fields</button>
+        <button className={tabClass('clients')} onClick={() => setActiveTab('clients')}>Clients</button>
       </div>
+
+      {/* All tab */}
+      {activeTab === 'all' && (
+        <div className="space-y-2">
+          {isLoading ? skeletonRows : !data || buildAllItems(data).length === 0 ? (
+            <EmptyState message="Recycle bin is empty." />
+          ) : (
+            buildAllItems(data).map((item) => (
+              <RecordRow
+                key={`${item.entityType}-${item.id}`}
+                label={item.label}
+                subLabel={item.subLabel}
+                isRestoring={restoreMutation.isPending}
+                isDeleting={forceDeleteMutation.isPending}
+                onRestore={() => handleRestore(item.entityType, item.id)}
+                onForceDelete={() => void handleForceDelete(item.entityType, item.id)}
+              />
+            ))
+          )}
+        </div>
+      )}
 
       {/* Renewals tab */}
       {activeTab === 'renewals' && (
         <div className="space-y-2">
-          {isLoading ? (
-            <>
-              <SkeletonRow />
-              <SkeletonRow />
-              <SkeletonRow />
-            </>
-          ) : !data || data.renewals.data.length === 0 ? (
+          {isLoading ? skeletonRows : !data || data.renewals.data.length === 0 ? (
             <EmptyState message="No renewals in the recycle bin." />
           ) : (
             data.renewals.data.map((renewal) => (
-              <div
+              <RecordRow
                 key={renewal.id}
-                className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2"
-              >
-                <span className="text-sm text-[var(--ui-muted)]">{renewal.title}</span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    isLoading={restoreMutation.isPending}
-                    onClick={() => handleRestore('renewal', renewal.id)}
-                  >
-                    Restore
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    isLoading={forceDeleteMutation.isPending}
-                    onClick={() => void handleForceDelete('renewal', renewal.id)}
-                  >
-                    Delete Forever
-                  </Button>
-                </div>
-              </div>
+                label={renewal.title}
+                isRestoring={restoreMutation.isPending}
+                isDeleting={forceDeleteMutation.isPending}
+                onRestore={() => handleRestore('renewal', renewal.id)}
+                onForceDelete={() => void handleForceDelete('renewal', renewal.id)}
+              />
             ))
           )}
         </div>
@@ -161,40 +249,39 @@ export function RecycleBinPage() {
       {/* Inventory tab */}
       {activeTab === 'inventory' && (
         <div className="space-y-2">
-          {isLoading ? (
-            <>
-              <SkeletonRow />
-              <SkeletonRow />
-              <SkeletonRow />
-            </>
-          ) : !data || data.inventory_items.data.length === 0 ? (
+          {isLoading ? skeletonRows : !data || data.inventory_items.data.length === 0 ? (
             <EmptyState message="No inventory items in the recycle bin." />
           ) : (
             data.inventory_items.data.map((item) => (
-              <div
+              <RecordRow
                 key={item.id}
-                className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2"
-              >
-                <span className="text-sm text-[var(--ui-muted)]">{item.name}</span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    isLoading={restoreMutation.isPending}
-                    onClick={() => handleRestore('inventory', item.id)}
-                  >
-                    Restore
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    isLoading={forceDeleteMutation.isPending}
-                    onClick={() => void handleForceDelete('inventory', item.id)}
-                  >
-                    Delete Forever
-                  </Button>
-                </div>
-              </div>
+                label={item.name}
+                isRestoring={restoreMutation.isPending}
+                isDeleting={forceDeleteMutation.isPending}
+                onRestore={() => handleRestore('inventory', item.id)}
+                onForceDelete={() => void handleForceDelete('inventory', item.id)}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {/* SLA Items tab */}
+      {activeTab === 'sla_items' && (
+        <div className="space-y-2">
+          {isLoading ? skeletonRows : !data || data.sla_items.data.length === 0 ? (
+            <EmptyState message="No SLA items in the recycle bin." />
+          ) : (
+            data.sla_items.data.map((item) => (
+              <RecordRow
+                key={item.id}
+                label={item.name}
+                subLabel={item.sku}
+                isRestoring={restoreMutation.isPending}
+                isDeleting={forceDeleteMutation.isPending}
+                onRestore={() => handleRestore('sla_item', item.id)}
+                onForceDelete={() => void handleForceDelete('sla_item', item.id)}
+              />
             ))
           )}
         </div>
@@ -203,45 +290,19 @@ export function RecycleBinPage() {
       {/* Custom Fields tab */}
       {activeTab === 'custom_fields' && (
         <div className="space-y-2">
-          {isLoading ? (
-            <>
-              <SkeletonRow />
-              <SkeletonRow />
-              <SkeletonRow />
-            </>
-          ) : !data || data.custom_fields.data.length === 0 ? (
+          {isLoading ? skeletonRows : !data || data.custom_fields.data.length === 0 ? (
             <EmptyState message="No custom fields in the recycle bin." />
           ) : (
             data.custom_fields.data.map((field) => (
-              <div
+              <RecordRow
                 key={field.id}
-                className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2"
-              >
-                <div>
-                  <span className="text-sm text-[var(--ui-muted)]">{field.name}</span>
-                  <span className="ml-2 text-xs text-[var(--ui-muted)] opacity-60">
-                    ({field.entity_type} — {field.field_type})
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    isLoading={restoreMutation.isPending}
-                    onClick={() => handleRestore('custom_field', field.id)}
-                  >
-                    Restore
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    isLoading={forceDeleteMutation.isPending}
-                    onClick={() => void handleForceDelete('custom_field', field.id)}
-                  >
-                    Delete Forever
-                  </Button>
-                </div>
-              </div>
+                label={field.name}
+                subLabel={`${field.entity_type} · ${field.field_type}`}
+                isRestoring={restoreMutation.isPending}
+                isDeleting={forceDeleteMutation.isPending}
+                onRestore={() => handleRestore('custom_field', field.id)}
+                onForceDelete={() => void handleForceDelete('custom_field', field.id)}
+              />
             ))
           )}
         </div>
@@ -250,40 +311,18 @@ export function RecycleBinPage() {
       {/* Clients tab */}
       {activeTab === 'clients' && (
         <div className="space-y-2">
-          {isLoading ? (
-            <>
-              <SkeletonRow />
-              <SkeletonRow />
-              <SkeletonRow />
-            </>
-          ) : !data || data.clients.data.length === 0 ? (
+          {isLoading ? skeletonRows : !data || data.clients.data.length === 0 ? (
             <EmptyState message="No clients in the recycle bin." />
           ) : (
             data.clients.data.map((client) => (
-              <div
+              <RecordRow
                 key={client.id}
-                className="app-inner-box flex items-center justify-between rounded-md border border-[var(--ui-border)] p-2"
-              >
-                <span className="text-sm text-[var(--ui-muted)]">{client.name}</span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    isLoading={restoreMutation.isPending}
-                    onClick={() => handleRestore('client', client.id)}
-                  >
-                    Restore
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    isLoading={forceDeleteMutation.isPending}
-                    onClick={() => void handleForceDelete('client', client.id)}
-                  >
-                    Delete Forever
-                  </Button>
-                </div>
-              </div>
+                label={client.name}
+                isRestoring={restoreMutation.isPending}
+                isDeleting={forceDeleteMutation.isPending}
+                onRestore={() => handleRestore('client', client.id)}
+                onForceDelete={() => void handleForceDelete('client', client.id)}
+              />
             ))
           )}
         </div>

@@ -12,6 +12,7 @@ type Props = {
   entityType: 'renewal' | 'inventory' | 'client' | 'sla_item'
   entityId: number
   canEdit: boolean
+  hideUpload?: boolean
 }
 
 function formatBytes(bytes: number): string {
@@ -20,7 +21,7 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function AttachmentList({ entityType, entityId, canEdit }: Props) {
+export function AttachmentList({ entityType, entityId, canEdit, hideUpload = false }: Props) {
   const { authedFetch, getHeaders } = useApi()
   const { selectedTenantId } = useTenant()
   const { showNotice } = useNotice()
@@ -158,7 +159,7 @@ export function AttachmentList({ entityType, entityId, canEdit }: Props) {
         </ul>
       )}
 
-      {canEdit && (
+      {canEdit && !hideUpload && (
         <FileUpload onUpload={handleUpload} isUploading={uploading} disabled={entityId <= 0} />
       )}
     </div>

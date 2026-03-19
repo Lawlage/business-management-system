@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { ClientDetailPage } from '../ClientDetailPage'
 import { createWrapper } from '../../../test/helpers'
@@ -98,13 +98,13 @@ describe('ClientDetailPage', () => {
   it('renders client name after loading', async () => {
     setup()
     await waitFor(() => {
-      expect(screen.getByText('Test Client')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument()
     })
   })
 
   it('renders Details, Renewals, Allocations, Documents tabs', async () => {
     setup()
-    await waitFor(() => expect(screen.getByText('Test Client')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument())
 
     expect(screen.getByRole('button', { name: /details/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /renewals/i })).toBeInTheDocument()
@@ -112,30 +112,58 @@ describe('ClientDetailPage', () => {
     expect(screen.getByRole('button', { name: /documents/i })).toBeInTheDocument()
   })
 
-  it('shows form fields in details tab', async () => {
+  it('shows read-only client info in details tab by default', async () => {
     setup()
-    await waitFor(() => expect(screen.getByText('Test Client')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument())
+
+    // Read-only view shows text content, not form inputs
+    expect(screen.getByText('john@example.com')).toBeInTheDocument()
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+    // Should not have editable inputs yet
+    expect(screen.queryByDisplayValue('john@example.com')).not.toBeInTheDocument()
+  })
+
+  it('shows Edit button for tenant_admin in read-only mode', async () => {
+    setup()
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument())
+
+    expect(screen.getByRole('button', { name: /^edit$/i })).toBeInTheDocument()
+  })
+
+  it('shows form inputs after clicking Edit', async () => {
+    setup()
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }))
 
     expect(screen.getByDisplayValue('Test Client')).toBeInTheDocument()
     expect(screen.getByDisplayValue('John Doe')).toBeInTheDocument()
     expect(screen.getByDisplayValue('john@example.com')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument()
   })
 
   it('shows back navigation link', async () => {
     setup()
-    await waitFor(() => expect(screen.getByText('Test Client')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument())
     expect(screen.getByText('Clients')).toBeInTheDocument()
   })
 
-  it('shows Save and Delete buttons for tenant_admin', async () => {
+  it('shows action menu button for tenant_admin', async () => {
     setup()
-    await waitFor(() => expect(screen.getByText('Test Client')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument())
 
-    expect(screen.getByRole('button', { name: /save client/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /actions/i })).toBeInTheDocument()
   })
 
-  it('shows no Delete button for standard_user', async () => {
+  it('action menu contains Delete Client for tenant_admin', async () => {
+    setup()
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /actions/i }))
+    expect(screen.getByText('Delete Client')).toBeInTheDocument()
+  })
+
+  it('shows no Edit button for standard_user', async () => {
     vi.mocked(useApi).mockReturnValue({
       authedFetch: vi.fn().mockResolvedValue(mockClient),
       getHeaders: vi.fn(),
@@ -157,10 +185,10 @@ describe('ClientDetailPage', () => {
       </Wrapper>,
     )
 
-    await waitFor(() => expect(screen.getByText('Test Client')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument())
 
-    expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /save client/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /save changes/i })).not.toBeInTheDocument()
   })
 
   it('shows "Client not found" when fetch returns null', async () => {

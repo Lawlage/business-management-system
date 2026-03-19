@@ -17,16 +17,21 @@ import { renewalCategoryOptions, renewalWorkflowOptions, renewalDefaults } from 
 type CreateRenewalModalProps = {
   onClose: () => void
   onCreated: () => void
+  presetClientId?: number | null
+  presetClientName?: string
 }
 
 type RenewalForm = typeof renewalDefaults
 
-export function CreateRenewalModal({ onClose, onCreated }: CreateRenewalModalProps) {
+export function CreateRenewalModal({ onClose, onCreated, presetClientId, presetClientName }: CreateRenewalModalProps) {
   const { authedFetch } = useApi()
   const { selectedTenantId } = useTenant()
   const { showNotice } = useNotice()
 
-  const [form, setForm] = useState<RenewalForm>({ ...renewalDefaults })
+  const [form, setForm] = useState<RenewalForm>({
+    ...renewalDefaults,
+    client_id: presetClientId ?? renewalDefaults.client_id,
+  })
   const [errors, setErrors] = useState<ValidationErrors<RenewalForm>>({})
   const [customValues, setCustomValues] = useState<Record<number, string | number | boolean | null>>({})
 
@@ -241,16 +246,24 @@ export function CreateRenewalModal({ onClose, onCreated }: CreateRenewalModalPro
           onChange={(e) => setField('title', e.target.value)}
         />
 
-        <Select
-          label="Client"
-          value={form.client_id !== null ? String(form.client_id) : ''}
-          onChange={(e) => setField('client_id', e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">— No client —</option>
-          {clientList?.map((c) => (
-            <option key={c.id} value={String(c.id)}>{c.name}</option>
-          ))}
-        </Select>
+        {presetClientId ? (
+          <Input
+            label="Client"
+            value={presetClientName ?? String(presetClientId)}
+            disabled
+          />
+        ) : (
+          <Select
+            label="Client"
+            value={form.client_id !== null ? String(form.client_id) : ''}
+            onChange={(e) => setField('client_id', e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">— No client —</option>
+            {clientList?.map((c) => (
+              <option key={c.id} value={String(c.id)}>{c.name}</option>
+            ))}
+          </Select>
+        )}
 
         {departments.length > 0 && (
           <Select
