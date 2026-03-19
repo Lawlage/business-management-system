@@ -23,6 +23,7 @@ type SidebarProps = {
   isSuperadminTenantWorkspace: boolean
   isOpen: boolean
   onClose: () => void
+  onLinkHover?: (to: string) => void
 }
 
 type NavLink = {
@@ -31,7 +32,7 @@ type NavLink = {
   icon: React.ReactNode
 }
 
-export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace, isOpen, onClose }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace, isOpen, onClose, onLinkHover }: SidebarProps) {
   const location = useLocation()
 
   const isActive = (to: string) => location.pathname === to
@@ -115,7 +116,7 @@ export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace
           <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">Main</p>
           <nav className="space-y-1">
             {mainLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose}>
+              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose} onMouseEnter={() => onLinkHover?.(link.to)}>
                 {link.icon}
                 {link.label}
               </Link>
@@ -129,7 +130,7 @@ export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace
           <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">Admin Settings</p>
           <nav className="space-y-1">
             {adminLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose}>
+              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose} onMouseEnter={() => onLinkHover?.(link.to)}>
                 {link.icon}
                 {link.label}
               </Link>
@@ -143,7 +144,7 @@ export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace
           <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">Superadmin</p>
           <nav className="space-y-1">
             {superadminLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose}>
+              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose} onMouseEnter={() => onLinkHover?.(link.to)}>
                 {link.icon}
                 {link.label}
               </Link>

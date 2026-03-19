@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -9,6 +9,7 @@ import { ConfirmProvider, useConfirm } from './contexts/ConfirmContext'
 
 import { applyUiTheme, normalizeUiSettings } from './uiSettings'
 import { useApi } from './hooks/useApi'
+import { chunkPrefetchers, dataPrefetchers } from './lib/prefetch'
 
 import type { Renewable, InventoryItem, TenantUiSettings } from './types'
 
@@ -153,6 +154,13 @@ function AppContent() {
     setTenantUiSettings(normalizeUiSettings(settingsData.ui_settings))
   }, [settingsData, setTenantTimezone, setTenantUiSettings])
 
+  const prefetchRoute = useCallback((to: string) => {
+    void chunkPrefetchers[to]?.()
+    if (selectedTenantId) {
+      dataPrefetchers[to]?.({ queryClient, authedFetch, tenantId: selectedTenantId })
+    }
+  }, [queryClient, authedFetch, selectedTenantId])
+
   const handleLogout = async () => {
     try {
       if (token) await authedFetch('/api/auth/logout', { method: 'POST' })
@@ -226,6 +234,7 @@ function AppContent() {
           isSuperadminTenantWorkspace={isSuperadminTenantWorkspace}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          onLinkHover={prefetchRoute}
         />
 
         <main className="min-w-0 flex-1 overflow-y-auto overflow-x-auto p-4 md:p-6">
