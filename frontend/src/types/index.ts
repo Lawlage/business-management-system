@@ -122,7 +122,7 @@ export type SlaAllocation = {
   cancelled_at: string | null
   created_at: string
   updated_at: string
-  sla_item?: { id: number; name: string; sku: string }
+  sla_item?: { id: number; name: string; sku: string; sla_group?: { id: number; name: string } | null }
   client?: { id: number; name: string }
   department?: { id: number; name: string } | null
 }

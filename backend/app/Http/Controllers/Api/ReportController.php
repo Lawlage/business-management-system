@@ -214,6 +214,55 @@ class ReportController extends Controller
         return new JsonResponse($data);
     }
 
+    public function slaAllocations(Request $request): JsonResponse|Response
+    {
+        $clientId = $request->integer('client_id') ?: null;
+        $status   = $request->input('status') ?: null;
+
+        $data = $this->reportService->slaAllocationReport($clientId, $status);
+
+        if ($request->input('format') === 'csv') {
+            $rows = array_map(fn ($a) => [
+                $a['sla_item']['name'] ?? '',
+                $a['sla_item']['sla_group']['name'] ?? '',
+                $a['client']['name'] ?? '',
+                $a['department']['name'] ?? '',
+                $a['quantity'],
+                $a['renewal_date'] ? substr((string) $a['renewal_date'], 0, 10) : '',
+                $a['status'],
+            ], $data);
+
+            return $this->csvResponse(
+                ['SLA Item', 'SLA Group', 'Client', 'Department', 'Quantity', 'Renewal Date', 'Status'],
+                $rows,
+                'sla-allocations',
+            );
+        }
+
+        return new JsonResponse($data);
+    }
+
+    public function departmentsReport(Request $request): JsonResponse|Response
+    {
+        $data = $this->reportService->departmentsReport();
+
+        if ($request->input('format') === 'csv') {
+            $rows = array_map(fn ($d) => [
+                $d['name'],
+                isset($d['manager']) ? (($d['manager']['first_name'] ?? '') . ' ' . ($d['manager']['last_name'] ?? '')) : '',
+                $d['renewals_count'] ?? 0,
+            ], $data);
+
+            return $this->csvResponse(
+                ['Department', 'Manager', 'Renewal Count'],
+                $rows,
+                'departments',
+            );
+        }
+
+        return new JsonResponse($data);
+    }
+
     /** @param list<string> $headers @param list<list<mixed>> $rows */
     private function csvResponse(array $headers, array $rows, string $name): Response
     {

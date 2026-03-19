@@ -142,6 +142,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::get('/reports/inventory-summary', [ReportController::class, 'inventorySummary']);
             Route::get('/reports/stock-movements', [ReportController::class, 'stockMovements']);
             Route::get('/reports/stock-allocations', [ReportController::class, 'stockAllocations']);
+            Route::get('/reports/sla-allocations', [ReportController::class, 'slaAllocations']);
+            Route::get('/reports/departments', [ReportController::class, 'departmentsReport']);
             Route::get('/reports/client-portfolio', [ReportController::class, 'clientPortfolio']);
         });
     });

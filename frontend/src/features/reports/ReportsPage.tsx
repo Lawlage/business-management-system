@@ -14,7 +14,7 @@ import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { formatDate } from '../../lib/format'
 import { RenewalDetailModal } from '../renewals/RenewalDetailModal'
 import { InventoryDetailModal } from '../inventory/InventoryDetailModal'
-import type { Renewal, StockAllocation, Client, InventoryItem } from '../../types'
+import type { Renewal, StockAllocation, SlaAllocation, Client, InventoryItem } from '../../types'
 
 type TabId =
   | 'renewal-status'
@@ -23,6 +23,8 @@ type TabId =
   | 'inventory-summary'
   | 'stock-movements'
   | 'stock-allocations'
+  | 'sla-allocations'
+  | 'departments'
   | 'client-portfolio'
 
 const TABS: { id: TabId; label: string }[] = [
@@ -32,6 +34,8 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'inventory-summary', label: 'Inventory' },
   { id: 'stock-movements', label: 'Stock Movements' },
   { id: 'stock-allocations', label: 'Allocations' },
+  { id: 'sla-allocations', label: 'SLA Allocations' },
+  { id: 'departments', label: 'Departments' },
   { id: 'client-portfolio', label: 'Client Portfolio' },
 ]
 
@@ -134,12 +138,38 @@ function ReportsContent() {
     staleTime: 0,
   })
 
-  const { data: portfolioClients = [] } = useQuery<Client[]>({
+  const [slaAllocStatus, setSlaAllocStatus] = useState('')
+  const [slaAllocClientId, setSlaAllocClientId] = useState('')
+
+  const { data: slaAllocations, isLoading: loadingSlaAlloc } = useQuery<SlaAllocation[]>({
+    queryKey: ['report', 'sla-allocations', selectedTenantId, slaAllocStatus, slaAllocClientId],
+    queryFn: () => {
+      const params: Record<string, string> = {}
+      if (slaAllocStatus) params.status = slaAllocStatus
+      if (slaAllocClientId) params.client_id = slaAllocClientId
+      return authedFetch(buildUrl('sla-allocations', params), { tenantScoped: true })
+    },
+    enabled: !!selectedTenantId && tab === 'sla-allocations',
+    staleTime: 0,
+  })
+
+  type DeptRow = { id: number; name: string; renewals_count: number; manager: { first_name: string; last_name: string } | null }
+  const { data: departments, isLoading: loadingDepts } = useQuery<DeptRow[]>({
+    queryKey: ['report', 'departments', selectedTenantId],
+    queryFn: () => authedFetch(buildUrl('departments'), { tenantScoped: true }),
+    enabled: !!selectedTenantId && tab === 'departments',
+    staleTime: 0,
+  })
+
+  // Shared client list used by SLA allocations and client-portfolio tabs
+  const { data: clientsList = [] } = useQuery<Client[]>({
     queryKey: ['clients-all', selectedTenantId],
     queryFn: () => authedFetch<Client[]>('/api/clients?all=true', { tenantScoped: true }),
-    enabled: !!selectedTenantId && tab === 'client-portfolio',
+    enabled: !!selectedTenantId && (tab === 'sla-allocations' || tab === 'client-portfolio'),
     staleTime: 30000,
   })
+
+  const portfolioClients = clientsList
 
   const { data: portfolio, isLoading: loadingPort } = useQuery<{
     client: { id: number; name: string }
@@ -477,6 +507,110 @@ function ReportsContent() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SLA Allocations ── */}
+      {tab === 'sla-allocations' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--ui-text)]">Client</label>
+              <select
+                value={slaAllocClientId}
+                onChange={(e) => setSlaAllocClientId(e.target.value)}
+                className="rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-text)] min-w-[160px]"
+              >
+                <option value="">All clients</option>
+                {clientsList.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--ui-text)]">Status</label>
+              <select
+                value={slaAllocStatus}
+                onChange={(e) => setSlaAllocStatus(e.target.value)}
+                className="rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-text)]"
+              >
+                <option value="">All</option>
+                <option value="active">Active</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div className="flex gap-2 pb-0.5">
+              {slaAllocations && slaAllocations.length > 0 && (
+                <Button size="sm" variant="secondary" onClick={() => {
+                  const params: Record<string, string> = {}
+                  if (slaAllocStatus) params.status = slaAllocStatus
+                  if (slaAllocClientId) params.client_id = slaAllocClientId
+                  exportCsv('sla-allocations', params)
+                }}>
+                  Export CSV
+                </Button>
+              )}
+            </div>
+          </div>
+          {loadingSlaAlloc ? (
+            Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={5} />)
+          ) : !slaAllocations || slaAllocations.length === 0 ? (
+            <EmptyState message="No SLA allocations found." />
+          ) : (
+            <div className="space-y-2">
+              {slaAllocations.map((a) => (
+                <div key={a.id} className="app-inner-box flex items-center justify-between gap-4 rounded-md border border-[var(--ui-border)] p-3">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--ui-text)]">{a.sla_item?.name}</p>
+                    <p className="text-xs text-[var(--ui-muted)]">
+                      {a.sla_item?.sla_group?.name ? `${a.sla_item.sla_group.name} · ` : ''}
+                      {a.client?.name} · Qty: {a.quantity}
+                      {a.renewal_date ? ` · Renews: ${formatDate(a.renewal_date)}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge status={a.status} />
+                    <span className="text-xs text-[var(--ui-muted)]">{formatDate(a.created_at, tenantTimezone)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Departments ── */}
+      {tab === 'departments' && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button size="sm" variant="secondary" onClick={() => exportCsv('departments')}>
+              Export CSV
+            </Button>
+          </div>
+          {loadingDepts ? (
+            Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={3} />)
+          ) : !departments || departments.length === 0 ? (
+            <EmptyState message="No departments found." />
+          ) : (
+            <>
+              <div className="hidden md:grid md:grid-cols-[2fr_2fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+                <span>Department</span>
+                <span>Manager</span>
+                <span>Renewals</span>
+              </div>
+              <div className="space-y-2">
+                {departments.map((d) => (
+                  <div key={d.id} className="app-inner-box grid md:grid-cols-[2fr_2fr_1fr] gap-3 rounded-md border border-[var(--ui-border)] p-3 items-center">
+                    <span className="text-sm font-medium text-[var(--ui-text)]">{d.name}</span>
+                    <span className="text-sm text-[var(--ui-muted)]">
+                      {d.manager ? `${d.manager.first_name} ${d.manager.last_name}` : '—'}
+                    </span>
+                    <span className="text-sm text-[var(--ui-muted)]">{d.renewals_count}</span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}

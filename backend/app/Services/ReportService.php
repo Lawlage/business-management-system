@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Client;
+use App\Models\Department;
 use App\Models\InventoryItem;
 use App\Models\Renewal;
+use App\Models\SlaAllocation;
 use App\Models\StockAllocation;
 use App\Models\StockTransaction;
 use Carbon\Carbon;
@@ -171,6 +173,44 @@ class ReportService
             'allocation_count' => $allocations->count(),
             'active_allocated_quantity' => (int) $activeAllocatedQty,
         ];
+    }
+
+    /**
+     * SLA allocations report — optionally filtered by client or status.
+     */
+    public function slaAllocationReport(?int $clientId = null, ?string $status = null): array
+    {
+        $query = SlaAllocation::query()
+            ->with([
+                'slaItem:id,name,sku,sla_group_id',
+                'slaItem.slaGroup:id,name',
+                'client:id,name',
+                'department:id,name',
+            ])
+            ->orderByDesc('created_at');
+
+        if ($clientId !== null) {
+            $query->where('client_id', $clientId);
+        }
+
+        if ($status !== null) {
+            $query->where('status', $status);
+        }
+
+        return $query->get()->toArray();
+    }
+
+    /**
+     * Departments report — lists departments with manager and renewal/member counts.
+     */
+    public function departmentsReport(): array
+    {
+        return Department::query()
+            ->with('manager:id,first_name,last_name')
+            ->withCount('renewals')
+            ->orderBy('name')
+            ->get()
+            ->toArray();
     }
 
     /**
