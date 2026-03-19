@@ -37,3 +37,6 @@ logs/
 
 # Claude's personal files
 .claude/settings.json
+
+# Tenant attachment storage (user-uploaded files)
+backend/storage/tenant*/
