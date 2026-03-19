@@ -11,24 +11,26 @@ import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { Button } from '../../components/Button'
 import { SearchCombobox } from '../../components/SearchCombobox'
 import { formatDate } from '../../lib/format'
-import type { DashboardData, Renewal, InventoryItem, SlaAllocation, Client, PaginatedResponse } from '../../types'
+import type { DashboardData, Renewable, InventoryItem, SlaAllocation, Client, PaginatedResponse } from '../../types'
 
 type DashboardPageProps = {
-  onOpenRenewal: (renewal: Renewal) => void
+  onOpenRenewal: (renewable: Renewable) => void
   onOpenInventory: (item: InventoryItem) => void
 }
 
 const itemButtonClass =
   'app-inner-box w-full cursor-pointer rounded-md border border-[var(--ui-border)] p-2 text-left transition hover:-translate-y-0.5 hover:border-[var(--ui-accent)]/80 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/80'
 
-function RenewalRow({ r, onClick, tenantTimezone }: { r: Renewal; onClick: () => void; tenantTimezone: string }) {
+function RenewalRow({ r, onClick, tenantTimezone }: { r: Renewable; onClick: () => void; tenantTimezone: string }) {
   return (
     <button className={itemButtonClass} onClick={onClick}>
-      <p className="font-medium text-sm text-[var(--ui-text)]">{r.title}</p>
+      <p className="font-medium text-sm text-[var(--ui-text)]">
+        {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+      </p>
       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <Badge status={r.status} />
+        <Badge status={r.status ?? ''} />
         <span className="text-xs text-[var(--ui-muted)]">
-          {formatDate(r.expiration_date, tenantTimezone)}
+          {formatDate(r.next_due_date, tenantTimezone)}
         </span>
       </div>
       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">

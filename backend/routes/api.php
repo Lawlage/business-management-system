@@ -11,7 +11,8 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\RecycleBinController;
-use App\Http\Controllers\Api\RenewalController;
+use App\Http\Controllers\Api\RenewableController;
+use App\Http\Controllers\Api\RenewableProductController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SlaAllocationController;
 use App\Http\Controllers\Api\SlaGroupController;
@@ -66,10 +67,17 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::put('/clients/{id}', [ClientController::class, 'update'])->middleware('tenant.permission:edit_existing');
         Route::delete('/clients/{id}', [ClientController::class, 'destroy'])->middleware('tenant.permission:delete_record');
 
-        Route::get('/renewals', [RenewalController::class, 'index']);
-        Route::post('/renewals', [RenewalController::class, 'store'])->middleware('tenant.permission:create_renewal');
-        Route::put('/renewals/{id}', [RenewalController::class, 'update'])->middleware('tenant.permission:edit_existing');
-        Route::delete('/renewals/{id}', [RenewalController::class, 'destroy'])->middleware('tenant.permission:delete_record');
+        // Renewable Products (catalog)
+        Route::get('/renewable-products', [RenewableProductController::class, 'index']);
+        Route::post('/renewable-products', [RenewableProductController::class, 'store'])->middleware('tenant.permission:create_inventory');
+        Route::put('/renewable-products/{id}', [RenewableProductController::class, 'update'])->middleware('tenant.permission:edit_existing');
+        Route::delete('/renewable-products/{id}', [RenewableProductController::class, 'destroy'])->middleware('tenant.permission:delete_record');
+
+        // Renewables (client instances)
+        Route::get('/renewables', [RenewableController::class, 'index']);
+        Route::post('/renewables', [RenewableController::class, 'store'])->middleware('tenant.permission:create_renewal');
+        Route::put('/renewables/{id}', [RenewableController::class, 'update'])->middleware('tenant.permission:edit_existing');
+        Route::delete('/renewables/{id}', [RenewableController::class, 'destroy'])->middleware('tenant.permission:delete_record');
 
         Route::get('/inventory', [InventoryController::class, 'index']);
         Route::post('/inventory', [InventoryController::class, 'store'])->middleware('tenant.permission:create_inventory');

@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Client;
 use App\Models\Department;
 use App\Models\InventoryItem;
-use App\Models\Renewal;
+use App\Models\Renewable;
 use App\Models\SlaAllocation;
 use App\Models\StockAllocation;
 use App\Models\StockTransaction;
@@ -15,62 +15,62 @@ use Illuminate\Support\Collection;
 class ReportService
 {
     /**
-     * Summary of renewals grouped by status.
+     * Summary of renewables grouped by status.
      */
     public function renewalStatusSummary(): array
     {
-        $renewals = Renewal::query()
-            ->with('client:id,name')
+        $renewables = Renewable::query()
+            ->with(['renewableProduct:id,name,category', 'client:id,name'])
             ->orderByRaw("FIELD(status, 'Urgent', 'Action Required', 'Upcoming', 'No action needed', 'Expired')")
-            ->orderBy('expiration_date')
+            ->orderByRaw('ISNULL(next_due_date), next_due_date ASC')
             ->get();
 
-        $grouped = $renewals->groupBy('status');
+        $grouped = $renewables->groupBy(fn ($r) => $r->status ?? 'No status');
 
         return $grouped->map(fn (Collection $items, string $status) => [
-            'status' => $status,
-            'count' => $items->count(),
-            'renewals' => $items->values(),
+            'status'     => $status,
+            'count'      => $items->count(),
+            'renewables' => $items->values(),
         ])->values()->toArray();
     }
 
     /**
-     * Renewals grouped by client.
+     * Renewables grouped by client.
      */
     public function renewalsByClient(?int $clientId = null): array
     {
-        $query = Renewal::query()
-            ->with('client:id,name')
-            ->orderBy('expiration_date');
+        $query = Renewable::query()
+            ->with(['renewableProduct:id,name,category', 'client:id,name'])
+            ->orderByRaw('ISNULL(next_due_date), next_due_date ASC');
 
         if ($clientId !== null) {
             $query->where('client_id', $clientId);
         }
 
-        $renewals = $query->get();
+        $renewables = $query->get();
 
-        $grouped = $renewals->groupBy(fn ($r) => $r->client_id ?? 0);
+        $grouped = $renewables->groupBy(fn ($r) => $r->client_id ?? 0);
 
         return $grouped->map(function (Collection $items, int $clientId) {
             $client = $clientId ? $items->first()->client : null;
             return [
-                'client_id' => $clientId ?: null,
+                'client_id'   => $clientId ?: null,
                 'client_name' => $client?->name ?? '(No Client)',
-                'count' => $items->count(),
-                'renewals' => $items->values(),
+                'count'       => $items->count(),
+                'renewables'  => $items->values(),
             ];
         })->sortBy('client_name')->values()->toArray();
     }
 
     /**
-     * Renewals expiring within the given date range.
+     * Renewables with a next_due_date within the given date range.
      */
     public function renewalsExpiring(Carbon $from, Carbon $to): array
     {
-        return Renewal::query()
-            ->with('client:id,name')
-            ->whereBetween('expiration_date', [$from->toDateString(), $to->toDateString()])
-            ->orderBy('expiration_date')
+        return Renewable::query()
+            ->with(['renewableProduct:id,name,category', 'client:id,name'])
+            ->whereBetween('next_due_date', [$from->toDateString(), $to->toDateString()])
+            ->orderBy('next_due_date')
             ->get()
             ->toArray();
     }
@@ -146,15 +146,16 @@ class ReportService
     }
 
     /**
-     * Full portfolio for a single client: their renewals + allocations.
+     * Full portfolio for a single client: their renewables + allocations.
      */
     public function clientPortfolio(int $clientId): array
     {
         $client = Client::query()->findOrFail($clientId);
 
-        $renewals = Renewal::query()
+        $renewables = Renewable::query()
+            ->with('renewableProduct:id,name,category')
             ->where('client_id', $clientId)
-            ->orderBy('expiration_date')
+            ->orderByRaw('ISNULL(next_due_date), next_due_date ASC')
             ->get();
 
         $allocations = StockAllocation::query()
@@ -166,11 +167,11 @@ class ReportService
         $activeAllocatedQty = $allocations->where('status', 'allocated')->sum('quantity');
 
         return [
-            'client' => $client,
-            'renewals' => $renewals->toArray(),
-            'allocations' => $allocations->toArray(),
-            'renewal_count' => $renewals->count(),
-            'allocation_count' => $allocations->count(),
+            'client'                   => $client,
+            'renewables'               => $renewables->toArray(),
+            'allocations'              => $allocations->toArray(),
+            'renewable_count'          => $renewables->count(),
+            'allocation_count'         => $allocations->count(),
             'active_allocated_quantity' => (int) $activeAllocatedQty,
         ];
     }
@@ -201,13 +202,13 @@ class ReportService
     }
 
     /**
-     * Departments report — lists departments with manager and renewal/member counts.
+     * Departments report — lists departments with manager and renewable counts.
      */
     public function departmentsReport(): array
     {
         return Department::query()
             ->with('manager:id,first_name,last_name')
-            ->withCount('renewals')
+            ->withCount('renewables')
             ->orderBy('name')
             ->get()
             ->toArray();

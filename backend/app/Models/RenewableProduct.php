@@ -7,34 +7,30 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Client extends Model
+class RenewableProduct extends Model
 {
     use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
         'name',
-        'contact_name',
-        'email',
-        'phone',
-        'website',
+        'category',
+        'vendor',
+        'cost_price',
+        'frequency_type',
+        'frequency_value',
         'notes',
         'created_by',
         'updated_by',
     ];
 
+    protected $casts = [
+        'cost_price' => 'decimal:2',
+    ];
+
+    /** @return HasMany<Renewable, $this> */
     public function renewables(): HasMany
     {
         return $this->hasMany(Renewable::class);
-    }
-
-    public function stockAllocations(): HasMany
-    {
-        return $this->hasMany(StockAllocation::class);
-    }
-
-    public function slaAllocations(): HasMany
-    {
-        return $this->hasMany(SlaAllocation::class);
     }
 }

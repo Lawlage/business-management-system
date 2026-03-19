@@ -1,0 +1,98 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\RenewableProduct;
+use App\Services\AuditLogger;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class RenewableProductController extends Controller
+{
+    public function __construct(private readonly AuditLogger $auditLogger)
+    {
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        $query = RenewableProduct::query()->withCount('renewables');
+
+        if ($request->filled('search')) {
+            $term = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], (string) $request->string('search'));
+            $query->where(function ($q) use ($term): void {
+                $q->where('name', 'like', '%' . $term . '%')
+                    ->orWhere('vendor', 'like', '%' . $term . '%');
+            });
+        }
+
+        return new JsonResponse($query->orderBy('name')->paginate(20));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'name'            => ['required', 'string', 'max:255'],
+            'category'        => ['nullable', 'string', 'max:100'],
+            'vendor'          => ['nullable', 'string', 'max:255'],
+            'cost_price'      => ['nullable', 'numeric', 'min:0'],
+            'frequency_type'  => ['nullable', 'string', 'in:days,months,years'],
+            'frequency_value' => ['nullable', 'integer', 'min:1'],
+            'notes'           => ['nullable', 'string'],
+        ]);
+
+        $payload['cost_price'] = $payload['cost_price'] ?? 0.00;
+        $payload['created_by'] = $request->user()->id;
+        $payload['updated_by'] = $request->user()->id;
+
+        $product = RenewableProduct::query()->create($payload);
+
+        $this->auditLogger->tenant($request, 'renewable_product.created', $request->user(), [
+            'entity_type'  => 'renewable_product',
+            'entity_id'    => $product->id,
+            'entity_title' => $product->name,
+        ]);
+
+        return new JsonResponse($product, 201);
+    }
+
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $product = RenewableProduct::query()->findOrFail($id);
+
+        $payload = $request->validate([
+            'name'            => ['sometimes', 'string', 'max:255'],
+            'category'        => ['nullable', 'string', 'max:100'],
+            'vendor'          => ['nullable', 'string', 'max:255'],
+            'cost_price'      => ['nullable', 'numeric', 'min:0'],
+            'frequency_type'  => ['nullable', 'string', 'in:days,months,years'],
+            'frequency_value' => ['nullable', 'integer', 'min:1'],
+            'notes'           => ['nullable', 'string'],
+        ]);
+
+        $payload['updated_by'] = $request->user()->id;
+        $product->update($payload);
+
+        $this->auditLogger->tenant($request, 'renewable_product.updated', $request->user(), [
+            'entity_type'  => 'renewable_product',
+            'entity_id'    => $product->id,
+            'entity_title' => $product->name,
+        ]);
+
+        return new JsonResponse($product->fresh());
+    }
+
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        $product = RenewableProduct::query()->findOrFail($id);
+        $product->delete();
+
+        $this->auditLogger->tenant($request, 'renewable_product.deleted', $request->user(), [
+            'entity_type'  => 'renewable_product',
+            'entity_id'    => $id,
+            'entity_title' => $product->name,
+        ]);
+
+        return new JsonResponse(['message' => 'Renewable product moved to recycle bin.']);
+    }
+}

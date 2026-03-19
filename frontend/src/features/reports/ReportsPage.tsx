@@ -12,9 +12,9 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { formatDate } from '../../lib/format'
-import { RenewalDetailModal } from '../renewals/RenewalDetailModal'
+import { RenewableDetailModal } from '../renewables/RenewableDetailModal'
 import { InventoryDetailModal } from '../inventory/InventoryDetailModal'
-import type { Renewal, StockAllocation, SlaAllocation, Client, InventoryItem } from '../../types'
+import type { Renewable, StockAllocation, SlaAllocation, Client, InventoryItem } from '../../types'
 
 type TabId =
   | 'renewal-status'
@@ -65,7 +65,7 @@ function ReportsContent() {
   const [allocationStatus, setAllocationStatus] = useState('')
 
   // Modal state for clickable rows
-  const [selectedRenewal, setSelectedRenewal] = useState<Renewal | null>(null)
+  const [selectedRenewal, setSelectedRenewal] = useState<Renewable | null>(null)
   const [selectedInventory, setSelectedInventory] = useState<InventorySummaryRow | null>(null)
 
   // Run state — user must press Run before fetching (except always-on tabs)
@@ -78,7 +78,7 @@ function ReportsContent() {
   }
 
   const { data: renewalStatus, isLoading: loadingRS } = useQuery<
-    { status: string; count: number; renewals: Renewal[] }[]
+    { status: string; count: number; renewals: Renewable[] }[]
   >({
     queryKey: ['report', 'renewal-status', selectedTenantId],
     queryFn: () =>
@@ -88,7 +88,7 @@ function ReportsContent() {
   })
 
   const { data: byClient, isLoading: loadingBC } = useQuery<
-    { client_name: string; count: number; renewals: Renewal[] }[]
+    { client_name: string; count: number; renewals: Renewable[] }[]
   >({
     queryKey: ['report', 'renewals-by-client', selectedTenantId],
     queryFn: () =>
@@ -97,7 +97,7 @@ function ReportsContent() {
     staleTime: 0,
   })
 
-  const { data: expiring, isLoading: loadingExp } = useQuery<Renewal[]>({
+  const { data: expiring, isLoading: loadingExp } = useQuery<Renewable[]>({
     queryKey: ['report', 'renewals-expiring', selectedTenantId, expiringFrom, expiringTo, runKey],
     queryFn: () =>
       authedFetch(buildUrl('renewals-expiring', { from: expiringFrom, to: expiringTo }), {
@@ -173,7 +173,7 @@ function ReportsContent() {
 
   const { data: portfolio, isLoading: loadingPort } = useQuery<{
     client: { id: number; name: string }
-    renewals: Renewal[]
+    renewals: Renewable[]
     allocations: StockAllocation[]
     renewal_count: number
     active_allocated_quantity: number
@@ -261,10 +261,14 @@ function ReportsContent() {
                     className="w-full flex items-center justify-between gap-4 px-4 py-2 border-t border-[var(--ui-border)] text-left hover:bg-[var(--ui-inner-bg)] transition"
                   >
                     <div>
-                      <p className="text-sm font-medium text-[var(--ui-text)]">{r.title}</p>
-                      <p className="text-xs text-[var(--ui-muted)]">{r.client?.name ?? 'No client'} · {r.category}</p>
+                      <p className="text-sm font-medium text-[var(--ui-text)]">
+                        {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+                      </p>
+                      <p className="text-xs text-[var(--ui-muted)]">
+                        {r.client?.name ?? 'No client'} · {r.renewable_product?.category ?? '—'}
+                      </p>
                     </div>
-                    <span className="text-xs text-[var(--ui-muted)] shrink-0">{formatDate(r.expiration_date)}</span>
+                    <span className="text-xs text-[var(--ui-muted)] shrink-0">{formatDate(r.next_due_date)}</span>
                   </button>
                 ))}
               </div>
@@ -299,12 +303,14 @@ function ReportsContent() {
                     className="w-full flex items-center justify-between gap-4 px-4 py-2 border-t border-[var(--ui-border)] text-left hover:bg-[var(--ui-inner-bg)] transition"
                   >
                     <div>
-                      <p className="text-sm text-[var(--ui-text)]">{r.title}</p>
-                      <p className="text-xs text-[var(--ui-muted)]">{r.category}</p>
+                      <p className="text-sm text-[var(--ui-text)]">
+                        {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+                      </p>
+                      <p className="text-xs text-[var(--ui-muted)]">{r.renewable_product?.category ?? '—'}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Badge status={r.status} />
-                      <span className="text-xs text-[var(--ui-muted)]">{formatDate(r.expiration_date)}</span>
+                      <Badge status={r.status ?? ''} />
+                      <span className="text-xs text-[var(--ui-muted)]">{formatDate(r.next_due_date)}</span>
                     </div>
                   </button>
                 ))}
@@ -350,12 +356,16 @@ function ReportsContent() {
                   className="w-full app-inner-box flex items-center justify-between gap-4 rounded-md border border-[var(--ui-border)] p-3 text-left hover:bg-[var(--ui-inner-bg)] transition"
                 >
                   <div>
-                    <p className="text-sm font-medium text-[var(--ui-text)]">{r.title}</p>
-                    <p className="text-xs text-[var(--ui-muted)]">{r.client?.name ?? 'No client'} · {r.category}</p>
+                    <p className="text-sm font-medium text-[var(--ui-text)]">
+                      {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+                    </p>
+                    <p className="text-xs text-[var(--ui-muted)]">
+                      {r.client?.name ?? 'No client'} · {r.renewable_product?.category ?? '—'}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge status={r.status} />
-                    <span className="text-xs text-[var(--ui-muted)]">{formatDate(r.expiration_date)}</span>
+                    <Badge status={r.status ?? ''} />
+                    <span className="text-xs text-[var(--ui-muted)]">{formatDate(r.next_due_date)}</span>
                   </div>
                 </button>
               ))}
@@ -664,12 +674,14 @@ function ReportsContent() {
                         className="w-full app-inner-box flex items-center justify-between gap-4 rounded-md border border-[var(--ui-border)] p-3 text-left hover:bg-[var(--ui-inner-bg)] transition"
                       >
                         <div>
-                          <p className="text-sm font-medium text-[var(--ui-text)]">{r.title}</p>
-                          <p className="text-xs text-[var(--ui-muted)]">{r.category}</p>
+                          <p className="text-sm font-medium text-[var(--ui-text)]">
+                            {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+                          </p>
+                          <p className="text-xs text-[var(--ui-muted)]">{r.renewable_product?.category ?? '—'}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <Badge status={r.status} />
-                          <span className="text-xs text-[var(--ui-muted)]">{formatDate(r.expiration_date)}</span>
+                          <Badge status={r.status ?? ''} />
+                          <span className="text-xs text-[var(--ui-muted)]">{formatDate(r.next_due_date)}</span>
                         </div>
                       </button>
                     ))}
@@ -707,8 +719,8 @@ function ReportsContent() {
 
       {/* Detail modals for clickable rows */}
       {selectedRenewal && (
-        <RenewalDetailModal
-          renewal={selectedRenewal}
+        <RenewableDetailModal
+          renewable={selectedRenewal}
           onClose={() => setSelectedRenewal(null)}
           onUpdated={() => setSelectedRenewal(null)}
           canDelete={canDelete}

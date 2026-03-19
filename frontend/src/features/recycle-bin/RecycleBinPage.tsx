@@ -11,7 +11,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import type { RecycleBinData } from '../../types'
 
-type Tab = 'all' | 'renewals' | 'inventory' | 'sla_items' | 'custom_fields' | 'clients'
+type Tab = 'all' | 'renewables' | 'renewable_products' | 'inventory' | 'sla_items' | 'custom_fields' | 'clients'
 
 type AllItem = {
   id: number
@@ -23,12 +23,19 @@ type AllItem = {
 
 function buildAllItems(data: RecycleBinData): AllItem[] {
   const items: AllItem[] = [
-    ...data.renewals.data.map((r) => ({
+    ...data.renewables.data.map((r) => ({
       id: r.id,
-      label: r.title,
-      subLabel: 'Renewal',
-      entityType: 'renewal',
+      label: r.description ?? `Renewable #${r.id}`,
+      subLabel: 'Renewable',
+      entityType: 'renewable',
       deleted_at: (r as unknown as { deleted_at?: string }).deleted_at ?? '',
+    })),
+    ...data.renewable_products.data.map((p) => ({
+      id: p.id,
+      label: p.name,
+      subLabel: 'Renewable Product',
+      entityType: 'renewable_product',
+      deleted_at: (p as unknown as { deleted_at?: string }).deleted_at ?? '',
     })),
     ...data.inventory_items.data.map((i) => ({
       id: i.id,
@@ -123,7 +130,8 @@ export function RecycleBinPage() {
     onSuccess: (_, { entityType }) => {
       showNotice('Record restored.')
       void queryClient.invalidateQueries({ queryKey: ['recycle-bin', selectedTenantId] })
-      void queryClient.invalidateQueries({ queryKey: ['renewals', selectedTenantId] })
+      void queryClient.invalidateQueries({ queryKey: ['renewables', selectedTenantId] })
+      void queryClient.invalidateQueries({ queryKey: ['renewable-products', selectedTenantId] })
       void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
       void queryClient.invalidateQueries({ queryKey: ['clients', selectedTenantId] })
       if (entityType === 'custom_field') {
@@ -198,7 +206,8 @@ export function RecycleBinPage() {
       {/* Tab bar */}
       <div className="mb-4 flex flex-wrap border-b border-[var(--ui-border)]">
         <button className={tabClass('all')} onClick={() => setActiveTab('all')}>All</button>
-        <button className={tabClass('renewals')} onClick={() => setActiveTab('renewals')}>Renewals</button>
+        <button className={tabClass('renewables')} onClick={() => setActiveTab('renewables')}>Renewables</button>
+        <button className={tabClass('renewable_products')} onClick={() => setActiveTab('renewable_products')}>Renewable Products</button>
         <button className={tabClass('inventory')} onClick={() => setActiveTab('inventory')}>Inventory Items</button>
         <button className={tabClass('sla_items')} onClick={() => setActiveTab('sla_items')}>SLA Items</button>
         <button className={tabClass('custom_fields')} onClick={() => setActiveTab('custom_fields')}>Custom Fields</button>
@@ -226,20 +235,40 @@ export function RecycleBinPage() {
         </div>
       )}
 
-      {/* Renewals tab */}
-      {activeTab === 'renewals' && (
+      {/* Renewables tab */}
+      {activeTab === 'renewables' && (
         <div className="space-y-2">
-          {isLoading ? skeletonRows : !data || data.renewals.data.length === 0 ? (
-            <EmptyState message="No renewals in the recycle bin." />
+          {isLoading ? skeletonRows : !data || data.renewables.data.length === 0 ? (
+            <EmptyState message="No renewables in the recycle bin." />
           ) : (
-            data.renewals.data.map((renewal) => (
+            data.renewables.data.map((r) => (
               <RecordRow
-                key={renewal.id}
-                label={renewal.title}
+                key={r.id}
+                label={r.description ?? `Renewable #${r.id}`}
                 isRestoring={restoreMutation.isPending}
                 isDeleting={forceDeleteMutation.isPending}
-                onRestore={() => handleRestore('renewal', renewal.id)}
-                onForceDelete={() => void handleForceDelete('renewal', renewal.id)}
+                onRestore={() => handleRestore('renewable', r.id)}
+                onForceDelete={() => void handleForceDelete('renewable', r.id)}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Renewable Products tab */}
+      {activeTab === 'renewable_products' && (
+        <div className="space-y-2">
+          {isLoading ? skeletonRows : !data || data.renewable_products.data.length === 0 ? (
+            <EmptyState message="No renewable products in the recycle bin." />
+          ) : (
+            data.renewable_products.data.map((p) => (
+              <RecordRow
+                key={p.id}
+                label={p.name}
+                isRestoring={restoreMutation.isPending}
+                isDeleting={forceDeleteMutation.isPending}
+                onRestore={() => handleRestore('renewable_product', p.id)}
+                onForceDelete={() => void handleForceDelete('renewable_product', p.id)}
               />
             ))
           )}

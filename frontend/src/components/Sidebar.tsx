@@ -55,7 +55,8 @@ export function Sidebar({ role, isSuperadminTenantWorkspace, isOpen, onClose }: 
   const mainLinks: NavLink[] = [
     { to: '/app', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
     { to: '/app/clients', label: 'Clients', icon: <Contact size={16} /> },
-    { to: '/app/renewals', label: 'Renewals', icon: <RefreshCw size={16} /> },
+    { to: '/app/renewable-products', label: 'Renewable Products', icon: <RefreshCw size={16} /> },
+    { to: '/app/renewables', label: 'Renewables', icon: <RefreshCw size={16} /> },
     { to: '/app/inventory', label: 'Inventory', icon: <Package size={16} /> },
     ...(role !== 'standard_user'
       ? [{ to: '/app/allocations', label: 'Allocations', icon: <ArrowRightLeft size={16} /> }]

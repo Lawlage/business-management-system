@@ -1,4 +1,4 @@
-import { renewalCategoryOptions } from '../types'
+import { renewableCategoryOptions } from '../types'
 
 export function formatDateTime(value?: string | null, timezone = 'UTC'): string {
   if (!value) return 'N/A'
@@ -23,12 +23,21 @@ export function formatDate(value?: string | null, timezone = 'UTC'): string {
 
 export function formatRenewalCategory(value?: string | null): string {
   if (!value) return 'Uncategorized'
-  const option = renewalCategoryOptions.find((entry) => entry.value === value)
+  const option = renewableCategoryOptions.find((entry) => entry.value === value)
   if (option) return option.label
   return value
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
+}
+
+export function formatFrequency(
+  type?: 'days' | 'months' | 'years' | 'day_of_month' | null,
+  value?: number | null,
+): string {
+  if (!type || value == null) return 'Non-expiring'
+  if (type === 'day_of_month') return `Day ${value} of each month`
+  return `Every ${value} ${type}`
 }
 
 export function formatAuditEvent(event?: string): string {

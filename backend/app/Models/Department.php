@@ -24,9 +24,9 @@ class Department extends Model
         return $this->belongsTo(\App\Models\User::class, 'manager_id');
     }
 
-    public function renewals(): HasMany
+    public function renewables(): HasMany
     {
-        return $this->hasMany(Renewal::class);
+        return $this->hasMany(Renewable::class);
     }
 
     public function stockAllocations(): HasMany

@@ -27,35 +27,37 @@ class CrossTenantIsolationTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_user_cannot_access_another_tenants_renewals(): void
+    public function test_user_cannot_access_another_tenants_renewables(): void
     {
         [$adminA, $tenantA] = $this->createTenantAdminContext();
         [$adminB, $tenantB] = $this->createTenantAdminContext();
 
-        $response = $this->actingAs($adminA)->getJson('/api/renewals', [
+        $response = $this->actingAs($adminA)->getJson('/api/renewables', [
             'X-Tenant-Id' => $tenantB->id,
         ]);
 
         $response->assertForbidden();
     }
 
-    public function test_renewal_created_in_tenant_a_is_not_visible_in_tenant_b(): void
+    public function test_renewable_created_in_tenant_a_is_not_visible_in_tenant_b(): void
     {
         [$adminA, $tenantA] = $this->createTenantAdminContext();
         [$adminB, $tenantB] = $this->createTenantAdminContext();
 
         $clientId = $this->createClient($adminA, $tenantA);
 
-        // AdminA creates a renewal in tenantA.
-        $this->actingAs($adminA)->postJson('/api/renewals', [
-            'title' => 'Tenant A Exclusive',
-            'category' => 'license',
-            'expiration_date' => now()->addDays(90)->toDateString(),
-            'client_id' => $clientId,
+        $product = $this->actingAs($adminA)->postJson('/api/renewable-products', [
+            'name' => 'Tenant A Product',
+        ], $this->tenantHeaders($tenantA))->json();
+
+        // AdminA creates a renewable in tenantA.
+        $this->actingAs($adminA)->postJson('/api/renewables', [
+            'renewable_product_id' => $product['id'],
+            'client_id'            => $clientId,
         ], $this->tenantHeaders($tenantA));
 
-        // AdminB lists renewals in tenantB — should be empty.
-        $response = $this->actingAs($adminB)->getJson('/api/renewals', $this->tenantHeaders($tenantB));
+        // AdminB lists renewables in tenantB — should be empty.
+        $response = $this->actingAs($adminB)->getJson('/api/renewables', $this->tenantHeaders($tenantB));
 
         $response->assertOk();
         $this->assertCount(0, $response->json('data'));
@@ -104,7 +106,7 @@ class CrossTenantIsolationTest extends TestCase
         [$admin, $tenant] = $this->createTenantAdminContext();
         $tenant->update(['status' => 'suspended']);
 
-        $response = $this->actingAs($admin)->getJson('/api/renewals', $this->tenantHeaders($tenant));
+        $response = $this->actingAs($admin)->getJson('/api/renewables', $this->tenantHeaders($tenant));
 
         $response->assertNotFound();
     }

@@ -13,6 +13,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->command('app:purge-soft-deleted-records')->daily();
+        $schedule->command('app:refresh-renewable-due-dates')->daily();
     }
 
     /**

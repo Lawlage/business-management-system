@@ -10,7 +10,7 @@ import { Input } from '../../components/Input'
 import { Textarea } from '../../components/Textarea'
 import { Badge } from '../../components/Badge'
 import { formatDate } from '../../lib/format'
-import type { Client, Renewal, StockAllocation, PaginatedResponse } from '../../types'
+import type { Client, Renewable, StockAllocation, PaginatedResponse } from '../../types'
 
 type ClientDetailModalProps = {
   client: Client
@@ -46,11 +46,11 @@ export function ClientDetailModal({
 
   const canAllocate = role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'
 
-  const { data: renewalsData } = useQuery<PaginatedResponse<Renewal>>({
-    queryKey: ['client-renewals', selectedTenantId, client.id],
+  const { data: renewalsData } = useQuery<PaginatedResponse<Renewable>>({
+    queryKey: ['client-renewables', selectedTenantId, client.id],
     queryFn: () =>
-      authedFetch<PaginatedResponse<Renewal>>(
-        `/api/renewals?client_id=${client.id}&page=1`,
+      authedFetch<PaginatedResponse<Renewable>>(
+        `/api/renewables?client_id=${client.id}&page=1`,
         { tenantScoped: true },
       ),
     enabled: !!selectedTenantId && activeTab === 'renewals',
@@ -212,10 +212,15 @@ export function ClientDetailModal({
             renewalsData.data.map((r) => (
               <div key={r.id} className="app-inner-box flex items-center justify-between gap-3 rounded-md border border-[var(--ui-border)] p-3">
                 <div>
-                  <p className="text-sm font-medium text-[var(--ui-text)]">{r.title}</p>
-                  <p className="text-xs text-[var(--ui-muted)]">{r.category} · Expires {formatDate(r.expiration_date)}</p>
+                  <p className="text-sm font-medium text-[var(--ui-text)]">
+                    {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+                  </p>
+                  <p className="text-xs text-[var(--ui-muted)]">
+                    {r.renewable_product?.name ?? '—'}
+                    {r.next_due_date ? ` · Due ${formatDate(r.next_due_date)}` : ''}
+                  </p>
                 </div>
-                <Badge status={r.status} />
+                <Badge status={r.status ?? ''} />
               </div>
             ))
           )}

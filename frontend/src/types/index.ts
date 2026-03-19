@@ -51,21 +51,44 @@ export type Department = {
   created_at?: string
 }
 
-export type Renewal = {
+export type FrequencyType = 'days' | 'months' | 'years' | 'day_of_month'
+
+export type FrequencyValue = {
+  type: FrequencyType
+  value: number
+  startDate?: string // ISO date; only for days/months/years
+}
+
+export type RenewableProduct = {
   id: number
-  title: string
-  client_id?: number | null
+  name: string
+  category?: string | null
+  vendor?: string | null
+  cost_price: string
+  frequency_type?: 'days' | 'months' | 'years' | null
+  frequency_value?: number | null
+  notes?: string | null
+  renewables_count?: number
+  created_at?: string
+}
+
+export type Renewable = {
+  id: number
+  renewable_product_id: number
+  renewable_product?: RenewableProduct | null
+  description?: string | null
+  client_id: number
   client?: { id: number; name: string } | null
   department_id?: number | null
   department?: { id: number; name: string } | null
-  status: string
   workflow_status?: string | null
-  auto_renews?: boolean
-  category: string
-  expiration_date: string
-  notes?: string | null
-  cost_price?: string | null
   sale_price?: string | null
+  frequency_type?: FrequencyType | null
+  frequency_value?: number | null
+  frequency_start_date?: string | null
+  next_due_date?: string | null
+  status?: string | null
+  notes?: string | null
   created_at?: string
 }
 
@@ -201,14 +224,15 @@ export type PaginatedResponse<T> = {
 }
 
 export type DashboardData = {
-  upcoming_renewals: Renewal[]
-  critical_renewals: Renewal[]
+  upcoming_renewals: Renewable[]
+  critical_renewals: Renewable[]
   low_stock_items: InventoryItem[]
   upcoming_sla_allocations: SlaAllocation[]
 }
 
 export type RecycleBinData = {
-  renewals: PaginatedResponse<Renewal>
+  renewables: PaginatedResponse<Renewable>
+  renewable_products: PaginatedResponse<RenewableProduct>
   inventory_items: PaginatedResponse<InventoryItem>
   custom_fields: PaginatedResponse<CustomField>
   clients: PaginatedResponse<Client>
@@ -227,7 +251,7 @@ export const roleLabels: Record<AppRole, string> = {
   global_superadmin: 'Global Superadmin',
 }
 
-export const renewalCategoryOptions = [
+export const renewableCategoryOptions = [
   { value: 'contract', label: 'Contract' },
   { value: 'license', label: 'License' },
   { value: 'domain', label: 'Domain' },
@@ -239,7 +263,7 @@ export const renewalCategoryOptions = [
   { value: 'other', label: 'Other' },
 ]
 
-export const renewalWorkflowOptions = [
+export const renewableWorkflowOptions = [
   'Active - paid and in force',
   'Client contacted',
   'Discovery in progress',
@@ -253,17 +277,22 @@ export const renewalWorkflowOptions = [
   'Closed',
 ]
 
-export const renewalDefaults = {
-  title: '',
+export const renewableProductDefaults = {
+  name: '',
+  category: 'contract',
+  vendor: '',
+  cost_price: '0.00',
+  notes: '',
+}
+
+export const renewableDefaults = {
+  renewable_product_id: null as number | null,
+  description: '',
   client_id: null as number | null,
   department_id: null as number | null,
-  category: 'contract',
-  expiration_date: '',
   workflow_status: '',
-  auto_renews: false,
-  notes: '',
-  cost_price: '0.00',
   sale_price: '0.00',
+  notes: '',
 }
 
 export const clientDefaults = {

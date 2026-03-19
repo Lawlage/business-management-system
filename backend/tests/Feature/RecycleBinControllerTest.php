@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\TenantRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\CreatesTenantContext;
 use Tests\TestCase;
@@ -10,6 +11,33 @@ class RecycleBinControllerTest extends TestCase
 {
     use RefreshDatabase;
     use CreatesTenantContext;
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    /**
+     * Create a renewable product and return its id.
+     */
+    private function makeProduct(mixed $user, mixed $tenant, string $name = 'Test Product'): int
+    {
+        return (int) $this->actingAs($user)
+            ->postJson('/api/renewable-products', ['name' => $name], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json('id');
+    }
+
+    /**
+     * Create a renewable and return its id.
+     */
+    private function makeRenewable(mixed $user, mixed $tenant, int $productId, int $clientId): int
+    {
+        return (int) $this->actingAs($user)
+            ->postJson('/api/renewables', [
+                'renewable_product_id' => $productId,
+                'client_id'            => $clientId,
+            ], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json('id');
+    }
 
     // ── Index ──────────────────────────────────────────────────────────────────
 
@@ -20,38 +48,60 @@ class RecycleBinControllerTest extends TestCase
         $response = $this->actingAs($user)->getJson('/api/recycle-bin', $this->tenantHeaders($tenant));
 
         $response->assertOk()
-            ->assertJsonStructure(['renewals', 'inventory_items']);
+            ->assertJsonStructure(['renewables', 'renewable_products', 'inventory_items']);
+    }
+
+    public function test_recycle_bin_index_includes_all_entity_types(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $response = $this->actingAs($user)->getJson('/api/recycle-bin', $this->tenantHeaders($tenant));
+
+        $response->assertOk()
+            ->assertJsonStructure(['renewables', 'renewable_products', 'inventory_items', 'clients', 'sla_items']);
     }
 
     public function test_standard_user_cannot_view_recycle_bin(): void
     {
         [$admin, $tenant] = $this->createTenantAdminContext();
-        $user = $this->createTenantUser($tenant->id);
+        $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $response = $this->actingAs($user)->getJson('/api/recycle-bin', $this->tenantHeaders($tenant));
 
         $response->assertForbidden();
     }
 
-    // ── Restore Renewal ────────────────────────────────────────────────────────
+    // ── Restore Renewable ──────────────────────────────────────────────────────
 
-    public function test_tenant_admin_can_restore_soft_deleted_renewal(): void
+    public function test_tenant_admin_can_restore_soft_deleted_renewable(): void
     {
         [$user, $tenant] = $this->createTenantAdminContext();
-        $clientId = $this->createClient($user, $tenant);
+        $productId = $this->makeProduct($user, $tenant);
+        $clientId  = $this->createClient($user, $tenant);
+        $id = $this->makeRenewable($user, $tenant, $productId, $clientId);
 
-        $create = $this->actingAs($user)->postJson('/api/renewals', [
-            'title' => 'Restorable Renewal',
-            'category' => 'contract',
-            'expiration_date' => now()->addDays(90)->toDateString(),
-            'client_id' => $clientId,
-        ], $this->tenantHeaders($tenant));
-
-        $id = $create->json('id');
-        $this->actingAs($user)->deleteJson("/api/renewals/{$id}", [], $this->tenantHeaders($tenant));
+        $this->actingAs($user)->deleteJson("/api/renewables/{$id}", [], $this->tenantHeaders($tenant));
 
         $response = $this->actingAs($user)->postJson(
-            "/api/recycle-bin/renewal/{$id}/restore",
+            "/api/recycle-bin/renewable/{$id}/restore",
+            [],
+            $this->tenantHeaders($tenant)
+        );
+
+        $response->assertOk()->assertJsonPath('message', 'Record restored.');
+    }
+
+    // ── Restore Renewable Product ──────────────────────────────────────────────
+
+    public function test_tenant_admin_can_restore_soft_deleted_renewable_product(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $productId = $this->makeProduct($user, $tenant, 'Restorable Product');
+
+        $this->actingAs($user)->deleteJson("/api/renewable-products/{$productId}", [], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->postJson(
+            "/api/recycle-bin/renewable_product/{$productId}/restore",
             [],
             $this->tenantHeaders($tenant)
         );
@@ -66,10 +116,10 @@ class RecycleBinControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
 
         $create = $this->actingAs($user)->postJson('/api/inventory', [
-            'name' => 'Restorable Item',
-            'sku' => 'RST-001',
+            'name'             => 'Restorable Item',
+            'sku'              => 'RST-001',
             'quantity_on_hand' => 5,
-            'minimum_on_hand' => 1,
+            'minimum_on_hand'  => 1,
         ], $this->tenantHeaders($tenant));
 
         $id = $create->json('id');
@@ -104,22 +154,16 @@ class RecycleBinControllerTest extends TestCase
     public function test_standard_user_cannot_restore_records(): void
     {
         [$admin, $tenant] = $this->createTenantAdminContext();
-        $clientId = $this->createClient($admin, $tenant);
+        $productId = $this->makeProduct($admin, $tenant);
+        $clientId  = $this->createClient($admin, $tenant);
+        $id = $this->makeRenewable($admin, $tenant, $productId, $clientId);
 
-        $create = $this->actingAs($admin)->postJson('/api/renewals', [
-            'title' => 'Protected Renewal',
-            'category' => 'contract',
-            'expiration_date' => now()->addDays(90)->toDateString(),
-            'client_id' => $clientId,
-        ], $this->tenantHeaders($tenant));
+        $this->actingAs($admin)->deleteJson("/api/renewables/{$id}", [], $this->tenantHeaders($tenant));
 
-        $id = $create->json('id');
-        $this->actingAs($admin)->deleteJson("/api/renewals/{$id}", [], $this->tenantHeaders($tenant));
-
-        $user = $this->createTenantUser($tenant->id);
+        $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $response = $this->actingAs($user)->postJson(
-            "/api/recycle-bin/renewal/{$id}/restore",
+            "/api/recycle-bin/renewable/{$id}/restore",
             [],
             $this->tenantHeaders($tenant)
         );
@@ -127,7 +171,7 @@ class RecycleBinControllerTest extends TestCase
         $response->assertForbidden();
     }
 
-    // ── Restore Client ──────────────────────────────────────────────────────
+    // ── Restore Client ─────────────────────────────────────────────────────────
 
     public function test_tenant_admin_can_restore_soft_deleted_client(): void
     {
@@ -149,37 +193,15 @@ class RecycleBinControllerTest extends TestCase
         $response->assertOk()->assertJsonPath('message', 'Record restored.');
     }
 
-    // ── Recycle bin index includes clients ───────────────────────────────────
-
-    public function test_recycle_bin_index_includes_clients(): void
-    {
-        [$user, $tenant] = $this->createTenantAdminContext();
-
-        $response = $this->actingAs($user)->getJson('/api/recycle-bin', $this->tenantHeaders($tenant));
-
-        $response->assertOk()
-            ->assertJsonStructure(['renewals', 'inventory_items', 'clients']);
-    }
-
-    // ── SLA Items ─────────────────────────────────────────────────────────────
-
-    public function test_recycle_bin_index_includes_sla_items(): void
-    {
-        [$user, $tenant] = $this->createTenantAdminContext();
-
-        $response = $this->actingAs($user)->getJson('/api/recycle-bin', $this->tenantHeaders($tenant));
-
-        $response->assertOk()
-            ->assertJsonStructure(['renewals', 'inventory_items', 'clients', 'sla_items']);
-    }
+    // ── Restore SLA Item ───────────────────────────────────────────────────────
 
     public function test_tenant_admin_can_restore_soft_deleted_sla_item(): void
     {
         [$user, $tenant] = $this->createTenantAdminContext();
 
         $create = $this->actingAs($user)->postJson('/api/sla-items', [
-            'name' => 'Restorable SLA Item',
-            'sku' => 'SLA-RST-001',
+            'name'       => 'Restorable SLA Item',
+            'sku'        => 'SLA-RST-001',
             'sale_price' => 49.99,
         ], $this->tenantHeaders($tenant));
 

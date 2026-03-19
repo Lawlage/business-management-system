@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
-import { formatDate, formatRenewalCategory } from '../../lib/format'
+import { formatDate } from '../../lib/format'
 import { Card } from '../../components/Card'
 import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/Button'
@@ -13,13 +13,10 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import { LoadMoreButton } from '../../components/LoadMoreButton'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
-import { CreateRenewalModal } from './CreateRenewalModal'
-import type { Renewal, PaginatedResponse } from '../../types'
-import { renewalCategoryOptions, renewalWorkflowOptions } from '../../types'
-
-type RenewalsPageProps = {
-  onOpenRenewal: (renewal: Renewal) => void
-}
+import { CreateRenewableModal } from './CreateRenewableModal'
+import { RenewableDetailModal } from './RenewableDetailModal'
+import type { Renewable, PaginatedResponse } from '../../types'
+import { renewableWorkflowOptions } from '../../types'
 
 const expiryPresets = [
   { value: '', label: 'All' },
@@ -27,7 +24,6 @@ const expiryPresets = [
   { value: 'next_3_months', label: 'Next 3 months' },
   { value: 'next_6_months', label: 'Next 6 months' },
   { value: 'next_12_months', label: 'Next 12 months' },
-  { value: 'custom', label: 'Custom...' },
 ]
 
 const statusOptions = [
@@ -39,97 +35,76 @@ const statusOptions = [
   { value: 'Expired', label: 'Expired' },
 ]
 
-function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
+function RenewablesContent() {
   const { selectedTenantId, tenantTimezone, role } = useTenant()
   const { authedFetch } = useApi()
   const queryClient = useQueryClient()
 
   const [page, setPage] = useState(1)
-  const [allRenewals, setAllRenewals] = useState<Renewal[]>([])
+  const [allRenewables, setAllRenewables] = useState<Renewable[]>([])
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [selectedRenewable, setSelectedRenewable] = useState<Renewable | null>(null)
 
-  // Search + filter state
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [filterCategory, setFilterCategory] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterWorkflow, setFilterWorkflow] = useState('')
-  const [filterAutoRenews, setFilterAutoRenews] = useState('')
   const [filterClientId, setFilterClientId] = useState('')
   const [filterExpiryPreset, setFilterExpiryPreset] = useState('')
-  const [filterExpiryMonths, setFilterExpiryMonths] = useState('')
 
   const canCreate = role !== 'standard_user'
+  const canEdit = role !== 'standard_user'
+  const canDelete = role === 'tenant_admin' || role === 'global_superadmin'
 
-  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300)
     return () => clearTimeout(timer)
   }, [search])
 
-  // Reset on tenant switch
   useEffect(() => {
     setSearch('')
     setDebouncedSearch('')
-    setFilterCategory('')
     setFilterStatus('')
     setFilterWorkflow('')
-    setFilterAutoRenews('')
     setFilterClientId('')
     setFilterExpiryPreset('')
-    setFilterExpiryMonths('')
     setPage(1)
-    setAllRenewals([])
+    setAllRenewables([])
   }, [selectedTenantId])
 
-  // Reset pagination when any filter or search changes
   useEffect(() => {
     setPage(1)
-    setAllRenewals([])
-  }, [debouncedSearch, filterCategory, filterStatus, filterWorkflow, filterAutoRenews, filterClientId, filterExpiryPreset, filterExpiryMonths])
+    setAllRenewables([])
+  }, [debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterExpiryPreset])
 
-  const hasActiveFilters = !!(debouncedSearch || filterCategory || filterStatus || filterWorkflow || filterAutoRenews || filterClientId || filterExpiryPreset)
+  const hasActiveFilters = !!(debouncedSearch || filterStatus || filterWorkflow || filterClientId || filterExpiryPreset)
 
   const clearFilters = () => {
     setSearch('')
     setDebouncedSearch('')
-    setFilterCategory('')
     setFilterStatus('')
     setFilterWorkflow('')
-    setFilterAutoRenews('')
     setFilterClientId('')
     setFilterExpiryPreset('')
-    setFilterExpiryMonths('')
   }
 
-  // Fetch clients for the filter dropdown
   const { data: clientList } = useQuery({
     queryKey: ['clients-all', selectedTenantId],
-    queryFn: () =>
-      authedFetch<{ id: number; name: string }[]>('/api/clients?all=1', {
-        tenantScoped: true,
-      }),
+    queryFn: () => authedFetch<{ id: number; name: string }[]>('/api/clients?all=1', { tenantScoped: true }),
     enabled: !!selectedTenantId,
     staleTime: 30_000,
   })
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['renewals', selectedTenantId, debouncedSearch, filterCategory, filterStatus, filterWorkflow, filterAutoRenews, filterClientId, filterExpiryPreset, filterExpiryMonths, page],
+    queryKey: ['renewables', selectedTenantId, debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterExpiryPreset, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page) })
       if (debouncedSearch) params.set('search', debouncedSearch)
-      if (filterCategory) params.set('category', filterCategory)
       if (filterStatus) params.set('status', filterStatus)
       if (filterWorkflow) params.set('workflow_status', filterWorkflow)
-      if (filterAutoRenews) params.set('auto_renews', filterAutoRenews)
       if (filterClientId) params.set('client_id', filterClientId)
-      if (filterExpiryPreset) {
-        params.set('expiry_preset', filterExpiryPreset)
-        if (filterExpiryPreset === 'custom' && filterExpiryMonths) {
-          params.set('expiry_months', filterExpiryMonths)
-        }
-      }
-      return authedFetch<PaginatedResponse<Renewal>>(`/api/renewals?${params.toString()}`, {
+      if (filterExpiryPreset) params.set('expiry_preset', filterExpiryPreset)
+      return authedFetch<PaginatedResponse<Renewable>>(`/api/renewables?${params.toString()}`, {
         tenantScoped: true,
       })
     },
@@ -140,18 +115,24 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
   useEffect(() => {
     if (!data) return
     if (page === 1) {
-      setAllRenewals(data.data)
+      setAllRenewables(data.data)
     } else {
-      setAllRenewals((prev) => [...prev, ...data.data])
+      setAllRenewables((prev) => [...prev, ...data.data])
     }
   }, [data, page])
 
   const hasMore = data ? page < data.last_page : false
 
   const handleCreated = () => {
-    void queryClient.invalidateQueries({ queryKey: ['renewals', selectedTenantId] })
+    void queryClient.invalidateQueries({ queryKey: ['renewables', selectedTenantId] })
     setPage(1)
-    setAllRenewals([])
+    setAllRenewables([])
+  }
+
+  const handleUpdated = () => {
+    void queryClient.invalidateQueries({ queryKey: ['renewables', selectedTenantId] })
+    setPage(1)
+    setAllRenewables([])
   }
 
   const isFirstLoad = isLoading && page === 1
@@ -159,36 +140,25 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
   return (
     <Card>
       <PageHeader
-        title="Renewals"
+        title="Renewables"
         action={
           canCreate ? (
             <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
-              + Create Renewal
+              + Apply Renewable
             </Button>
           ) : undefined
         }
       />
 
-      {/* Search bar */}
       <div className="mb-3">
         <Input
-          placeholder="Search renewals..."
+          placeholder="Search renewables..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {/* Filter controls */}
       <div className="mb-4 flex flex-wrap gap-2 items-end">
-        <div className="min-w-[9rem]">
-          <Select label="Type" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-            <option value="">All</option>
-            {renewalCategoryOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </Select>
-        </div>
-
         <div className="min-w-[9rem]">
           <Select label="Status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             {statusOptions.map((opt) => (
@@ -200,17 +170,9 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
         <div className="min-w-[11rem]">
           <Select label="Workflow" value={filterWorkflow} onChange={(e) => setFilterWorkflow(e.target.value)}>
             <option value="">All</option>
-            {renewalWorkflowOptions.map((opt) => (
+            {renewableWorkflowOptions.map((opt) => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
-          </Select>
-        </div>
-
-        <div className="min-w-[8rem]">
-          <Select label="Auto-Renews" value={filterAutoRenews} onChange={(e) => setFilterAutoRenews(e.target.value)}>
-            <option value="">All</option>
-            <option value="1">Yes</option>
-            <option value="0">No</option>
           </Select>
         </div>
 
@@ -231,20 +193,6 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
           </Select>
         </div>
 
-        {filterExpiryPreset === 'custom' && (
-          <div className="min-w-[7rem]">
-            <Input
-              label="Months"
-              type="number"
-              min={1}
-              max={60}
-              value={filterExpiryMonths}
-              onChange={(e) => setFilterExpiryMonths(e.target.value)}
-              placeholder="e.g. 6"
-            />
-          </div>
-        )}
-
         <Button
           variant="secondary"
           size="sm"
@@ -255,63 +203,59 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
         </Button>
       </div>
 
-      {/* Table header -- hidden on mobile */}
-      {allRenewals.length > 0 && (
-        <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.3fr_1.2fr_0.8fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
-          <span>Title</span>
+      {allRenewables.length > 0 && (
+        <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+          <span>Description</span>
           <span>Client</span>
-          <span>Type / Status</span>
-          <span>Workflow</span>
-          <span>Auto</span>
-          <span>Expires</span>
+          <span>Product</span>
+          <span>Next Due</span>
+          <span>Status / Workflow</span>
+          <span>Sale Price</span>
         </div>
       )}
 
       <div className="space-y-2">
         {isFirstLoad ? (
           Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={6} />)
-        ) : allRenewals.length === 0 ? (
+        ) : allRenewables.length === 0 ? (
           <EmptyState
-            message={hasActiveFilters ? 'No renewals match your filters.' : 'No renewals found. Create your first renewal to get started.'}
+            message={hasActiveFilters ? 'No renewables match your filters.' : 'No renewables found. Apply a renewable product to a client to get started.'}
             action={
               canCreate && !hasActiveFilters ? (
                 <Button onClick={() => setIsCreateOpen(true)} variant="primary" size="sm">
-                  Create Renewal
+                  Apply Renewable
                 </Button>
               ) : undefined
             }
           />
         ) : (
-          allRenewals.map((renewal) => (
+          allRenewables.map((r) => (
             <button
-              key={renewal.id}
+              key={r.id}
               className="app-inner-box w-full rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60"
-              onClick={() => onOpenRenewal(renewal)}
+              onClick={() => setSelectedRenewable(r)}
             >
-              <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.3fr_1.2fr_0.8fr_1fr]">
-                <span className="font-medium text-sm text-[var(--ui-text)] truncate">{renewal.title}</span>
-
-                <span className="text-sm text-[var(--ui-muted)] truncate">
-                  {renewal.client?.name ?? '—'}
+              <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_1fr]">
+                <span className="font-medium text-sm text-[var(--ui-text)] truncate">
+                  {r.description ?? r.renewable_product?.name ?? '—'}
                 </span>
-
+                <span className="text-sm text-[var(--ui-muted)] truncate">
+                  {r.client?.name ?? '—'}
+                </span>
+                <span className="text-sm text-[var(--ui-muted)] truncate">
+                  {r.renewable_product?.name ?? '—'}
+                </span>
+                <span className="text-sm text-[var(--ui-muted)]">
+                  {r.next_due_date ? formatDate(r.next_due_date, tenantTimezone) : '—'}
+                </span>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-[var(--ui-muted)]">
-                    {formatRenewalCategory(renewal.category)}
-                  </span>
-                  <Badge status={renewal.status} />
+                  <Badge status={r.status ?? ''} />
+                  {r.workflow_status && (
+                    <span className="text-xs text-[var(--ui-muted)] truncate">{r.workflow_status}</span>
+                  )}
                 </div>
-
-                <span className="text-sm text-[var(--ui-muted)] truncate">
-                  {renewal.workflow_status ?? '—'}
-                </span>
-
                 <span className="text-sm text-[var(--ui-muted)]">
-                  {renewal.auto_renews ? 'Yes' : 'No'}
-                </span>
-
-                <span className="text-sm text-[var(--ui-muted)]">
-                  {formatDate(renewal.expiration_date, tenantTimezone)}
+                  {r.sale_price ? `$${r.sale_price}` : '—'}
                 </span>
               </div>
             </button>
@@ -319,7 +263,7 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
         )}
       </div>
 
-      {!isFirstLoad && allRenewals.length > 0 && (
+      {!isFirstLoad && allRenewables.length > 0 && (
         <LoadMoreButton
           hasMore={hasMore}
           isLoading={isFetching && !isFirstLoad}
@@ -328,19 +272,29 @@ function RenewalsContent({ onOpenRenewal }: RenewalsPageProps) {
       )}
 
       {isCreateOpen && (
-        <CreateRenewalModal
+        <CreateRenewableModal
           onClose={() => setIsCreateOpen(false)}
           onCreated={handleCreated}
+        />
+      )}
+
+      {selectedRenewable && (
+        <RenewableDetailModal
+          renewable={selectedRenewable}
+          onClose={() => setSelectedRenewable(null)}
+          onUpdated={handleUpdated}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
     </Card>
   )
 }
 
-export function RenewalsPage({ onOpenRenewal }: RenewalsPageProps) {
+export function RenewablesPage() {
   return (
     <ErrorBoundary>
-      <RenewalsContent onOpenRenewal={onOpenRenewal} />
+      <RenewablesContent />
     </ErrorBoundary>
   )
 }

@@ -3,7 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\InventoryItem;
-use App\Models\Renewal;
+use App\Models\Renewable;
+use App\Models\RenewableProduct;
 use App\Models\Tenant;
 use Illuminate\Console\Command;
 use function tenancy;
@@ -34,7 +35,8 @@ class PurgeSoftDeletedRecords extends Command
         Tenant::query()->cursor()->each(function (Tenant $tenant) use ($cutoff): void {
             tenancy()->initialize($tenant);
             try {
-                Renewal::onlyTrashed()->where('deleted_at', '<=', $cutoff)->forceDelete();
+                Renewable::onlyTrashed()->where('deleted_at', '<=', $cutoff)->forceDelete();
+                RenewableProduct::onlyTrashed()->where('deleted_at', '<=', $cutoff)->forceDelete();
                 InventoryItem::onlyTrashed()->where('deleted_at', '<=', $cutoff)->forceDelete();
             } finally {
                 tenancy()->end();

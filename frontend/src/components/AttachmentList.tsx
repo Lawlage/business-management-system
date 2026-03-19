@@ -9,7 +9,7 @@ import { FileUpload } from './FileUpload'
 import type { Attachment } from '../types'
 
 type Props = {
-  entityType: 'renewal' | 'inventory' | 'client' | 'sla_item'
+  entityType: 'renewal' | 'renewable' | 'renewable_product' | 'inventory' | 'client' | 'sla_item'
   entityId: number
   canEdit: boolean
   hideUpload?: boolean

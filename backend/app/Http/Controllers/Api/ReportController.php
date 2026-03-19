@@ -22,20 +22,21 @@ class ReportController extends Controller
         if ($request->input('format') === 'csv') {
             $rows = [];
             foreach ($data as $group) {
-                foreach ($group['renewals'] as $r) {
+                foreach ($group['renewables'] as $r) {
                     $rows[] = [
                         $group['status'],
-                        $r['title'],
+                        $r['description'],
+                        $r['renewable_product']['name'] ?? '',
+                        $r['renewable_product']['category'] ?? '',
                         $r['client']['name'] ?? '',
-                        $r['category'],
-                        substr((string) $r['expiration_date'], 0, 10),
+                        substr((string) ($r['next_due_date'] ?? ''), 0, 10),
                     ];
                 }
             }
             return $this->csvResponse(
-                ['Status', 'Title', 'Client', 'Category', 'Expiration Date'],
+                ['Status', 'Description', 'Product', 'Category', 'Client', 'Next Due Date'],
                 $rows,
-                'renewal-status-summary',
+                'renewable-status-summary',
             );
         }
 
@@ -50,21 +51,22 @@ class ReportController extends Controller
         if ($request->input('format') === 'csv') {
             $rows = [];
             foreach ($data as $group) {
-                foreach ($group['renewals'] as $r) {
+                foreach ($group['renewables'] as $r) {
                     $rows[] = [
                         $group['client_name'],
-                        $r['title'],
-                        $r['status'],
-                        $r['category'],
-                        substr((string) $r['expiration_date'], 0, 10),
+                        $r['description'],
+                        $r['renewable_product']['name'] ?? '',
+                        $r['status'] ?? '',
+                        $r['renewable_product']['category'] ?? '',
+                        substr((string) ($r['next_due_date'] ?? ''), 0, 10),
                         $r['workflow_status'] ?? '',
                     ];
                 }
             }
             return $this->csvResponse(
-                ['Client', 'Title', 'Status', 'Category', 'Expiration Date', 'Workflow Status'],
+                ['Client', 'Description', 'Product', 'Status', 'Category', 'Next Due Date', 'Workflow Status'],
                 $rows,
-                'renewals-by-client',
+                'renewables-by-client',
             );
         }
 
@@ -84,17 +86,17 @@ class ReportController extends Controller
 
         if ($request->input('format') === 'csv') {
             $rows = array_map(fn ($r) => [
-                $r['title'],
+                $r['description'],
+                $r['renewable_product']['name'] ?? '',
                 $r['client']['name'] ?? '',
-                $r['status'],
-                $r['category'],
-                substr((string) $r['expiration_date'], 0, 10),
-                $r['auto_renews'] ? 'Yes' : 'No',
+                $r['status'] ?? '',
+                $r['renewable_product']['category'] ?? '',
+                substr((string) ($r['next_due_date'] ?? ''), 0, 10),
             ], $data);
             return $this->csvResponse(
-                ['Title', 'Client', 'Status', 'Category', 'Expiration Date', 'Auto Renews'],
+                ['Description', 'Product', 'Client', 'Status', 'Category', 'Next Due Date'],
                 $rows,
-                'renewals-expiring',
+                'renewables-expiring',
             );
         }
 
@@ -198,14 +200,14 @@ class ReportController extends Controller
 
         if ($request->input('format') === 'csv') {
             $rows = [];
-            foreach ($data['renewals'] as $r) {
-                $rows[] = ['renewal', $r['title'], $r['status'], substr((string) $r['expiration_date'], 0, 10), '', ''];
+            foreach ($data['renewables'] as $r) {
+                $rows[] = ['renewable', $r['description'], $r['status'] ?? '', substr((string) ($r['next_due_date'] ?? ''), 0, 10), '', ''];
             }
             foreach ($data['allocations'] as $a) {
                 $rows[] = ['allocation', $a['inventory_item']['name'] ?? '', $a['status'], substr((string) $a['created_at'], 0, 10), $a['quantity'], $a['unit_price'] ?? ''];
             }
             return $this->csvResponse(
-                ['Type', 'Title / Item', 'Status', 'Date', 'Quantity', 'Unit Price'],
+                ['Type', 'Description / Item', 'Status', 'Date', 'Quantity', 'Unit Price'],
                 $rows,
                 'client-portfolio-' . $clientId,
             );
@@ -250,7 +252,7 @@ class ReportController extends Controller
             $rows = array_map(fn ($d) => [
                 $d['name'],
                 isset($d['manager']) ? (($d['manager']['first_name'] ?? '') . ' ' . ($d['manager']['last_name'] ?? '')) : '',
-                $d['renewals_count'] ?? 0,
+                $d['renewables_count'] ?? 0,
             ], $data);
 
             return $this->csvResponse(

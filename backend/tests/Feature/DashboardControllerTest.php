@@ -30,27 +30,35 @@ class DashboardControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
         $clientId = $this->createClient($user, $tenant);
 
-        // Create an urgent renewal (within 7 days).
-        $this->actingAs($user)->postJson('/api/renewals', [
-            'title' => 'Critical One',
-            'category' => 'license',
-            'expiration_date' => now()->addDays(3)->toDateString(),
-            'client_id' => $clientId,
+        $product = $this->actingAs($user)->postJson('/api/renewable-products', [
+            'name' => 'License Product',
+        ], $this->tenantHeaders($tenant))->json();
+
+        // Renewable due in 3 days (start 4 days ago, every 7 days → 3 days from now).
+        $this->actingAs($user)->postJson('/api/renewables', [
+            'renewable_product_id' => $product['id'],
+            'client_id'            => $clientId,
+            'description'          => 'Critical One',
+            'frequency_type'       => 'days',
+            'frequency_value'      => 7,
+            'frequency_start_date' => now()->subDays(4)->toDateString(),
         ], $this->tenantHeaders($tenant));
 
-        // Create a non-critical renewal (45 days out).
-        $this->actingAs($user)->postJson('/api/renewals', [
-            'title' => 'Non-Critical',
-            'category' => 'license',
-            'expiration_date' => now()->addDays(45)->toDateString(),
-            'client_id' => $clientId,
+        // Renewable due in 45 days (start 15 days ago, every 60 days → 45 days from now).
+        $this->actingAs($user)->postJson('/api/renewables', [
+            'renewable_product_id' => $product['id'],
+            'client_id'            => $clientId,
+            'description'          => 'Non-Critical',
+            'frequency_type'       => 'days',
+            'frequency_value'      => 60,
+            'frequency_start_date' => now()->subDays(15)->toDateString(),
         ], $this->tenantHeaders($tenant));
 
         $response = $this->actingAs($user)->getJson('/api/dashboard', $this->tenantHeaders($tenant));
 
         $critical = $response->json('critical_renewals');
         $this->assertCount(1, $critical);
-        $this->assertSame('Critical One', $critical[0]['title']);
+        $this->assertSame('Critical One', $critical[0]['description']);
     }
 
     public function test_dashboard_threshold_defaults_to_30_days(): void
@@ -58,29 +66,37 @@ class DashboardControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
         $clientId = $this->createClient($user, $tenant);
 
-        // Renewal at 20 days should appear in upcoming_renewals.
-        $this->actingAs($user)->postJson('/api/renewals', [
-            'title' => 'Twenty Days',
-            'category' => 'license',
-            'expiration_date' => now()->addDays(20)->toDateString(),
-            'client_id' => $clientId,
+        $product = $this->actingAs($user)->postJson('/api/renewable-products', [
+            'name' => 'License Product',
+        ], $this->tenantHeaders($tenant))->json();
+
+        // Renewable at ~20 days: start 10 days ago, every 30 days → 20 days from now.
+        $this->actingAs($user)->postJson('/api/renewables', [
+            'renewable_product_id' => $product['id'],
+            'client_id'            => $clientId,
+            'description'          => 'Twenty Days',
+            'frequency_type'       => 'days',
+            'frequency_value'      => 30,
+            'frequency_start_date' => now()->subDays(10)->toDateString(),
         ], $this->tenantHeaders($tenant));
 
-        // Renewal at 45 days should NOT appear (default threshold = 30).
-        $this->actingAs($user)->postJson('/api/renewals', [
-            'title' => 'Forty Five Days',
-            'category' => 'license',
-            'expiration_date' => now()->addDays(45)->toDateString(),
-            'client_id' => $clientId,
+        // Renewable at ~45 days: start 15 days ago, every 60 days → 45 days from now.
+        $this->actingAs($user)->postJson('/api/renewables', [
+            'renewable_product_id' => $product['id'],
+            'client_id'            => $clientId,
+            'description'          => 'Forty Five Days',
+            'frequency_type'       => 'days',
+            'frequency_value'      => 60,
+            'frequency_start_date' => now()->subDays(15)->toDateString(),
         ], $this->tenantHeaders($tenant));
 
         $response = $this->actingAs($user)->getJson('/api/dashboard', $this->tenantHeaders($tenant));
 
         $important = $response->json('upcoming_renewals');
-        $titles = array_column($important, 'title');
+        $descriptions = array_column($important, 'description');
 
-        $this->assertContains('Twenty Days', $titles);
-        $this->assertNotContains('Forty Five Days', $titles);
+        $this->assertContains('Twenty Days', $descriptions);
+        $this->assertNotContains('Forty Five Days', $descriptions);
     }
 
     public function test_dashboard_threshold_is_capped_at_365_days(): void

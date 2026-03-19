@@ -20,12 +20,13 @@ Build and maintain a production-grade, enterprise-grade multi-tenant business ma
 
 ## 3) Core Modules
 
-1. Renewal object management
-2. Inventory management
-3. Client management (full-page detail, allocation history, document attachments)
-4. SLA Items (product catalog + per-client SLA allocations)
-5. Departments (tenant-scoped grouping for renewals and allocations)
-6. Attachment management (documents on renewals, inventory, clients, SLA items)
+1. Renewable Product catalog (templates defining what a renewable product is)
+2. Renewables (client-specific instances of a renewable product with schedules and computed due dates)
+3. Inventory management
+4. Client management (full-page detail, allocation history, document attachments)
+5. SLA Items (product catalog + per-client SLA allocations)
+6. Departments (tenant-scoped grouping for renewables and allocations)
+7. Attachment management (documents on renewables, renewable products, inventory, clients, SLA items)
 
 ## 4) Non-Negotiable Platform Capabilities
 
@@ -130,53 +131,48 @@ Implementation must include a maintainable permission matrix and enforcement in 
 
 ## 8) Module Requirements
 
-### 8.1 Renewal Object Management
+### 8.1 Renewable Product Catalog + Renewables
 
-Tracks contracts/licenses/domains and other renewable objects.
+The renewals system uses a two-layer model:
 
-Required fields:
+**RenewableProduct** — the master catalog (like an SLA item template):
+- name, category, vendor, cost_price
+- optional default duration: `frequency_type` (days/months/years) + `frequency_value` — null means non-expiring
+- notes, attachments
+- soft-delete with recycle-bin support
 
-- title
-- type/category
-- owner
-- vendor/provider
-- start date
-- renewal date
-- expiration date
-- status
-- cost_price, sale_price
-- department (optional, linked to tenant Departments list)
-- notes
-- attachments
-- tenant
-- created_by
-- updated_by
-- custom fields (including dropdown type)
+**Renewable** — a product applied to a specific client:
+- `renewable_product_id` (required FK)
+- description (defaults to product name), client_id (required), department_id (optional)
+- `sale_price` (defaults to product cost_price)
+- renewal schedule: `frequency_type` (days/months/years/day_of_month) + `frequency_value` + `frequency_start_date`
+  - overrides the product's default frequency when set; falls back to product defaults otherwise
+  - `day_of_month` type requires no start date; other types require start date
+- `next_due_date` — stored, computed on save and refreshed daily by `app:refresh-renewable-due-dates`
+- `status` — computed from next_due_date (same thresholds as below)
+- workflow_status (manual), notes, attachments
+- soft-delete with recycle-bin support
 
 Statuses (standardized):
 
 - No action needed
 - Upcoming
-- Action required
+- Action Required
 - Urgent
 - Expired
+- null (no frequency configured)
 
 Status auto-calculation thresholds:
 
 - Upcoming: <= 2 months
 - Action Required: <= 1 month
 - Urgent: <= 1 week
-- Expired: expiration date passed
-
-Constraints:
-
-- Workflow remains manual
-- Do not auto-create future renewal objects
+- Expired: next_due_date passed
 
 Dashboard/reporting:
 
 - urgency sorting, filtering, search, reporting
-- in-app critical alerts for renewals <= 1 week
+- in-app critical alerts for renewables <= 1 week
 - architecture must support future email reminders, scheduled reports, and digests
 
 ### 8.2 Inventory Management

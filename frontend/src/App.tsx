@@ -10,7 +10,7 @@ import { ConfirmProvider, useConfirm } from './contexts/ConfirmContext'
 import { applyUiTheme, normalizeUiSettings } from './uiSettings'
 import { useApi } from './hooks/useApi'
 
-import type { Renewal, InventoryItem, TenantUiSettings } from './types'
+import type { Renewable, InventoryItem, TenantUiSettings } from './types'
 
 import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
@@ -25,7 +25,8 @@ import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 
 // Lazy-loaded feature pages (Phase 7: code splitting)
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
-const RenewalsPage = lazy(() => import('./features/renewals/RenewalsPage').then((m) => ({ default: m.RenewalsPage })))
+const RenewableProductsPage = lazy(() => import('./features/renewable-products/RenewableProductsPage').then((m) => ({ default: m.RenewableProductsPage })))
+const RenewablesPage = lazy(() => import('./features/renewables/RenewablesPage').then((m) => ({ default: m.RenewablesPage })))
 const InventoryPage = lazy(() => import('./features/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })))
 const ClientsPage = lazy(() => import('./features/clients/ClientsPage').then((m) => ({ default: m.ClientsPage })))
 const ClientDetailPage = lazy(() => import('./features/clients/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })))
@@ -44,7 +45,7 @@ const ReportsPage = lazy(() => import('./features/reports/ReportsPage').then((m)
 const AccountPage = lazy(() => import('./features/account/AccountPage').then((m) => ({ default: m.AccountPage })))
 
 // Lazy-loaded modals (only needed when opened from dashboard)
-const RenewalDetailModal = lazy(() => import('./features/renewals/RenewalDetailModal').then((m) => ({ default: m.RenewalDetailModal })))
+const RenewableDetailModal = lazy(() => import('./features/renewables/RenewableDetailModal').then((m) => ({ default: m.RenewableDetailModal })))
 const InventoryDetailModal = lazy(() => import('./features/inventory/InventoryDetailModal').then((m) => ({ default: m.InventoryDetailModal })))
 
 function PageLoader() {
@@ -99,7 +100,7 @@ function AppContent() {
   }
 
   // Modals opened from dashboard / list pages
-  const [dashboardRenewal, setDashboardRenewal] = useState<Renewal | null>(null)
+  const [dashboardRenewal, setDashboardRenewal] = useState<Renewable | null>(null)
   const [dashboardInventory, setDashboardInventory] = useState<InventoryItem | null>(null)
 
   // Auto-select first tenant for regular users after login
@@ -269,11 +270,19 @@ function AppContent() {
                   }
                 />
                 <Route
-                  path="/app/renewals"
+                  path="/app/renewable-products"
                   element={
                     role === 'global_superadmin' && !isSuperadminTenantWorkspace
                       ? <Navigate to="/superadmin/access" replace />
-                      : <RenewalsPage onOpenRenewal={setDashboardRenewal} />
+                      : <RenewableProductsPage />
+                  }
+                />
+                <Route
+                  path="/app/renewables"
+                  element={
+                    role === 'global_superadmin' && !isSuperadminTenantWorkspace
+                      ? <Navigate to="/superadmin/access" replace />
+                      : <RenewablesPage />
                   }
                 />
                 <Route
@@ -332,12 +341,12 @@ function AppContent() {
           {/* Modals opened from dashboard */}
           {dashboardRenewal && (
             <Suspense fallback={null}>
-              <RenewalDetailModal
-                renewal={dashboardRenewal}
+              <RenewableDetailModal
+                renewable={dashboardRenewal}
                 onClose={() => setDashboardRenewal(null)}
                 onUpdated={() => {
                   void queryClient.invalidateQueries({ queryKey: ['dashboard', selectedTenantId] })
-                  void queryClient.invalidateQueries({ queryKey: ['renewals', selectedTenantId] })
+                  void queryClient.invalidateQueries({ queryKey: ['renewables', selectedTenantId] })
                 }}
                 canDelete={role === 'tenant_admin' || role === 'global_superadmin'}
                 canEdit={canEditRecords}

@@ -16,12 +16,14 @@ For AI coding tools working in this repository, use `agents.md` as the source-of
 - Strict tenant context middleware (`X-Tenant-Id`) and permission middleware.
 - Role model: Global Superadmin, Tenant Admin, Sub Admin, Standard User.
 - Break-glass access for superadmins with reason + confirmation + immutable logs.
-- Renewal and inventory modules with soft deletes and recycle-bin restore; cost/sale pricing fields on both.
+- **Renewables two-layer model**: `RenewableProduct` catalog (template with optional default duration) + `Renewable` (client instance with schedule, computed `next_due_date`, and auto-calculated `status`).
+- Inventory module with soft deletes and recycle-bin restore; cost/sale pricing fields.
 - SLA Items product catalog with per-client SLA allocations.
-- Departments for grouping renewals and allocations within a tenant.
-- Document attachment support on renewals, inventory items, clients, and SLA items (stored on private local disk; served via authenticated API).
+- Departments for grouping renewables and allocations within a tenant.
+- Document attachment support on renewables, renewable products, inventory items, clients, and SLA items (stored on private local disk; served via authenticated API).
 - Custom field definitions and typed value storage — supports text, number, currency, date, boolean, JSON, and dropdown types.
 - Daily purge command for records in recycle bin older than 30 days.
+- Daily `app:refresh-renewable-due-dates` command recomputes `next_due_date` and `status` for all active renewables.
 
 ## Security Model
 
@@ -150,10 +152,9 @@ docker compose exec mysql mysql -u bms_user -p   # MySQL prompt
 
 The frontend includes working actions (API-backed) for:
 
-- Dashboard refresh with renewal and low-stock widgets
-- Renewal create/list/delete with **Load More** pagination (20/page); cost price, sale price, department assignment, and document attachments on each renewal
-- Renewal workflow status tracking (auto status + user-entered workflow status)
-- Renewal auto-renew checkbox on create/edit
+- Dashboard refresh with renewable and low-stock widgets
+- **Renewable Products** create/list/edit with **Load More** pagination; name, category, vendor, cost price, optional default duration; document attachments; "Applied to clients" tab shows linked renewables
+- **Renewables** create/list/edit with **Load More** pagination; linked to a renewable product and a client; per-client price and renewal schedule (days/months/years/day-of-month); computed next due date and urgency status badge; workflow status tracking; document attachments
 - Inventory create/list/delete with **Load More** pagination and per-item quantity input for check-in/check-out; cost price, sale price, barcode, and document attachments on each item
 - Click-to-open foreground edit modals for renewal/inventory records (Escape key dismisses); modals have **Details / Documents** tabs
 - Stock allocation with client + department assignment

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
-use App\Models\Renewal;
+use App\Models\Renewable;
 use App\Models\SlaAllocation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,10 +21,11 @@ class DashboardController extends Controller
         $thresholdDays = (int) $request->integer('renewal_threshold_days', 30);
         $clientId = $request->input('client_id');
 
-        $upcomingQuery = Renewal::query()
-            ->with(['client:id,name', 'department:id,name'])
-            ->whereDate('expiration_date', '<=', now()->addDays($thresholdDays))
-            ->orderBy('expiration_date')
+        $upcomingQuery = Renewable::query()
+            ->with(['renewableProduct:id,name,category', 'client:id,name', 'department:id,name'])
+            ->whereNotNull('next_due_date')
+            ->whereDate('next_due_date', '<=', now()->addDays($thresholdDays))
+            ->orderBy('next_due_date')
             ->limit(10);
 
         if ($clientId) {
@@ -33,11 +34,12 @@ class DashboardController extends Controller
 
         $upcomingRenewals = $upcomingQuery->get();
 
-        $criticalQuery = Renewal::query()
-            ->with(['client:id,name', 'department:id,name'])
-            ->whereDate('expiration_date', '<=', now()->addDays(7))
-            ->whereDate('expiration_date', '>=', now()->subDay())
-            ->orderBy('expiration_date')
+        $criticalQuery = Renewable::query()
+            ->with(['renewableProduct:id,name,category', 'client:id,name', 'department:id,name'])
+            ->whereNotNull('next_due_date')
+            ->whereDate('next_due_date', '<=', now()->addDays(7))
+            ->whereDate('next_due_date', '>=', now()->subDay())
+            ->orderBy('next_due_date')
             ->limit(10);
 
         if ($clientId) {

@@ -154,7 +154,7 @@ All routes are in `backend/routes/api.php`. Three groups:
 
 1. **Public** — `POST /api/auth/login`
 2. **Superadmin** (`auth:sanctum` + `superadmin`) — tenant CRUD, break-glass, global audit logs
-3. **Tenant-scoped** (`auth:sanctum` + `tenant.context`) — renewals, inventory, clients, SLA items, SLA allocations, stock allocations, departments, attachments, users, custom fields, settings, recycle bin, audit logs
+3. **Tenant-scoped** (`auth:sanctum` + `tenant.context`) — renewable products, renewables, inventory, clients, SLA items, SLA allocations, stock allocations, departments, attachments, users, custom fields, settings, recycle bin, audit logs
 
 Individual routes are further protected with `tenant.permission:<permission>` middleware.
 
@@ -201,7 +201,8 @@ frontend/src/
   features/
     auth/                  # login page
     dashboard/
-    renewals/              # RenewalsPage, RenewalDetailModal, CreateRenewalModal
+    renewable-products/    # RenewableProductsPage, CreateRenewableProductModal, RenewableProductDetailModal
+    renewables/            # RenewablesPage, CreateRenewableModal, RenewableDetailModal
     inventory/             # InventoryPage, InventoryDetailModal, CreateInventoryModal, AllocateStockModal
     clients/               # ClientsPage, ClientDetailPage (full-page /clients/:id with tabs)
     sla-items/             # SlaItemsPage, CreateSlaItemModal, SlaItemDetailModal, ApplySlaModal
@@ -223,17 +224,20 @@ frontend/src/
 
 ### Scheduled Tasks
 
-`app:purge-soft-deleted-records` runs daily (`app/Console/Kernel.php`) — permanently deletes soft-deleted records older than 30 days.
+- `app:purge-soft-deleted-records` — permanently deletes soft-deleted records older than 30 days
+- `app:refresh-renewable-due-dates` — recomputes `next_due_date` and `status` for all active `Renewable` records
+
+Both run daily (`app/Console/Kernel.php`).
 
 ### Key Models
 
-Tenant-scoped (use `SoftDeletes`): `Renewal`, `InventoryItem`, `Client`, `SlaItem`, `SlaAllocation`, `StockAllocation`, `Department`, `Attachment`, `AttachmentLink`, `CustomFieldDefinition`, `CustomFieldValue`, `TenantAuditLog`
+Tenant-scoped (use `SoftDeletes`): `RenewableProduct`, `Renewable`, `InventoryItem`, `Client`, `SlaItem`, `SlaAllocation`, `StockAllocation`, `Department`, `Attachment`, `AttachmentLink`, `CustomFieldDefinition`, `CustomFieldValue`, `TenantAuditLog`
 
 Central DB: `Tenant`, `User`, `TenantMembership`, `GlobalAuditLog`, `BreakGlassAccess`
 
 ### Attachment Storage
 
-Uploaded files are stored at `storage/app/tenants/{tenant_id}/attachments/{uuid}.{ext}` on a private local disk. An `Attachment` record holds the file metadata; `AttachmentLink` associates the file with a specific entity (`entity_type` ∈ `renewal|inventory|client|sla_item`, `entity_id`). Download streams the file through the API (`GET /api/attachments/{id}/download`) with tenant-membership verification.
+Uploaded files are stored at `storage/app/tenants/{tenant_id}/attachments/{uuid}.{ext}` on a private local disk. An `Attachment` record holds the file metadata; `AttachmentLink` associates the file with a specific entity (`entity_type` ∈ `renewable|renewable_product|inventory|client|sla_item`, `entity_id`). Download streams the file through the API (`GET /api/attachments/{id}/download`) with tenant-membership verification.
 
 ### Key Config Files
 
