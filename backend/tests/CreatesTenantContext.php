@@ -97,4 +97,15 @@ trait CreatesTenantContext
     {
         return ['X-Tenant-Id' => $tenant->id];
     }
+
+    /**
+     * Create a client via the API and return its id.
+     */
+    protected function createClient(User $user, Tenant $tenant, string $name = 'Test Client'): int
+    {
+        return (int) $this->actingAs($user)
+            ->postJson('/api/clients', ['name' => $name], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json('id');
+    }
 }

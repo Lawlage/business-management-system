@@ -28,12 +28,14 @@ class DashboardControllerTest extends TestCase
     public function test_dashboard_critical_renewals_only_within_seven_days(): void
     {
         [$user, $tenant] = $this->createTenantAdminContext();
+        $clientId = $this->createClient($user, $tenant);
 
         // Create an urgent renewal (within 7 days).
         $this->actingAs($user)->postJson('/api/renewals', [
             'title' => 'Critical One',
             'category' => 'license',
             'expiration_date' => now()->addDays(3)->toDateString(),
+            'client_id' => $clientId,
         ], $this->tenantHeaders($tenant));
 
         // Create a non-critical renewal (45 days out).
@@ -41,6 +43,7 @@ class DashboardControllerTest extends TestCase
             'title' => 'Non-Critical',
             'category' => 'license',
             'expiration_date' => now()->addDays(45)->toDateString(),
+            'client_id' => $clientId,
         ], $this->tenantHeaders($tenant));
 
         $response = $this->actingAs($user)->getJson('/api/dashboard', $this->tenantHeaders($tenant));
@@ -53,12 +56,14 @@ class DashboardControllerTest extends TestCase
     public function test_dashboard_threshold_defaults_to_30_days(): void
     {
         [$user, $tenant] = $this->createTenantAdminContext();
+        $clientId = $this->createClient($user, $tenant);
 
         // Renewal at 20 days should appear in upcoming_renewals.
         $this->actingAs($user)->postJson('/api/renewals', [
             'title' => 'Twenty Days',
             'category' => 'license',
             'expiration_date' => now()->addDays(20)->toDateString(),
+            'client_id' => $clientId,
         ], $this->tenantHeaders($tenant));
 
         // Renewal at 45 days should NOT appear (default threshold = 30).
@@ -66,6 +71,7 @@ class DashboardControllerTest extends TestCase
             'title' => 'Forty Five Days',
             'category' => 'license',
             'expiration_date' => now()->addDays(45)->toDateString(),
+            'client_id' => $clientId,
         ], $this->tenantHeaders($tenant));
 
         $response = $this->actingAs($user)->getJson('/api/dashboard', $this->tenantHeaders($tenant));

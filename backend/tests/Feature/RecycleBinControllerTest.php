@@ -38,11 +38,13 @@ class RecycleBinControllerTest extends TestCase
     public function test_tenant_admin_can_restore_soft_deleted_renewal(): void
     {
         [$user, $tenant] = $this->createTenantAdminContext();
+        $clientId = $this->createClient($user, $tenant);
 
         $create = $this->actingAs($user)->postJson('/api/renewals', [
             'title' => 'Restorable Renewal',
             'category' => 'contract',
             'expiration_date' => now()->addDays(90)->toDateString(),
+            'client_id' => $clientId,
         ], $this->tenantHeaders($tenant));
 
         $id = $create->json('id');
@@ -102,11 +104,13 @@ class RecycleBinControllerTest extends TestCase
     public function test_standard_user_cannot_restore_records(): void
     {
         [$admin, $tenant] = $this->createTenantAdminContext();
+        $clientId = $this->createClient($admin, $tenant);
 
         $create = $this->actingAs($admin)->postJson('/api/renewals', [
             'title' => 'Protected Renewal',
             'category' => 'contract',
             'expiration_date' => now()->addDays(90)->toDateString(),
+            'client_id' => $clientId,
         ], $this->tenantHeaders($tenant));
 
         $id = $create->json('id');
@@ -155,5 +159,39 @@ class RecycleBinControllerTest extends TestCase
 
         $response->assertOk()
             ->assertJsonStructure(['renewals', 'inventory_items', 'clients']);
+    }
+
+    // ── SLA Items ─────────────────────────────────────────────────────────────
+
+    public function test_recycle_bin_index_includes_sla_items(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $response = $this->actingAs($user)->getJson('/api/recycle-bin', $this->tenantHeaders($tenant));
+
+        $response->assertOk()
+            ->assertJsonStructure(['renewals', 'inventory_items', 'clients', 'sla_items']);
+    }
+
+    public function test_tenant_admin_can_restore_soft_deleted_sla_item(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $create = $this->actingAs($user)->postJson('/api/sla-items', [
+            'name' => 'Restorable SLA Item',
+            'sku' => 'SLA-RST-001',
+            'sale_price' => 49.99,
+        ], $this->tenantHeaders($tenant));
+
+        $id = $create->json('id');
+        $this->actingAs($user)->deleteJson("/api/sla-items/{$id}", [], $this->tenantHeaders($tenant));
+
+        $response = $this->actingAs($user)->postJson(
+            "/api/recycle-bin/sla_item/{$id}/restore",
+            [],
+            $this->tenantHeaders($tenant)
+        );
+
+        $response->assertOk()->assertJsonPath('message', 'Record restored.');
     }
 }

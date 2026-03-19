@@ -77,7 +77,7 @@ class RenewalController extends Controller
     {
         $payload = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'client_id' => ['nullable', 'integer'],
+            'client_id' => ['required', 'integer'],
             'department_id' => ['nullable', 'integer'],
             'category' => ['required', 'string', 'max:255'],
             'owner' => ['nullable', 'string', 'max:255'],

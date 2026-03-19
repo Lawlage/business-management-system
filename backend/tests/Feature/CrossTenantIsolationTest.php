@@ -44,11 +44,14 @@ class CrossTenantIsolationTest extends TestCase
         [$adminA, $tenantA] = $this->createTenantAdminContext();
         [$adminB, $tenantB] = $this->createTenantAdminContext();
 
+        $clientId = $this->createClient($adminA, $tenantA);
+
         // AdminA creates a renewal in tenantA.
         $this->actingAs($adminA)->postJson('/api/renewals', [
             'title' => 'Tenant A Exclusive',
             'category' => 'license',
             'expiration_date' => now()->addDays(90)->toDateString(),
+            'client_id' => $clientId,
         ], $this->tenantHeaders($tenantA));
 
         // AdminB lists renewals in tenantB — should be empty.
