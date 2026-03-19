@@ -41,9 +41,11 @@ export function CreateRenewableModal({
   const [salePrice, setSalePrice] = useState('')
   const [workflowStatus, setWorkflowStatus] = useState('')
   const [notes, setNotes] = useState('')
+  const today = new Date().toISOString().split('T')[0]
+
   const [frequency, setFrequency] = useState<FrequencyValue | null>(
     initialProduct?.frequency_type && initialProduct?.frequency_value != null
-      ? { type: initialProduct.frequency_type, value: initialProduct.frequency_value }
+      ? { type: initialProduct.frequency_type, value: initialProduct.frequency_value, startDate: today }
       : null,
   )
 
@@ -91,7 +93,7 @@ export function CreateRenewableModal({
     setSelectedProduct(p)
     if (!description) setDescription(p.name)
     if (p.frequency_type && p.frequency_value != null) {
-      setFrequency({ type: p.frequency_type, value: p.frequency_value })
+      setFrequency({ type: p.frequency_type, value: p.frequency_value, startDate: today })
     } else {
       setFrequency(null)
     }

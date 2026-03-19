@@ -50,12 +50,14 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
     department_id: renewable.department_id ?? null,
   })
 
+  const today = new Date().toISOString().split('T')[0]
+
   const [frequency, setFrequency] = useState<FrequencyValue | null>(
     renewable.frequency_type && renewable.frequency_value != null
       ? {
           type: renewable.frequency_type,
           value: renewable.frequency_value,
-          startDate: renewable.frequency_start_date ?? undefined,
+          startDate: renewable.frequency_start_date ?? today,
         }
       : null,
   )

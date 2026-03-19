@@ -39,7 +39,14 @@ class RenewableStatusService
             return null;
         }
 
-        $cursor = $startDate->copy()->startOfDay();
+        // Start one period ahead — the start_date period is already paid for,
+        // so the first due date is start_date + one renewal cycle.
+        $cursor = match ($type) {
+            'days'   => $startDate->copy()->startOfDay()->addDays($value),
+            'months' => $startDate->copy()->startOfDay()->addMonths($value),
+            'years'  => $startDate->copy()->startOfDay()->addYears($value),
+            default  => $startDate->copy()->startOfDay()->addMonths($value),
+        };
 
         // Advance cursor until it is >= today.
         while ($cursor->lt($today)) {

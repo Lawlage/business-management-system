@@ -65,14 +65,15 @@ class RenewableStatusServiceTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function test_compute_next_due_date_start_date_today_returns_today(): void
+    public function test_compute_next_due_date_start_date_today_returns_one_period_ahead(): void
     {
         $start = Carbon::now()->startOfDay();
-        // Every 30 days from today — first occurrence is today (start >= today).
+        // Start date is today — the current period is already paid for,
+        // so the first due date is today + one cycle.
         $result = $this->service->computeNextDueDate('days', 30, $start);
 
         $this->assertNotNull($result);
-        $this->assertEquals(Carbon::now()->toDateString(), $result->toDateString());
+        $this->assertEquals(Carbon::now()->addDays(30)->toDateString(), $result->toDateString());
     }
 
     // ── computeNextDueDate — day_of_month ─────────────────────────────────────
