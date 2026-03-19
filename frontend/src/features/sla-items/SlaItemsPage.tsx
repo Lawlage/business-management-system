@@ -53,7 +53,6 @@ function SlaItemsContent() {
       })
     },
     enabled: !!selectedTenantId,
-    staleTime: 0,
   })
 
   useEffect(() => {

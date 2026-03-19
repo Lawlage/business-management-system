@@ -45,7 +45,6 @@ function StockAllocationsContent() {
       )
     },
     enabled: !!selectedTenantId,
-    staleTime: 0,
   })
 
   useEffect(() => {

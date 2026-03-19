@@ -62,7 +62,6 @@ function ClientDetailContent() {
     queryKey: ['client', selectedTenantId, id],
     queryFn: () => authedFetch<Client>(`/api/clients/${id ?? ''}`, { tenantScoped: true }),
     enabled: !!selectedTenantId && !!id,
-    staleTime: 0,
   })
 
   const [form, setForm] = useState<ClientForm>({
@@ -99,7 +98,6 @@ function ClientDetailContent() {
         tenantScoped: true,
       }),
     enabled: !!selectedTenantId && !!id && activeTab === 'renewals',
-    staleTime: 0,
   })
 
   // Stock allocations query
@@ -110,7 +108,6 @@ function ClientDetailContent() {
         tenantScoped: true,
       }),
     enabled: !!selectedTenantId && !!id && activeTab === 'allocations',
-    staleTime: 0,
   })
 
   // SLA allocations query
@@ -121,7 +118,6 @@ function ClientDetailContent() {
         tenantScoped: true,
       }),
     enabled: !!selectedTenantId && !!id && activeTab === 'allocations',
-    staleTime: 0,
   })
 
   // SLA coverage data
@@ -139,7 +135,6 @@ function ClientDetailContent() {
         tenantScoped: true,
       }),
     enabled: !!selectedTenantId && !!id && activeTab === 'sla-coverage',
-    staleTime: 0,
   })
 
   const activeSlaItemIds = new Set((activeSlaData?.data ?? []).map((a) => a.sla_item_id))

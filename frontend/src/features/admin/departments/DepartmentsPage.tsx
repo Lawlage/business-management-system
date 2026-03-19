@@ -29,7 +29,6 @@ function DepartmentsContent() {
     queryKey: ['departments', selectedTenantId],
     queryFn: () => authedFetch<Department[]>('/api/departments', { tenantScoped: true }),
     enabled: !!selectedTenantId,
-    staleTime: 0,
   })
 
   const { data: tenantUsers = [] } = useQuery<TenantUserMembership[]>({

@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AppRole, Tenant, TenantUiSettings } from '../types'
 import { defaultTenantUiSettings } from '../uiSettings'
@@ -56,31 +56,46 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const canEditRecords = role !== 'standard_user'
 
-  const setSelectedTenantId = (id: string) => {
+  const setSelectedTenantId = useCallback((id: string) => {
     setSelectedTenantIdRaw(id)
-  }
+  }, [])
+
+  const contextValue = useMemo(
+    () => ({
+      selectedTenantId,
+      setSelectedTenantId,
+      superTenants,
+      setSuperTenants,
+      tenantTimezone,
+      setTenantTimezone,
+      tenantUiSettings,
+      setTenantUiSettings,
+      isSuperadminTenantWorkspace,
+      setIsSuperadminTenantWorkspace,
+      breakGlassToken,
+      setBreakGlassToken,
+      role,
+      selectedTenant,
+      canManageTenantAdminPages,
+      canEditRecords,
+    }),
+    [
+      selectedTenantId,
+      setSelectedTenantId,
+      superTenants,
+      tenantTimezone,
+      tenantUiSettings,
+      isSuperadminTenantWorkspace,
+      breakGlassToken,
+      role,
+      selectedTenant,
+      canManageTenantAdminPages,
+      canEditRecords,
+    ],
+  )
 
   return (
-    <TenantContext.Provider
-      value={{
-        selectedTenantId,
-        setSelectedTenantId,
-        superTenants,
-        setSuperTenants,
-        tenantTimezone,
-        setTenantTimezone,
-        tenantUiSettings,
-        setTenantUiSettings,
-        isSuperadminTenantWorkspace,
-        setIsSuperadminTenantWorkspace,
-        breakGlassToken,
-        setBreakGlassToken,
-        role,
-        selectedTenant,
-        canManageTenantAdminPages,
-        canEditRecords,
-      }}
-    >
+    <TenantContext.Provider value={contextValue}>
       {children}
     </TenantContext.Provider>
   )

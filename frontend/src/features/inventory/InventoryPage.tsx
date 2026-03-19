@@ -64,7 +64,6 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
       })
     },
     enabled: !!selectedTenantId,
-    staleTime: 0,
   })
 
   useEffect(() => {

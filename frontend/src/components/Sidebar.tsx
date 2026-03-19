@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -30,7 +31,7 @@ type NavLink = {
   icon: React.ReactNode
 }
 
-export function Sidebar({ role, isSuperadminTenantWorkspace, isOpen, onClose }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace, isOpen, onClose }: SidebarProps) {
   const location = useLocation()
 
   const isActive = (to: string) => location.pathname === to
@@ -154,4 +155,4 @@ export function Sidebar({ role, isSuperadminTenantWorkspace, isOpen, onClose }: 
       </aside>
     </>
   )
-}
+})

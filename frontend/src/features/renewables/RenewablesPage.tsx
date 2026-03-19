@@ -109,7 +109,6 @@ function RenewablesContent() {
       })
     },
     enabled: !!selectedTenantId,
-    staleTime: 0,
   })
 
   useEffect(() => {

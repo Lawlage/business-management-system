@@ -48,7 +48,6 @@ export function UsersPage() {
     queryFn: () =>
       authedFetch<TenantUserMembership[]>('/api/tenant-users', { tenantScoped: true }),
     enabled: !!selectedTenantId,
-    staleTime: 0,
   })
 
   const createMutation = useMutation({
