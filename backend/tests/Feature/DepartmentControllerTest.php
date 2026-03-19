@@ -100,6 +100,64 @@ class DepartmentControllerTest extends TestCase
             ->assertForbidden();
     }
 
+    // ── Update ─────────────────────────────────────────────────────────────────
+
+    public function test_tenant_admin_can_update_department_name(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $dept = $this->actingAs($user)->postJson('/api/departments', ['name' => 'Old Name'], $this->tenantHeaders($tenant))->json();
+
+        $this->actingAs($user)->putJson("/api/departments/{$dept['id']}", ['name' => 'New Name'], $this->tenantHeaders($tenant))
+            ->assertOk()
+            ->assertJsonPath('name', 'New Name');
+    }
+
+    public function test_update_with_duplicate_name_returns_422(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)->postJson('/api/departments', ['name' => 'HR'], $this->tenantHeaders($tenant))->assertCreated();
+        $dept2 = $this->actingAs($user)->postJson('/api/departments', ['name' => 'IT'], $this->tenantHeaders($tenant))->json();
+
+        $this->actingAs($user)->putJson("/api/departments/{$dept2['id']}", ['name' => 'HR'], $this->tenantHeaders($tenant))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['name']);
+    }
+
+    public function test_update_allows_same_name_for_self(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $dept = $this->actingAs($user)->postJson('/api/departments', ['name' => 'Support'], $this->tenantHeaders($tenant))->json();
+
+        $this->actingAs($user)->putJson("/api/departments/{$dept['id']}", ['name' => 'Support'], $this->tenantHeaders($tenant))
+            ->assertOk();
+    }
+
+    public function test_update_with_valid_manager_id_succeeds(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $dept = $this->actingAs($user)->postJson('/api/departments', ['name' => 'Ops'], $this->tenantHeaders($tenant))->json();
+
+        $this->actingAs($user)->putJson("/api/departments/{$dept['id']}", [
+            'name' => 'Ops',
+            'manager_id' => $user->id,
+        ], $this->tenantHeaders($tenant))->assertOk();
+    }
+
+    public function test_standard_user_cannot_update_department(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+        $user = $this->createTenantUser($tenant->id);
+
+        $dept = $this->actingAs($admin)->postJson('/api/departments', ['name' => 'Finance'], $this->tenantHeaders($tenant))->json();
+
+        $this->actingAs($user)->putJson("/api/departments/{$dept['id']}", ['name' => 'Budget'], $this->tenantHeaders($tenant))
+            ->assertForbidden();
+    }
+
     // ── Cross-tenant isolation ──────────────────────────────────────────────────
 
     public function test_departments_are_isolated_between_tenants(): void

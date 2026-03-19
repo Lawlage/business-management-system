@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\RecycleBinController;
 use App\Http\Controllers\Api\RenewalController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SlaAllocationController;
+use App\Http\Controllers\Api\SlaGroupController;
 use App\Http\Controllers\Api\SlaItemController;
 use App\Http\Controllers\Api\StockAllocationController;
 use App\Http\Controllers\Api\SuperAdminTenantController;
@@ -96,7 +97,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
         // Departments — managed under tenant settings (manage_users permission)
         Route::get('/departments', [DepartmentController::class, 'index']);
         Route::post('/departments', [DepartmentController::class, 'store'])->middleware('tenant.permission:manage_users');
+        Route::put('/departments/{id}', [DepartmentController::class, 'update'])->middleware('tenant.permission:manage_users');
         Route::delete('/departments/{id}', [DepartmentController::class, 'destroy'])->middleware('tenant.permission:manage_users');
+
+        // SLA Groups — managed under tenant settings (manage_users permission)
+        Route::get('/sla-groups', [SlaGroupController::class, 'index']);
+        Route::post('/sla-groups', [SlaGroupController::class, 'store'])->middleware('tenant.permission:manage_users');
+        Route::put('/sla-groups/{id}', [SlaGroupController::class, 'update'])->middleware('tenant.permission:manage_users');
+        Route::delete('/sla-groups/{id}', [SlaGroupController::class, 'destroy'])->middleware('tenant.permission:manage_users');
 
         // SLA Items
         Route::get('/sla-items', [SlaItemController::class, 'index']);

@@ -47,7 +47,7 @@ export type Department = {
   id: number
   name: string
   manager_id?: number | null
-  manager?: { id: number; name: string } | null
+  manager?: { id: number; first_name: string; last_name: string } | null
   created_at?: string
 }
 
@@ -295,4 +295,5 @@ export const slaItemDefaults = {
   cost_price: '0.00',
   sale_price: '0.00',
   notes: '',
+  sla_group_id: null as number | null,
 }

@@ -16,7 +16,9 @@ class DepartmentController extends Controller
 
     public function index(): JsonResponse
     {
-        return new JsonResponse(Department::query()->orderBy('name')->get());
+        return new JsonResponse(
+            Department::query()->with('manager:id,first_name,last_name')->orderBy('name')->get()
+        );
     }
 
     public function store(Request $request): JsonResponse
@@ -34,6 +36,26 @@ class DepartmentController extends Controller
         ]);
 
         return new JsonResponse($department, 201);
+    }
+
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $department = Department::query()->findOrFail($id);
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'max:150', 'unique:departments,name,' . $id],
+            'manager_id' => ['nullable', 'integer'],
+        ]);
+
+        $department->update($payload);
+
+        $this->auditLogger->tenant($request, 'department.updated', $request->user(), [
+            'entity_type' => 'department',
+            'entity_id' => $department->id,
+            'entity_title' => $department->name,
+        ]);
+
+        return new JsonResponse($department->fresh()->load('manager:id,first_name,last_name'));
     }
 
     public function destroy(Request $request, int $id): JsonResponse

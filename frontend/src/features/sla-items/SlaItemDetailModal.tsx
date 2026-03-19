@@ -11,9 +11,8 @@ import { Textarea } from '../../components/Textarea'
 import { Badge } from '../../components/Badge'
 import { CurrencyInput } from '../../components/CurrencyInput'
 import { AttachmentList } from '../../components/AttachmentList'
-import { ApplySlaModal } from './ApplySlaModal'
 import { formatDate } from '../../lib/format'
-import type { SlaItem, SlaAllocation, PaginatedResponse } from '../../types'
+import type { SlaItem, SlaAllocation, SlaGroup, PaginatedResponse } from '../../types'
 
 type SlaItemForm = {
   name: string
@@ -22,6 +21,7 @@ type SlaItemForm = {
   cost_price: string
   sale_price: string
   notes: string
+  sla_group_id: number | null
 }
 
 type Props = {
@@ -40,7 +40,6 @@ export function SlaItemDetailModal({ item, onClose, onUpdated, canEdit, canDelet
   const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState<'details' | 'allocations' | 'documents'>('details')
-  const [isApplyOpen, setIsApplyOpen] = useState(false)
 
   const [form, setForm] = useState<SlaItemForm>({
     name: item.name,
@@ -49,6 +48,14 @@ export function SlaItemDetailModal({ item, onClose, onUpdated, canEdit, canDelet
     cost_price: item.cost_price,
     sale_price: item.sale_price,
     notes: item.notes ?? '',
+    sla_group_id: item.sla_group_id ?? null,
+  })
+
+  const { data: groupsData } = useQuery<SlaGroup[]>({
+    queryKey: ['sla-groups', selectedTenantId],
+    queryFn: () => authedFetch<SlaGroup[]>('/api/sla-groups', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
   })
 
   const setField = <K extends keyof SlaItemForm>(key: K, value: SlaItemForm[K]) => {
@@ -142,11 +149,6 @@ export function SlaItemDetailModal({ item, onClose, onUpdated, canEdit, canDelet
               )}
             </div>
             <div className="flex gap-2">
-              {activeTab === 'allocations' && canEdit && (
-                <Button variant="secondary" size="sm" onClick={() => setIsApplyOpen(true)}>
-                  Apply to Client
-                </Button>
-              )}
               {canEdit && activeTab === 'details' && (
                 <Button
                   variant="primary"
@@ -201,7 +203,23 @@ export function SlaItemDetailModal({ item, onClose, onUpdated, canEdit, canDelet
               disabled={!canEdit}
               placeholder="e.g. Gold, Silver, Bronze"
             />
-            <div />
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
+                SLA Group
+              </label>
+              <select
+                value={form.sla_group_id ?? ''}
+                onChange={(e) => setField('sla_group_id', e.target.value ? Number(e.target.value) : null)}
+                disabled={!canEdit}
+                className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm focus:border-[var(--ui-button-bg)] focus:outline-none disabled:opacity-60"
+                style={{ background: 'var(--ui-bg)', color: 'var(--ui-text)' }}
+              >
+                <option value="">No group</option>
+                {(groupsData ?? []).map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
             <CurrencyInput
               label="Cost Price"
               value={form.cost_price}
@@ -269,15 +287,6 @@ export function SlaItemDetailModal({ item, onClose, onUpdated, canEdit, canDelet
         )}
       </Modal>
 
-      {isApplyOpen && (
-        <ApplySlaModal
-          slaItem={item}
-          onClose={() => setIsApplyOpen(false)}
-          onApplied={() => {
-            void refetchAllocations()
-          }}
-        />
-      )}
     </>
   )
 }

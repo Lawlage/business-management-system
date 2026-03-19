@@ -16,7 +16,7 @@ class SlaItemController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = SlaItem::query();
+        $query = SlaItem::query()->with('slaGroup:id,name');
 
         if ($request->filled('search')) {
             $term = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], (string) $request->string('search'));
@@ -40,6 +40,7 @@ class SlaItemController extends Controller
             'cost_price' => ['nullable', 'numeric', 'min:0'],
             'sale_price' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
+            'sla_group_id' => ['nullable', 'integer'],
         ]);
 
         $payload['cost_price'] = $payload['cost_price'] ?? 0.00;
@@ -70,6 +71,7 @@ class SlaItemController extends Controller
             'cost_price' => ['nullable', 'numeric', 'min:0'],
             'sale_price' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
+            'sla_group_id' => ['nullable', 'integer'],
         ]);
 
         $payload['updated_by'] = $request->user()->id;
