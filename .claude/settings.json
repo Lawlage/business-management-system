@@ -39,7 +39,8 @@
       "Bash(ls /home/jacob/business-management-system/backend/database/migrations/2026_03_13*)",
       "Bash(bash -c 'source /home/jacob/.nvm/nvm.sh && nvm use 20 && npm run build 2>&1')",
       "Bash(curl -s -X POST http://localhost:8090/api/auth/forgot-password -H \"Content-Type: application/json\" -H \"Accept: application/json\" -d '{\"\"email\"\":\"\"superadmin@example.com\"\"}')",
-      "Bash(docker compose exec backend php artisan tinker --execute=\":*)"
+      "Bash(docker compose exec backend php artisan tinker --execute=\":*)",
+      "Bash(composer show:*)"
     ]
   }
 }
