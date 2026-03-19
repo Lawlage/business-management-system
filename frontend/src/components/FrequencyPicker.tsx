@@ -48,7 +48,12 @@ export default function FrequencyPicker({
       return
     }
     const num = lastValidRef.current
-    onChange({ type: unit as FrequencyValue['type'], value: num })
+    const today = new Date().toISOString().split('T')[0]
+    onChange({
+      type: unit as FrequencyValue['type'],
+      value: num,
+      startDate: showStartDate ? (value?.startDate ?? today) : undefined,
+    })
     setInputText(String(num))
   }
 

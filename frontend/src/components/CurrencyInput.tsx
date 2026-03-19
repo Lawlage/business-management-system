@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 type Props = {
   id?: string
   label?: string
+  required?: boolean
   value: string
   onChange: (value: string) => void
   error?: string
@@ -17,7 +18,7 @@ type Props = {
  * - On blur: if the field is empty or invalid, resets to "0.00".
  * - Supports full backspace/delete — the field goes blank, then defaults on blur.
  */
-export function CurrencyInput({ id, label, value, onChange, error, disabled, className }: Props) {
+export function CurrencyInput({ id, label, required, value, onChange, error, disabled, className }: Props) {
   // Track the raw string the user is typing (may be blank during editing)
   const [rawValue, setRawValue] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -25,6 +26,7 @@ export function CurrencyInput({ id, label, value, onChange, error, disabled, cla
   const displayValue = rawValue !== null ? rawValue : formatForDisplay(value)
 
   function formatForDisplay(v: string): string {
+    if (v === '') return ''
     const num = parseFloat(v)
     if (isNaN(num)) return '0.00'
     return num.toFixed(2)
@@ -51,9 +53,13 @@ export function CurrencyInput({ id, label, value, onChange, error, disabled, cla
   function handleBlur() {
     const raw = rawValue ?? value
     const num = parseFloat(raw)
-    const finalValue = isNaN(num) || raw.trim() === '' ? '0.00' : num.toFixed(2)
-    setRawValue(null)
-    onChange(finalValue)
+    if (isNaN(num) || raw.trim() === '') {
+      setRawValue(null)
+      onChange(required ? '' : '0.00')
+    } else {
+      setRawValue(null)
+      onChange(num.toFixed(2))
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -79,6 +85,7 @@ export function CurrencyInput({ id, label, value, onChange, error, disabled, cla
       {label && (
         <label htmlFor={id} className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
           {label}
+          {required && <span className="ml-0.5 text-red-400">*</span>}
         </label>
       )}
       <div className="relative">

@@ -35,9 +35,10 @@ export function CreateRenewableModal({
 
   const [selectedProduct, setSelectedProduct] = useState<RenewableProduct | null>(initialProduct ?? null)
   const [description, setDescription] = useState(initialProduct?.name ?? '')
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [clientId, setClientId] = useState<number | null>(presetClientId ?? null)
   const [departmentId, setDepartmentId] = useState<number | null>(null)
-  const [salePrice, setSalePrice] = useState(initialProduct?.cost_price ?? '0.00')
+  const [salePrice, setSalePrice] = useState('')
   const [workflowStatus, setWorkflowStatus] = useState('')
   const [notes, setNotes] = useState('')
   const [frequency, setFrequency] = useState<FrequencyValue | null>(
@@ -57,10 +58,10 @@ export function CreateRenewableModal({
     staleTime: 30_000,
   })
 
-  const { data: clientsData } = useQuery({
+  const { data: clientsData, isLoading: loadingClients } = useQuery({
     queryKey: ['clients-all', selectedTenantId],
     queryFn: () =>
-      authedFetch<PaginatedResponse<Client>>('/api/clients?page=1', { tenantScoped: true }),
+      authedFetch<Client[]>('/api/clients?all=true', { tenantScoped: true }),
     enabled: !!selectedTenantId && !presetClientId,
     staleTime: 30_000,
   })
@@ -79,13 +80,16 @@ export function CreateRenewableModal({
     _raw: p,
   }))
 
-  const clients = clientsData?.data ?? []
+  const clientOptions = (clientsData ?? []).map((c) => ({
+    id: c.id,
+    label: c.name,
+    _raw: c,
+  }))
   const departments = departmentsData ?? []
 
   function handleProductSelect(p: RenewableProduct) {
     setSelectedProduct(p)
     if (!description) setDescription(p.name)
-    setSalePrice(p.cost_price)
     if (p.frequency_type && p.frequency_value != null) {
       setFrequency({ type: p.frequency_type, value: p.frequency_value })
     } else {
@@ -121,7 +125,7 @@ export function CreateRenewableModal({
     },
   })
 
-  const canSubmit = !!selectedProduct && !!clientId
+  const canSubmit = !!selectedProduct && !!clientId && !!frequency && !!salePrice
 
   return (
     <Modal
@@ -193,6 +197,7 @@ export function CreateRenewableModal({
 
         <CurrencyInput
           label="Sale Price"
+          required
           value={salePrice}
           onChange={setSalePrice}
         />
@@ -207,28 +212,35 @@ export function CreateRenewableModal({
 
         {/* Client */}
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
-            Client <span className="text-red-500 ml-0.5">*</span>
-          </label>
           {presetClientId ? (
-            <input
-              value={presetClientName ?? String(presetClientId)}
-              disabled
-              className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm opacity-70"
-              style={{ background: 'var(--ui-panel-bg)', color: 'var(--ui-muted)' }}
-            />
+            <>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
+                Client
+              </label>
+              <input
+                value={presetClientName ?? String(presetClientId)}
+                disabled
+                className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm opacity-70"
+                style={{ background: 'var(--ui-panel-bg)', color: 'var(--ui-muted)' }}
+              />
+            </>
           ) : (
-            <select
-              value={clientId ?? ''}
-              onChange={(e) => setClientId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm focus:border-[var(--ui-button-bg)] focus:outline-none"
-              style={{ background: 'var(--ui-panel-bg)', color: 'var(--ui-text)' }}
-            >
-              <option value="">Select client...</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <SearchCombobox
+              label="Client"
+              required
+              placeholder="Search clients..."
+              options={clientOptions}
+              value={selectedClient ? { id: selectedClient.id, label: selectedClient.name } : null}
+              onChange={(opt) => {
+                const raw = clientOptions.find((o) => o.id === opt.id)?._raw
+                if (raw) {
+                  setSelectedClient(raw)
+                  setClientId(raw.id)
+                }
+              }}
+              onClear={() => { setSelectedClient(null); setClientId(null) }}
+              isLoading={loadingClients}
+            />
           )}
         </div>
 
@@ -253,7 +265,7 @@ export function CreateRenewableModal({
 
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
-            Renewal Frequency
+            Renewal Frequency <span className="ml-0.5 text-red-400">*</span>
           </label>
           <FrequencyPicker
             value={frequency}
