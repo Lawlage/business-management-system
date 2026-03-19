@@ -46,6 +46,7 @@ class SlaAllocationController extends Controller
             'quantity' => ['required', 'integer', 'min:1'],
             'unit_price' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
+            'renewal_date' => ['nullable', 'date'],
         ]);
 
         $slaItem = SlaItem::query()->findOrFail((int) $payload['sla_item_id']);
@@ -58,6 +59,7 @@ class SlaAllocationController extends Controller
             'quantity' => (int) $payload['quantity'],
             'unit_price' => $payload['unit_price'] ?? null,
             'notes' => $payload['notes'] ?? null,
+            'renewal_date' => $payload['renewal_date'] ?? null,
             'status' => 'active',
             'allocated_by' => $request->user()->id,
         ]);

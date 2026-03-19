@@ -11,27 +11,32 @@ import { Textarea } from '../../components/Textarea'
 import type { Client, Department, PaginatedResponse, SlaItem } from '../../types'
 
 type Props = {
-  slaItem: SlaItem
+  slaItem?: SlaItem
+  presetClientId?: number | null
+  presetClientName?: string
   onClose: () => void
   onApplied: () => void
 }
 
-export function ApplySlaModal({ slaItem, onClose, onApplied }: Props) {
+export function ApplySlaModal({ slaItem, presetClientId, presetClientName, onClose, onApplied }: Props) {
   const { authedFetch } = useApi()
   const { selectedTenantId } = useTenant()
   const { showNotice } = useNotice()
 
-  const [clientId, setClientId] = useState<number | null>(null)
+  const [clientId, setClientId] = useState<number | null>(presetClientId ?? null)
   const [departmentId, setDepartmentId] = useState<number | null>(null)
   const [quantity, setQuantity] = useState(1)
-  const [unitPrice, setUnitPrice] = useState(slaItem.sale_price)
+  const [unitPrice, setUnitPrice] = useState(slaItem?.sale_price ?? '0.00')
   const [notes, setNotes] = useState('')
+  const [renewalDate, setRenewalDate] = useState('')
+  const [selectedSlaItem, setSelectedSlaItem] = useState<SlaItem | null>(slaItem ?? null)
+  const [slaSearch, setSlaSearch] = useState('')
 
   const { data: clientsData } = useQuery({
     queryKey: ['clients-all', selectedTenantId],
     queryFn: () =>
       authedFetch<PaginatedResponse<Client>>('/api/clients?page=1', { tenantScoped: true }),
-    enabled: !!selectedTenantId,
+    enabled: !!selectedTenantId && !presetClientId,
     staleTime: 30_000,
   })
 
@@ -43,17 +48,29 @@ export function ApplySlaModal({ slaItem, onClose, onApplied }: Props) {
     staleTime: 30_000,
   })
 
+  const { data: slaSearchData } = useQuery({
+    queryKey: ['sla-items-search', selectedTenantId, slaSearch],
+    queryFn: () =>
+      authedFetch<PaginatedResponse<SlaItem>>(
+        `/api/sla-items?search=${encodeURIComponent(slaSearch)}&per_page=20`,
+        { tenantScoped: true },
+      ),
+    enabled: !!selectedTenantId && !slaItem && slaSearch.length > 0,
+    staleTime: 5_000,
+  })
+
   const applyMutation = useMutation({
     mutationFn: () =>
       authedFetch('/api/sla-allocations', {
         method: 'POST',
         body: JSON.stringify({
-          sla_item_id: slaItem.id,
+          sla_item_id: selectedSlaItem!.id,
           client_id: clientId,
           department_id: departmentId || null,
           quantity,
           unit_price: unitPrice,
           notes: notes || null,
+          renewal_date: renewalDate || null,
         }),
         tenantScoped: true,
       }),
@@ -69,10 +86,15 @@ export function ApplySlaModal({ slaItem, onClose, onApplied }: Props) {
 
   const clients = clientsData?.data ?? []
   const departments = departmentsData ?? []
+  const slaResults = slaSearchData?.data ?? []
+
+  const canSubmit = !!selectedSlaItem && !!clientId
+
+  const title = slaItem ? `Apply "${slaItem.name}" to Client` : 'Apply SLA to Client'
 
   return (
     <Modal
-      title={`Apply "${slaItem.name}" to Client`}
+      title={title}
       onClose={onClose}
       footer={
         <div className="flex justify-end">
@@ -80,7 +102,7 @@ export function ApplySlaModal({ slaItem, onClose, onApplied }: Props) {
             variant="primary"
             onClick={() => applyMutation.mutate()}
             isLoading={applyMutation.isPending}
-            disabled={!clientId}
+            disabled={!canSubmit}
           >
             Apply
           </Button>
@@ -88,21 +110,80 @@ export function ApplySlaModal({ slaItem, onClose, onApplied }: Props) {
       }
     >
       <div className="grid gap-4 md:grid-cols-2">
+        {/* SLA item picker — only shown when no slaItem preset */}
+        {!slaItem && (
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
+              SLA Item <span className="text-red-500 ml-0.5">*</span>
+            </label>
+            {selectedSlaItem ? (
+              <div className="flex items-center gap-2 rounded border border-[var(--ui-border)] px-3 py-2 text-sm" style={{ background: 'var(--ui-bg)', color: 'var(--ui-text)' }}>
+                <span className="flex-1">{selectedSlaItem.name} <span style={{ color: 'var(--ui-muted)' }}>({selectedSlaItem.sku})</span></span>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedSlaItem(null); setSlaSearch('') }}
+                  className="text-xs hover:underline"
+                  style={{ color: 'var(--ui-muted)' }}
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="text"
+                  placeholder="Search by name or SKU..."
+                  value={slaSearch}
+                  onChange={(e) => setSlaSearch(e.target.value)}
+                  className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm focus:border-[var(--ui-button-bg)] focus:outline-none"
+                  style={{ background: 'var(--ui-bg)', color: 'var(--ui-text)' }}
+                />
+                {slaResults.length > 0 && (
+                  <ul className="mt-1 max-h-40 overflow-y-auto rounded border border-[var(--ui-border)]" style={{ background: 'var(--ui-bg)' }}>
+                    {slaResults.map((s) => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-[var(--ui-border)]"
+                          style={{ color: 'var(--ui-text)' }}
+                          onClick={() => { setSelectedSlaItem(s); setUnitPrice(s.sale_price); setSlaSearch('') }}
+                        >
+                          {s.name} <span style={{ color: 'var(--ui-muted)' }}>({s.sku})</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Client selector */}
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
             Client <span className="text-red-500 ml-0.5">*</span>
           </label>
-          <select
-            value={clientId ?? ''}
-            onChange={(e) => setClientId(e.target.value ? Number(e.target.value) : null)}
-            className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm focus:border-[var(--ui-button-bg)] focus:outline-none"
-            style={{ background: 'var(--ui-bg)', color: 'var(--ui-text)' }}
-          >
-            <option value="">Select client...</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          {presetClientId ? (
+            <input
+              value={presetClientName ?? String(presetClientId)}
+              disabled
+              className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm opacity-70"
+              style={{ background: 'var(--ui-bg)', color: 'var(--ui-muted)' }}
+            />
+          ) : (
+            <select
+              value={clientId ?? ''}
+              onChange={(e) => setClientId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm focus:border-[var(--ui-button-bg)] focus:outline-none"
+              style={{ background: 'var(--ui-bg)', color: 'var(--ui-text)' }}
+            >
+              <option value="">Select client...</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         {departments.length > 0 && (
@@ -136,6 +217,19 @@ export function ApplySlaModal({ slaItem, onClose, onApplied }: Props) {
           value={unitPrice}
           onChange={setUnitPrice}
         />
+
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
+            Renewal Date
+          </label>
+          <input
+            type="date"
+            value={renewalDate}
+            onChange={(e) => setRenewalDate(e.target.value)}
+            className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm focus:border-[var(--ui-button-bg)] focus:outline-none"
+            style={{ background: 'var(--ui-bg)', color: 'var(--ui-text)' }}
+          />
+        </div>
 
         <Textarea
           label="Notes"

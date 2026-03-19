@@ -46,6 +46,8 @@ export type Client = {
 export type Department = {
   id: number
   name: string
+  manager_id?: number | null
+  manager?: { id: number; name: string } | null
   created_at?: string
 }
 
@@ -93,6 +95,15 @@ export type SlaItem = {
   cost_price: string
   sale_price: string
   notes?: string | null
+  sla_group_id?: number | null
+  sla_group?: { id: number; name: string } | null
+  created_at?: string
+}
+
+export type SlaGroup = {
+  id: number
+  name: string
+  sla_items?: SlaItem[]
   created_at?: string
 }
 
@@ -104,6 +115,7 @@ export type SlaAllocation = {
   quantity: number
   unit_price: string | null
   notes: string | null
+  renewal_date: string | null
   status: 'active' | 'cancelled'
   allocated_by: number
   cancelled_by: number | null
@@ -189,9 +201,10 @@ export type PaginatedResponse<T> = {
 }
 
 export type DashboardData = {
-  important_renewals: Renewal[]
+  upcoming_renewals: Renewal[]
   critical_renewals: Renewal[]
   low_stock_items: InventoryItem[]
+  upcoming_sla_allocations: SlaAllocation[]
 }
 
 export type RecycleBinData = {
@@ -217,7 +230,6 @@ export const roleLabels: Record<AppRole, string> = {
 export const renewalCategoryOptions = [
   { value: 'contract', label: 'Contract' },
   { value: 'license', label: 'License' },
-  { value: 'sla_renewal', label: 'SLA Renewal' },
   { value: 'domain', label: 'Domain' },
   { value: 'subscription', label: 'Subscription' },
   { value: 'warranty', label: 'Warranty' },

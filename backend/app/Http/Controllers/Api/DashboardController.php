@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Models\Renewal;
+use App\Models\SlaAllocation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,17 +15,26 @@ class DashboardController extends Controller
     {
         $request->validate([
             'renewal_threshold_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
+            'client_id'              => ['sometimes', 'nullable', 'integer'],
         ]);
 
         $thresholdDays = (int) $request->integer('renewal_threshold_days', 30);
+        $clientId = $request->input('client_id');
 
-        $importantRenewals = Renewal::query()
+        $upcomingQuery = Renewal::query()
+            ->with(['client:id,name', 'department:id,name'])
             ->whereDate('expiration_date', '<=', now()->addDays($thresholdDays))
             ->orderBy('expiration_date')
-            ->limit(10)
-            ->get();
+            ->limit(10);
+
+        if ($clientId) {
+            $upcomingQuery->where('client_id', (int) $clientId);
+        }
+
+        $upcomingRenewals = $upcomingQuery->get();
 
         $criticalRenewals = Renewal::query()
+            ->with(['client:id,name', 'department:id,name'])
             ->whereDate('expiration_date', '<=', now()->addDays(7))
             ->whereDate('expiration_date', '>=', now()->subDay())
             ->orderBy('expiration_date')
@@ -37,10 +47,25 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
+        $slaAllocationQuery = SlaAllocation::query()
+            ->with(['slaItem:id,name,sku', 'client:id,name', 'department:id,name'])
+            ->where('status', 'active')
+            ->whereNotNull('renewal_date')
+            ->whereDate('renewal_date', '<=', now()->addDays($thresholdDays))
+            ->orderBy('renewal_date')
+            ->limit(10);
+
+        if ($clientId) {
+            $slaAllocationQuery->where('client_id', (int) $clientId);
+        }
+
+        $upcomingSlaAllocations = $slaAllocationQuery->get();
+
         return new JsonResponse([
-            'important_renewals' => $importantRenewals,
-            'critical_renewals' => $criticalRenewals,
-            'low_stock_items' => $lowStockItems,
+            'upcoming_renewals'       => $upcomingRenewals,
+            'critical_renewals'       => $criticalRenewals,
+            'low_stock_items'         => $lowStockItems,
+            'upcoming_sla_allocations' => $upcomingSlaAllocations,
         ]);
     }
 }

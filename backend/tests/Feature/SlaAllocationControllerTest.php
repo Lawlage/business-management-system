@@ -127,6 +127,44 @@ class SlaAllocationControllerTest extends TestCase
             ->assertUnprocessable();
     }
 
+    // ── Renewal date ───────────────────────────────────────────────────────────
+
+    public function test_store_with_renewal_date_persists_it(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+
+        $slaItem = $this->createSlaItem($admin, $tenant);
+        $client = $this->createClient($admin, $tenant);
+
+        $response = $this->actingAs($admin)->postJson('/api/sla-allocations', [
+            'sla_item_id' => $slaItem['id'],
+            'client_id' => $client['id'],
+            'quantity' => 1,
+            'renewal_date' => '2027-06-01',
+        ], $this->tenantHeaders($tenant));
+
+        $response->assertCreated()
+            ->assertJsonPath('renewal_date', '2027-06-01');
+    }
+
+    public function test_index_returns_renewal_date(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+
+        $slaItem = $this->createSlaItem($admin, $tenant);
+        $client = $this->createClient($admin, $tenant);
+
+        $this->actingAs($admin)->postJson('/api/sla-allocations', [
+            'sla_item_id' => $slaItem['id'],
+            'client_id' => $client['id'],
+            'quantity' => 1,
+            'renewal_date' => '2027-06-01',
+        ], $this->tenantHeaders($tenant))->assertCreated();
+
+        $response = $this->actingAs($admin)->getJson('/api/sla-allocations', $this->tenantHeaders($tenant));
+        $this->assertSame('2027-06-01', $response->json('data.0.renewal_date'));
+    }
+
     // ── Cross-tenant isolation ──────────────────────────────────────────────────
 
     public function test_sla_allocations_are_isolated_between_tenants(): void

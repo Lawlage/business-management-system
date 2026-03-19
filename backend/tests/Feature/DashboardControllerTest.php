@@ -11,16 +11,17 @@ class DashboardControllerTest extends TestCase
     use RefreshDatabase;
     use CreatesTenantContext;
 
-    public function test_dashboard_returns_three_sections(): void
+    public function test_dashboard_returns_four_sections(): void
     {
         [$user, $tenant] = $this->createTenantAdminContext();
 
         $response = $this->actingAs($user)->getJson('/api/dashboard', $this->tenantHeaders($tenant));
 
         $response->assertOk()->assertJsonStructure([
-            'important_renewals',
+            'upcoming_renewals',
             'critical_renewals',
             'low_stock_items',
+            'upcoming_sla_allocations',
         ]);
     }
 
@@ -53,7 +54,7 @@ class DashboardControllerTest extends TestCase
     {
         [$user, $tenant] = $this->createTenantAdminContext();
 
-        // Renewal at 20 days should appear in important_renewals.
+        // Renewal at 20 days should appear in upcoming_renewals.
         $this->actingAs($user)->postJson('/api/renewals', [
             'title' => 'Twenty Days',
             'category' => 'license',
@@ -69,7 +70,7 @@ class DashboardControllerTest extends TestCase
 
         $response = $this->actingAs($user)->getJson('/api/dashboard', $this->tenantHeaders($tenant));
 
-        $important = $response->json('important_renewals');
+        $important = $response->json('upcoming_renewals');
         $titles = array_column($important, 'title');
 
         $this->assertContains('Twenty Days', $titles);
@@ -99,6 +100,35 @@ class DashboardControllerTest extends TestCase
         );
 
         $response->assertUnprocessable()->assertJsonValidationErrors(['renewal_threshold_days']);
+    }
+
+    public function test_sla_allocation_with_renewal_date_appears_in_upcoming(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $slaItem = $this->actingAs($user)->postJson('/api/sla-items', [
+            'name' => 'Test SLA',
+            'sku' => 'SLA-DASH-001',
+            'sale_price' => 99.00,
+        ], $this->tenantHeaders($tenant))->json();
+
+        $client = $this->actingAs($user)->postJson('/api/clients', [
+            'name' => 'Dash Client',
+        ], $this->tenantHeaders($tenant))->json();
+
+        // Allocation with renewal_date within 30 days.
+        $this->actingAs($user)->postJson('/api/sla-allocations', [
+            'sla_item_id' => $slaItem['id'],
+            'client_id' => $client['id'],
+            'quantity' => 1,
+            'renewal_date' => now()->addDays(10)->toDateString(),
+        ], $this->tenantHeaders($tenant))->assertCreated();
+
+        $response = $this->actingAs($user)->getJson('/api/dashboard', $this->tenantHeaders($tenant));
+
+        $allocations = $response->json('upcoming_sla_allocations');
+        $this->assertCount(1, $allocations);
+        $this->assertSame('Test SLA', $allocations[0]['sla_item']['name']);
     }
 
     public function test_low_stock_items_appear_when_below_minimum(): void
