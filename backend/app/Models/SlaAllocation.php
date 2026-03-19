@@ -17,6 +17,7 @@ class SlaAllocation extends Model
         'quantity',
         'unit_price',
         'notes',
+        'renewal_date',
         'status',
         'allocated_by',
         'cancelled_by',
@@ -25,6 +26,7 @@ class SlaAllocation extends Model
 
     protected $casts = [
         'cancelled_at' => 'datetime',
+        'renewal_date' => 'date:Y-m-d',
         'unit_price' => 'decimal:2',
     ];
 

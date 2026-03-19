@@ -13,7 +13,6 @@ import { LoadMoreButton } from '../../components/LoadMoreButton'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { Input } from '../../components/Input'
 import { CreateInventoryModal } from './CreateInventoryModal'
-import { AllocateStockModal } from './AllocateStockModal'
 import type { InventoryItem, PaginatedResponse } from '../../types'
 
 type InventoryPageProps = {
@@ -29,13 +28,11 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
   const [page, setPage] = useState(1)
   const [allItems, setAllItems] = useState<InventoryItem[]>([])
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [allocatingItem, setAllocatingItem] = useState<InventoryItem | null>(null)
-  const [adjustQtys, setAdjustQtys] = useState<Record<number, number>>({})
+  const [adjustQtys, setAdjustQtys] = useState<Record<number, string | number>>({})
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
   const canCreate = role !== 'standard_user'
-  const canAllocate = role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'
 
   // Debounce search
   useEffect(() => {
@@ -98,7 +95,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
       }),
     onSuccess: (_, variables) => {
       showNotice('Stock updated.')
-      setAdjustQtys((prev) => ({ ...prev, [variables.id]: 1 }))
+      setAdjustQtys((prev) => ({ ...prev, [variables.id]: '' }))
       void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard', selectedTenantId] })
     },
@@ -111,8 +108,8 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
   })
 
   const handleAdjust = (item: InventoryItem, type: 'check_in' | 'check_out') => {
-    const qty = adjustQtys[item.id] ?? 1
-    if (qty < 1) return
+    const raw = adjustQtys[item.id]
+    const qty = raw === '' || raw === undefined ? 1 : Math.max(1, Number(raw))
     adjustMutation.mutate({ id: item.id, type, quantity: qty })
   }
 
@@ -155,7 +152,6 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
             <span>Created</span>
           </div>
           <div className="w-[220px] shrink-0 text-right pr-1">Adjust Stock</div>
-          {canAllocate && <div className="w-[90px] shrink-0" />}
         </div>
       )}
 
@@ -203,7 +199,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
                   onChange={(e) =>
                     setAdjustQtys((prev) => ({
                       ...prev,
-                      [item.id]: Math.max(1, Number(e.target.value)),
+                      [item.id]: e.target.value,
                     }))
                   }
                   className="w-16 rounded-md border border-[var(--ui-border)] px-2 py-1.5 text-sm app-panel"
@@ -228,15 +224,6 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
                   In
                 </Button>
               </div>
-              {canAllocate && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setAllocatingItem(item)}
-                >
-                  Allocate
-                </Button>
-              )}
             </div>
           ))
         )}
@@ -257,13 +244,6 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
         />
       )}
 
-      {allocatingItem && (
-        <AllocateStockModal
-          item={allocatingItem}
-          onClose={() => setAllocatingItem(null)}
-          onAllocated={handleCreated}
-        />
-      )}
     </Card>
   )
 }

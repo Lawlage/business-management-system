@@ -13,7 +13,6 @@ import { Badge } from '../../components/Badge'
 import { CurrencyInput } from '../../components/CurrencyInput'
 import { AttachmentList } from '../../components/AttachmentList'
 import { formatDate } from '../../lib/format'
-import { AllocateStockModal } from './AllocateStockModal'
 import type { InventoryItem, CustomField, CustomFieldValueResponse, StockAllocation, PaginatedResponse } from '../../types'
 
 type InventoryDetailModalProps = {
@@ -50,7 +49,6 @@ export function InventoryDetailModal({
   const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState<'details' | 'allocations' | 'documents'>('details')
-  const [isAllocateOpen, setIsAllocateOpen] = useState(false)
 
   const canAllocate = role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'
 
@@ -343,11 +341,6 @@ export function InventoryDetailModal({
             )}
           </div>
           <div className="flex gap-2">
-            {canAllocate && activeTab === 'details' && (
-              <Button variant="secondary" onClick={() => setIsAllocateOpen(true)}>
-                Allocate Stock
-              </Button>
-            )}
             {canEdit && activeTab === 'details' && (
               <Button
                 variant="primary"
@@ -523,17 +516,6 @@ export function InventoryDetailModal({
       </div>
       )}
     </Modal>
-
-    {isAllocateOpen && (
-      <AllocateStockModal
-        item={item}
-        onClose={() => setIsAllocateOpen(false)}
-        onAllocated={() => {
-          void refetchAllocations()
-          onUpdated()
-        }}
-      />
-    )}
     </>
   )
 }
