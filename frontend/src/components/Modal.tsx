@@ -67,14 +67,14 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className={`w-full ${maxWidthMap[maxWidth]} rounded-xl border border-[var(--ui-border)] app-panel p-4 shadow-2xl`}
+        className={`w-full ${maxWidthMap[maxWidth]} flex flex-col max-h-[90vh] rounded-xl border border-[var(--ui-border)] app-panel shadow-2xl`}
         style={{ animation: 'modalIn 0.15s ease-out' }}
         onClick={(e) => e.stopPropagation()}
       >
         <style>{`@keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }`}</style>
 
         {/* Header */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="flex-shrink-0 px-4 pt-4 pb-4 flex items-center justify-between border-b border-[var(--ui-border)]">
           <h3 id="modal-title" className="text-base font-semibold text-[var(--ui-text)]">
             {title}
           </h3>
@@ -89,11 +89,11 @@ export function Modal({
         </div>
 
         {/* Body */}
-        <div>{children}</div>
+        <div className="flex-1 overflow-y-auto px-4 py-4">{children}</div>
 
         {/* Footer */}
         {footer && (
-          <div className="mt-4 border-t border-[var(--ui-border)] pt-4">
+          <div className="flex-shrink-0 px-4 pb-4 border-t border-[var(--ui-border)] pt-4">
             {footer}
           </div>
         )}
