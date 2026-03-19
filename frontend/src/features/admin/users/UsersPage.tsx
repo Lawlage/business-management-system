@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTenant } from '../../../contexts/TenantContext'
 import { useNotice } from '../../../contexts/NoticeContext'
 import { useConfirm } from '../../../contexts/ConfirmContext'
+import { useAuth } from '../../../contexts/AuthContext'
 import { useApi } from '../../../hooks/useApi'
 import type { ApiError } from '../../../hooks/useApi'
 import type { TenantUserMembership, AppRole } from '../../../types'
@@ -36,6 +37,7 @@ export function UsersPage() {
   const { showNotice } = useNotice()
   const confirm = useConfirm()
   const { authedFetch } = useApi()
+  const { user: currentUser } = useAuth()
   const queryClient = useQueryClient()
 
   const [form, setForm] = useState<CreateUserForm>(initialForm)
@@ -139,54 +141,66 @@ export function UsersPage() {
 
         {!isLoading &&
           users &&
-          users.map((membership) => (
-            <div
-              key={membership.id}
-              className="flex items-center justify-between rounded-md border border-[var(--ui-border)] app-inner-box p-3"
-            >
-              <div>
-                <p className="text-sm font-medium text-[var(--ui-text)]">
-                  {membership.user.first_name} {membership.user.last_name}{' '}
-                  <span className="text-[var(--ui-muted)]">({membership.user.email})</span>
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--ui-muted)]">
-                  Last login:{' '}
-                  {membership.user.last_login_at
-                    ? new Date(membership.user.last_login_at).toLocaleString()
-                    : 'Never'}
-                </p>
+          users.map((membership) => {
+            const isSelf = currentUser?.id === membership.user.id
+            return (
+              <div
+                key={membership.id}
+                className="flex items-center justify-between rounded-md border border-[var(--ui-border)] app-inner-box p-3"
+              >
+                <div>
+                  <p className="text-sm font-medium text-[var(--ui-text)]">
+                    {membership.user.first_name} {membership.user.last_name}{' '}
+                    <span className="text-[var(--ui-muted)]">({membership.user.email})</span>
+                    {isSelf && (
+                      <span className="ml-2 text-xs text-[var(--ui-muted)] opacity-60">(you)</span>
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-xs text-[var(--ui-muted)]">
+                    Last login:{' '}
+                    {membership.user.last_login_at
+                      ? new Date(membership.user.last_login_at).toLocaleString()
+                      : 'Never'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isSelf ? (
+                    <span className="text-xs text-[var(--ui-muted)] opacity-60 px-2">{membership.role.replace(/_/g, ' ')}</span>
+                  ) : (
+                    <>
+                      <select
+                        className="rounded border border-[var(--ui-border)] bg-[var(--ui-panel)] px-2 py-1 text-xs text-[var(--ui-text)]"
+                        value={membership.role}
+                        disabled={
+                          changeRoleMutation.isPending &&
+                          changeRoleMutation.variables?.userId === membership.user.id
+                        }
+                        onChange={(e) =>
+                          changeRoleMutation.mutate({ userId: membership.user.id, role: e.target.value as AppRole })
+                        }
+                      >
+                        <option value="standard_user">Standard User</option>
+                        <option value="sub_admin">Sub Admin</option>
+                        <option value="tenant_admin">Tenant Admin</option>
+                      </select>
+                      <button
+                        className="rounded border border-red-500 bg-transparent px-2 py-1 text-xs text-red-500 hover:bg-red-500 hover:text-white disabled:opacity-50"
+                        onClick={() => void handleRemove(membership.user.id)}
+                        disabled={
+                          removeMutation.isPending &&
+                          removeMutation.variables === membership.user.id
+                        }
+                      >
+                        {removeMutation.isPending && removeMutation.variables === membership.user.id
+                          ? '…'
+                          : 'Remove'}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <select
-                  className="rounded border border-[var(--ui-border)] bg-[var(--ui-panel)] px-2 py-1 text-xs text-[var(--ui-text)]"
-                  value={membership.role}
-                  disabled={
-                    changeRoleMutation.isPending &&
-                    changeRoleMutation.variables?.userId === membership.user.id
-                  }
-                  onChange={(e) =>
-                    changeRoleMutation.mutate({ userId: membership.user.id, role: e.target.value as AppRole })
-                  }
-                >
-                  <option value="standard_user">Standard User</option>
-                  <option value="sub_admin">Sub Admin</option>
-                  <option value="tenant_admin">Tenant Admin</option>
-                </select>
-                <button
-                  className="rounded border border-red-500 bg-transparent px-2 py-1 text-xs text-red-500 hover:bg-red-500 hover:text-white disabled:opacity-50"
-                  onClick={() => void handleRemove(membership.user.id)}
-                  disabled={
-                    removeMutation.isPending &&
-                    removeMutation.variables === membership.user.id
-                  }
-                >
-                  {removeMutation.isPending && removeMutation.variables === membership.user.id
-                    ? '…'
-                    : 'Remove'}
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
       </div>
 
       {isCreateOpen && (

@@ -223,4 +223,17 @@ class TenantUserControllerTest extends TestCase
             'can_edit' => false,
         ]);
     }
+
+    public function test_user_cannot_change_own_role(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+
+        $response = $this->actingAs($admin)->putJson(
+            "/api/tenant-users/{$admin->id}",
+            ['role' => 'standard_user'],
+            $this->tenantHeaders($tenant)
+        );
+
+        $response->assertForbidden();
+    }
 }
