@@ -43,6 +43,7 @@ type CreateFieldForm = {
 type EditFieldForm = {
   name: string
   entity_type: string[]
+  dropdown_options: string[]
 }
 
 const initialCreateForm: CreateFieldForm = {
@@ -160,8 +161,9 @@ export function CustomFieldsPage() {
   const [createForm, setCreateForm] = useState<CreateFieldForm>(initialCreateForm)
 
   const [editingField, setEditingField] = useState<CustomField | null>(null)
-  const [editForm, setEditForm] = useState<EditFieldForm>({ name: '', entity_type: [] })
+  const [editForm, setEditForm] = useState<EditFieldForm>({ name: '', entity_type: [], dropdown_options: [] })
   const [newOptionText, setNewOptionText] = useState('')
+  const [editNewOptionText, setEditNewOptionText] = useState('')
 
   const { data: fields, isLoading } = useQuery<CustomField[]>({
     queryKey: ['custom-fields', selectedTenantId],
@@ -241,7 +243,12 @@ export function CustomFieldsPage() {
 
   function openEdit(field: CustomField) {
     setEditingField(field)
-    setEditForm({ name: field.name, entity_type: Array.isArray(field.entity_type) ? field.entity_type : [field.entity_type] })
+    setEditForm({
+      name: field.name,
+      entity_type: Array.isArray(field.entity_type) ? field.entity_type : [field.entity_type],
+      dropdown_options: field.dropdown_options ?? [],
+    })
+    setEditNewOptionText('')
   }
 
   function handleNameChange(name: string) {
@@ -463,7 +470,7 @@ export function CustomFieldsPage() {
                 variant="primary"
                 onClick={() => updateMutation.mutate({ id: editingField.id, data: editForm })}
                 isLoading={updateMutation.isPending}
-                disabled={editForm.entity_type.length === 0}
+                disabled={editForm.entity_type.length === 0 || (editingField.field_type === 'dropdown' && editForm.dropdown_options.length === 0)}
               >
                 Save Changes
               </Button>
@@ -488,10 +495,69 @@ export function CustomFieldsPage() {
               <span className="font-medium text-[var(--ui-text)]">Key:</span>{' '}
               <span className="font-mono">{editingField.key}</span>
               <p className="mt-1 text-xs opacity-60">Type and key cannot be changed after creation.</p>
-              {editingField.field_type === 'dropdown' && editingField.dropdown_options && editingField.dropdown_options.length > 0 && (
-                <p className="mt-1 text-xs">Options: {editingField.dropdown_options.join(', ')}</p>
-              )}
             </div>
+
+            {editingField.field_type === 'dropdown' && (
+              <div>
+                <p className="mb-1.5 text-sm font-medium" style={{ color: 'var(--ui-text)' }}>
+                  Dropdown Options <span className="text-red-500 ml-0.5">*</span>
+                </p>
+                <div className="space-y-1.5 mb-2">
+                  {editForm.dropdown_options.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="flex-1 text-sm px-2 py-1 rounded border border-[var(--ui-border)] bg-[var(--ui-inner-bg)] text-[var(--ui-text)]">{opt}</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditForm((f) => ({
+                          ...f,
+                          dropdown_options: f.dropdown_options.filter((_, i) => i !== idx),
+                        }))}
+                        className="text-[var(--ui-muted)] hover:text-red-500 transition p-1"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Add option..."
+                    value={editNewOptionText}
+                    onChange={(e) => setEditNewOptionText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && editNewOptionText.trim()) {
+                        e.preventDefault()
+                        setEditForm((f) => ({
+                          ...f,
+                          dropdown_options: [...f.dropdown_options, editNewOptionText.trim()],
+                        }))
+                        setEditNewOptionText('')
+                      }
+                    }}
+                    className="flex-1 px-3 py-1.5 rounded border border-[var(--ui-border)] text-sm focus:border-[var(--ui-button-bg)] focus:outline-none"
+                    style={{ background: 'var(--ui-bg)', color: 'var(--ui-text)' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!editNewOptionText.trim()) return
+                      setEditForm((f) => ({
+                        ...f,
+                        dropdown_options: [...f.dropdown_options, editNewOptionText.trim()],
+                      }))
+                      setEditNewOptionText('')
+                    }}
+                    className="px-2 py-1.5 rounded border border-[var(--ui-border)] text-[var(--ui-muted)] hover:text-[var(--ui-text)] transition"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+                {editForm.dropdown_options.length === 0 && (
+                  <p className="mt-1 text-xs text-red-500">At least one option is required for dropdown fields.</p>
+                )}
+              </div>
+            )}
           </div>
         </Modal>
       )}

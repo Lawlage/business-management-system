@@ -74,6 +74,10 @@ class CustomFieldController extends Controller
             return new JsonResponse(['message' => 'Dropdown fields require at least one option.'], 422);
         }
 
+        if ($field->field_type !== 'dropdown') {
+            $payload['dropdown_options'] = null;
+        }
+
         $field->update($payload);
 
         $this->auditLogger->tenant($request, 'custom_field.updated', $request->user(), [
