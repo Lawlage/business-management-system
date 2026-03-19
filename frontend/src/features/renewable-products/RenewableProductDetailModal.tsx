@@ -214,7 +214,6 @@ export function RenewableProductDetailModal({ product, onClose, onUpdated, canEd
                 value={frequency}
                 onChange={setFrequency}
                 disabled={!canEdit}
-                allowDayOfMonth={false}
               />
             </div>
             <Textarea

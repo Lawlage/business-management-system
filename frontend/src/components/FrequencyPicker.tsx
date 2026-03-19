@@ -1,57 +1,80 @@
+import { useEffect, useRef, useState } from 'react'
 import type { FrequencyValue } from '../types'
 
 interface FrequencyPickerProps {
   value: FrequencyValue | null
   onChange: (v: FrequencyValue | null) => void
   disabled?: boolean
+  showStartDate?: boolean
+  /** @deprecated no longer used — day_of_month option has been removed */
   allowDayOfMonth?: boolean
 }
 
-const TYPE_OPTIONS_BASE = [
-  { value: 'days', label: 'Every X days' },
-  { value: 'months', label: 'Every X months' },
-  { value: 'years', label: 'Every X years' },
+const UNIT_OPTIONS = [
+  { value: 'days', singular: 'Day', plural: 'Days' },
+  { value: 'months', singular: 'Month', plural: 'Months' },
+  { value: 'years', singular: 'Year', plural: 'Years' },
 ]
 
-const TYPE_OPTIONS_FULL = [
-  ...TYPE_OPTIONS_BASE,
-  { value: 'day_of_month', label: 'Day X of each month' },
-]
+const VALID_TYPES = new Set(['days', 'months', 'years'])
+
+const FIELD_CLS =
+  'rounded-md border border-[var(--ui-border)] px-3 py-2 text-sm app-panel focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60'
 
 export default function FrequencyPicker({
   value,
   onChange,
   disabled = false,
-  allowDayOfMonth = false,
+  showStartDate = false,
 }: FrequencyPickerProps) {
-  const typeOptions = allowDayOfMonth ? TYPE_OPTIONS_FULL : TYPE_OPTIONS_BASE
-  const showDatePicker = value !== null && value.type !== 'day_of_month'
-  const isDayOfMonth = value?.type === 'day_of_month'
+  // Only expose the three supported types; treat day_of_month / unknown as null
+  const displayType = value?.type && VALID_TYPES.has(value.type) ? value.type : null
 
-  function handleTypeChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const newType = e.target.value
-    if (!newType) {
+  const [inputText, setInputText] = useState<string>(String(value?.value ?? 1))
+  const lastValidRef = useRef<number>(value?.value ?? 1)
+
+  // Sync when value changes externally (e.g. product selected in parent)
+  useEffect(() => {
+    if (value?.value != null) {
+      setInputText(String(value.value))
+      lastValidRef.current = value.value
+    }
+  }, [value?.value])
+
+  function handleUnitChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const unit = e.target.value
+    if (!unit) {
       onChange(null)
       return
     }
-    const currentValue = value?.value ?? 1
-    if (newType === 'day_of_month') {
-      onChange({ type: 'day_of_month', value: Math.min(currentValue, 31) })
-    } else {
-      onChange({
-        type: newType as FrequencyValue['type'],
-        value: currentValue,
-        startDate: value?.startDate,
-      })
+    const num = lastValidRef.current
+    onChange({ type: unit as FrequencyValue['type'], value: num })
+    setInputText(String(num))
+  }
+
+  function handleInputFocus(e: React.FocusEvent<HTMLInputElement>) {
+    e.target.select()
+  }
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value
+    setInputText(raw)
+    const num = parseInt(raw, 10)
+    if (!isNaN(num) && num >= 1 && value) {
+      lastValidRef.current = num
+      onChange({ ...value, value: num })
     }
   }
 
-  function handleValueChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!value) return
-    const num = parseInt(e.target.value, 10)
-    if (isNaN(num)) return
-    const clamped = isDayOfMonth ? Math.min(Math.max(num, 1), 31) : Math.max(num, 1)
-    onChange({ ...value, value: clamped })
+  function handleInputBlur() {
+    const num = parseInt(inputText, 10)
+    if (isNaN(num) || num < 1) {
+      setInputText(String(lastValidRef.current))
+      if (value) onChange({ ...value, value: lastValidRef.current })
+    } else {
+      lastValidRef.current = num
+      setInputText(String(num))
+    }
   }
 
   function handleStartDateChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -61,39 +84,46 @@ export default function FrequencyPicker({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <select
-        className="input-base"
-        value={value?.type ?? ''}
-        onChange={handleTypeChange}
-        disabled={disabled}
-      >
-        <option value="">None</option>
-        {typeOptions.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      {displayType !== null && (
+        <span className="text-sm" style={{ color: 'var(--ui-text)' }}>
+          Every
+        </span>
+      )}
 
-      {value !== null && (
+      {displayType !== null && (
         <input
           type="number"
-          className="input-base w-20"
-          value={value.value}
+          className={`${FIELD_CLS} w-20 text-center`}
+          value={inputText}
           min={1}
-          max={isDayOfMonth ? 31 : undefined}
-          onChange={handleValueChange}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
           disabled={disabled}
           aria-label="Frequency value"
         />
       )}
 
-      {showDatePicker && (
+      <select
+        className={FIELD_CLS}
+        value={displayType ?? ''}
+        onChange={handleUnitChange}
+        disabled={disabled}
+      >
+        <option value="">None</option>
+        {UNIT_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {lastValidRef.current === 1 ? opt.singular : opt.plural}
+          </option>
+        ))}
+      </select>
+
+      {showStartDate && displayType !== null && (
         <>
-          <span className="text-sm text-[var(--color-muted)]">starting from</span>
+          <span className="text-sm text-[var(--ui-muted)]">starting from</span>
           <input
             type="date"
-            className="input-base"
+            className={FIELD_CLS}
             value={value?.startDate ?? ''}
             onChange={handleStartDateChange}
             disabled={disabled}

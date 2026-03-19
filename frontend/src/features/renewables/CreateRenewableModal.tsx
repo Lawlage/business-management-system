@@ -258,7 +258,7 @@ export function CreateRenewableModal({
           <FrequencyPicker
             value={frequency}
             onChange={setFrequency}
-            allowDayOfMonth={true}
+            showStartDate
           />
         </div>
 

@@ -101,7 +101,6 @@ export function CreateRenewableProductModal({ onClose, onCreated }: Props) {
           <FrequencyPicker
             value={frequency}
             onChange={setFrequency}
-            allowDayOfMonth={false}
           />
         </div>
         <Textarea

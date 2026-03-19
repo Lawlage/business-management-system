@@ -8,8 +8,7 @@ describe('FrequencyPicker', () => {
 
   it('renders "None" option selected when value is null', () => {
     render(<FrequencyPicker value={null} onChange={vi.fn()} />)
-    const select = screen.getByRole('combobox')
-    expect(select).toHaveValue('')
+    expect(screen.getByRole('combobox')).toHaveValue('')
   })
 
   it('does not render the number input when value is null', () => {
@@ -17,67 +16,79 @@ describe('FrequencyPicker', () => {
     expect(screen.queryByLabelText('Frequency value')).toBeNull()
   })
 
-  it('does not render the date picker when value is null', () => {
+  it('does not render "Every" text when value is null', () => {
     render(<FrequencyPicker value={null} onChange={vi.fn()} />)
-    expect(screen.queryByLabelText('Start date')).toBeNull()
+    expect(screen.queryByText('Every')).toBeNull()
   })
 
-  // ── allowDayOfMonth = false (product form) ─────────────────────────────────
+  // ── When a unit is selected ────────────────────────────────────────────────
 
-  it('does not include day_of_month option when allowDayOfMonth is false', () => {
-    render(<FrequencyPicker value={null} onChange={vi.fn()} allowDayOfMonth={false} />)
-    const options = screen.getAllByRole('option').map((o) => (o as HTMLOptionElement).value)
-    expect(options).not.toContain('day_of_month')
+  it('shows "Every", number input, and dropdown when a unit is set', () => {
+    const value: FrequencyValue = { type: 'months', value: 6 }
+    render(<FrequencyPicker value={value} onChange={vi.fn()} />)
+    expect(screen.getByText('Every')).toBeTruthy()
+    expect(screen.getByLabelText('Frequency value')).toBeTruthy()
+    expect(screen.getByRole('combobox')).toHaveValue('months')
   })
 
-  it('includes days, months, years options when allowDayOfMonth is false', () => {
-    render(<FrequencyPicker value={null} onChange={vi.fn()} allowDayOfMonth={false} />)
+  it('includes days, months, years options', () => {
+    render(<FrequencyPicker value={null} onChange={vi.fn()} />)
     const options = screen.getAllByRole('option').map((o) => (o as HTMLOptionElement).value)
     expect(options).toContain('days')
     expect(options).toContain('months')
     expect(options).toContain('years')
   })
 
-  it('does not show date picker even for days type when allowDayOfMonth is false', () => {
-    // allowDayOfMonth=false still shows date picker for days/months/years because
-    // showDatePicker = value !== null && value.type !== 'day_of_month'
-    // (the product form doesn't use startDate but the picker still appears)
-    const value: FrequencyValue = { type: 'months', value: 12 }
-    render(<FrequencyPicker value={value} onChange={vi.fn()} allowDayOfMonth={false} />)
-    // Date picker IS shown for months type (not day_of_month)
-    expect(screen.getByLabelText('Start date')).toBeTruthy()
+  it('uses singular labels when value is 1', () => {
+    const value: FrequencyValue = { type: 'months', value: 1 }
+    render(<FrequencyPicker value={value} onChange={vi.fn()} />)
+    const labels = screen.getAllByRole('option').map((o) => o.textContent)
+    expect(labels).toContain('Day')
+    expect(labels).toContain('Month')
+    expect(labels).toContain('Year')
   })
 
-  // ── allowDayOfMonth = true (renewable form) ────────────────────────────────
+  it('uses plural labels when value is greater than 1', () => {
+    const value: FrequencyValue = { type: 'months', value: 3 }
+    render(<FrequencyPicker value={value} onChange={vi.fn()} />)
+    const labels = screen.getAllByRole('option').map((o) => o.textContent)
+    expect(labels).toContain('Days')
+    expect(labels).toContain('Months')
+    expect(labels).toContain('Years')
+  })
 
-  it('includes day_of_month option when allowDayOfMonth is true', () => {
-    render(<FrequencyPicker value={null} onChange={vi.fn()} allowDayOfMonth={true} />)
+  it('does not include day_of_month option', () => {
+    render(<FrequencyPicker value={null} onChange={vi.fn()} />)
     const options = screen.getAllByRole('option').map((o) => (o as HTMLOptionElement).value)
-    expect(options).toContain('day_of_month')
+    expect(options).not.toContain('day_of_month')
   })
 
-  it('does not show date picker when type is day_of_month', () => {
-    const value: FrequencyValue = { type: 'day_of_month', value: 15 }
-    render(<FrequencyPicker value={value} onChange={vi.fn()} allowDayOfMonth={true} />)
+  // ── Date picker (showStartDate prop) ───────────────────────────────────────
+
+  it('does not render a date picker by default', () => {
+    const value: FrequencyValue = { type: 'months', value: 12 }
+    render(<FrequencyPicker value={value} onChange={vi.fn()} />)
     expect(screen.queryByLabelText('Start date')).toBeNull()
   })
 
-  it('shows date picker when type is months', () => {
+  it('renders a date picker when showStartDate=true and a unit is set', () => {
     const value: FrequencyValue = { type: 'months', value: 3, startDate: '2024-01-01' }
-    render(<FrequencyPicker value={value} onChange={vi.fn()} allowDayOfMonth={true} />)
+    render(<FrequencyPicker value={value} onChange={vi.fn()} showStartDate />)
     expect(screen.getByLabelText('Start date')).toBeTruthy()
   })
 
-  it('shows date picker when type is years', () => {
-    const value: FrequencyValue = { type: 'years', value: 1 }
-    render(<FrequencyPicker value={value} onChange={vi.fn()} allowDayOfMonth={true} />)
-    expect(screen.getByLabelText('Start date')).toBeTruthy()
+  it('does not render date picker when showStartDate=true but value is null', () => {
+    render(<FrequencyPicker value={null} onChange={vi.fn()} showStartDate />)
+    expect(screen.queryByLabelText('Start date')).toBeNull()
   })
 
-  it('shows date picker when type is days', () => {
-    const value: FrequencyValue = { type: 'days', value: 30 }
-    render(<FrequencyPicker value={value} onChange={vi.fn()} allowDayOfMonth={true} />)
-    expect(screen.getByLabelText('Start date')).toBeTruthy()
+  // ── day_of_month legacy data treated as None ───────────────────────────────
+
+  it('treats day_of_month type as None in dropdown', () => {
+    const value: FrequencyValue = { type: 'day_of_month', value: 15 }
+    render(<FrequencyPicker value={value} onChange={vi.fn()} />)
+    expect(screen.getByRole('combobox')).toHaveValue('')
+    expect(screen.queryByLabelText('Frequency value')).toBeNull()
   })
 
   // ── onChange callback shape ────────────────────────────────────────────────
@@ -102,53 +113,53 @@ describe('FrequencyPicker', () => {
     )
   })
 
-  it('calls onChange with day_of_month shape (no startDate)', () => {
-    const onChange = vi.fn()
-    render(<FrequencyPicker value={null} onChange={onChange} allowDayOfMonth={true} />)
-
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'day_of_month' } })
-
-    const called = onChange.mock.calls[0][0] as FrequencyValue
-    expect(called.type).toBe('day_of_month')
-    expect(called.value).toBe(1)
-    expect(called).not.toHaveProperty('startDate')
-  })
-
   it('calls onChange with updated value when number input changes', () => {
     const onChange = vi.fn()
     const value: FrequencyValue = { type: 'months', value: 6 }
     render(<FrequencyPicker value={value} onChange={onChange} />)
 
     fireEvent.change(screen.getByLabelText('Frequency value'), { target: { value: '12' } })
-    expect(onChange).toHaveBeenCalledWith({ type: 'months', value: 12, startDate: undefined })
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ type: 'months', value: 12 }))
   })
 
   it('calls onChange with updated startDate when date input changes', () => {
     const onChange = vi.fn()
     const value: FrequencyValue = { type: 'years', value: 1 }
-    render(<FrequencyPicker value={value} onChange={onChange} />)
+    render(<FrequencyPicker value={value} onChange={onChange} showStartDate />)
 
     fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2025-06-01' } })
     expect(onChange).toHaveBeenCalledWith({ type: 'years', value: 1, startDate: '2025-06-01' })
   })
 
-  // ── Number input constraints ───────────────────────────────────────────────
+  // ── Number input: focus selects, blur reverts if empty ────────────────────
 
-  it('clamps day_of_month value to max 31', () => {
+  it('reverts to last valid value when blurred with empty input', () => {
     const onChange = vi.fn()
-    const value: FrequencyValue = { type: 'day_of_month', value: 15 }
-    render(<FrequencyPicker value={value} onChange={onChange} allowDayOfMonth={true} />)
+    const value: FrequencyValue = { type: 'months', value: 6 }
+    render(<FrequencyPicker value={value} onChange={onChange} />)
 
-    fireEvent.change(screen.getByLabelText('Frequency value'), { target: { value: '99' } })
-    const called = onChange.mock.calls[0][0] as FrequencyValue
-    expect(called.value).toBe(31)
+    const input = screen.getByLabelText('Frequency value')
+    fireEvent.change(input, { target: { value: '' } })
+    fireEvent.blur(input)
+
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as FrequencyValue
+    expect(lastCall.value).toBe(6)
+  })
+
+  it('does not fire onChange when input is temporarily empty (before blur)', () => {
+    const onChange = vi.fn()
+    const value: FrequencyValue = { type: 'months', value: 6 }
+    render(<FrequencyPicker value={value} onChange={onChange} />)
+
+    fireEvent.change(screen.getByLabelText('Frequency value'), { target: { value: '' } })
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   // ── Disabled state ─────────────────────────────────────────────────────────
 
   it('disables all inputs when disabled=true', () => {
-    const value: FrequencyValue = { type: 'months', value: 3, startDate: '2024-01-01' }
-    render(<FrequencyPicker value={value} onChange={vi.fn()} disabled={true} />)
+    const value: FrequencyValue = { type: 'months', value: 3 }
+    render(<FrequencyPicker value={value} onChange={vi.fn()} disabled={true} showStartDate />)
 
     expect(screen.getByRole('combobox')).toBeDisabled()
     expect(screen.getByLabelText('Frequency value')).toBeDisabled()

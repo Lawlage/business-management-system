@@ -246,7 +246,7 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
               <FrequencyPicker
                 value={frequency}
                 onChange={setFrequency}
-                allowDayOfMonth={true}
+                showStartDate
               />
             ) : (
               <p className="text-sm text-[var(--ui-muted)]">
