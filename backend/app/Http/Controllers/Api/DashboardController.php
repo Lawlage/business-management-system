@@ -33,13 +33,18 @@ class DashboardController extends Controller
 
         $upcomingRenewals = $upcomingQuery->get();
 
-        $criticalRenewals = Renewal::query()
+        $criticalQuery = Renewal::query()
             ->with(['client:id,name', 'department:id,name'])
             ->whereDate('expiration_date', '<=', now()->addDays(7))
             ->whereDate('expiration_date', '>=', now()->subDay())
             ->orderBy('expiration_date')
-            ->limit(10)
-            ->get();
+            ->limit(10);
+
+        if ($clientId) {
+            $criticalQuery->where('client_id', (int) $clientId);
+        }
+
+        $criticalRenewals = $criticalQuery->get();
 
         $lowStockItems = InventoryItem::query()
             ->whereColumn('quantity_on_hand', '<', 'minimum_on_hand')

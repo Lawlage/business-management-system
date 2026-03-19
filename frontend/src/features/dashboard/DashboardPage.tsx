@@ -9,7 +9,7 @@ import { SkeletonRow } from '../../components/SkeletonRow'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { Button } from '../../components/Button'
-import { Select } from '../../components/Select'
+import { SearchCombobox } from '../../components/SearchCombobox'
 import { formatDate } from '../../lib/format'
 import type { DashboardData, Renewal, InventoryItem, SlaAllocation, Client, PaginatedResponse } from '../../types'
 
@@ -94,12 +94,26 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
         </div>
       )}
 
+      {/* ── Client filter ─────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium text-[var(--ui-muted)] whitespace-nowrap">Filter by client:</span>
+        <div className="w-56">
+          <SearchCombobox
+            placeholder="All clients…"
+            options={clients.map((c) => ({ id: c.id, label: c.name }))}
+            value={filterClientId ? { id: Number(filterClientId), label: clients.find((c) => String(c.id) === filterClientId)?.name ?? '' } : null}
+            onChange={(opt) => setFilterClientId(String(opt.id))}
+            onClear={() => setFilterClientId('')}
+          />
+        </div>
+      </div>
+
       {/* ── Renewals row ──────────────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
         {/* Critical Renewals */}
         <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
           <h3 className="font-semibold text-[var(--ui-text)]">Critical Renewals</h3>
-          <div className="mt-2 space-y-2">
+          <div className="mt-2 space-y-3">
             {isLoading ? (
               <>
                 <SkeletonRow cols={3} />
@@ -123,21 +137,8 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
 
         {/* Upcoming Renewals */}
         <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-[var(--ui-text)]">Upcoming Renewals</h3>
-          </div>
-          <div className="mt-2 mb-2">
-            <Select
-              value={filterClientId}
-              onChange={(e) => setFilterClientId(e.target.value)}
-            >
-              <option value="">All clients</option>
-              {clients.map((c) => (
-                <option key={c.id} value={String(c.id)}>{c.name}</option>
-              ))}
-            </Select>
-          </div>
-          <div className="space-y-2">
+          <h3 className="font-semibold text-[var(--ui-text)]">Upcoming Renewals</h3>
+          <div className="mt-2 space-y-3">
             {isLoading ? (
               <>
                 <SkeletonRow cols={3} />
@@ -162,7 +163,7 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
         {/* Upcoming SLA Renewals */}
         <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
           <h3 className="font-semibold text-[var(--ui-text)]">Upcoming SLA Renewals</h3>
-          <div className="mt-2 space-y-2">
+          <div className="mt-2 space-y-3">
             {isLoading ? (
               <>
                 <SkeletonRow cols={3} />
@@ -200,7 +201,7 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
       </div>
 
       {/* ── Inventory row ─────────────────────────────────────────────────── */}
-      <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
+      <div className="mt-4 app-inner-box rounded-md border border-[var(--ui-border)] p-3">
         <h3 className="mb-2 font-semibold text-[var(--ui-text)]">Low Stock</h3>
         {isLoading ? (
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
