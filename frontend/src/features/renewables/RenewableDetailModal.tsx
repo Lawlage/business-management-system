@@ -57,7 +57,9 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
       ? {
           type: renewable.frequency_type,
           value: renewable.frequency_value,
-          startDate: renewable.frequency_start_date ?? today,
+          startDate: renewable.frequency_start_date
+            ? renewable.frequency_start_date.split('T')[0]
+            : today,
         }
       : null,
   )
