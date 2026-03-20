@@ -101,7 +101,7 @@ function ClientDetailContent() {
   })
 
   // Stock allocations query
-  const { data: stockData, refetch: refetchStock } = useQuery<PaginatedResponse<StockAllocation>>({
+  const { data: stockData, isLoading: stockLoading, refetch: refetchStock } = useQuery<PaginatedResponse<StockAllocation>>({
     queryKey: ['client-stock-allocations', selectedTenantId, id],
     queryFn: () =>
       authedFetch<PaginatedResponse<StockAllocation>>(`/api/stock-allocations?client_id=${id ?? ''}`, {
@@ -111,7 +111,7 @@ function ClientDetailContent() {
   })
 
   // SLA allocations query
-  const { data: slaData, refetch: refetchSla } = useQuery<PaginatedResponse<SlaAllocation>>({
+  const { data: slaData, isLoading: slaLoading, refetch: refetchSla } = useQuery<PaginatedResponse<SlaAllocation>>({
     queryKey: ['client-sla-allocations', selectedTenantId, id],
     queryFn: () =>
       authedFetch<PaginatedResponse<SlaAllocation>>(`/api/sla-allocations?client_id=${id ?? ''}`, {
@@ -524,7 +524,12 @@ function ClientDetailContent() {
         {/* Allocations tab */}
         {activeTab === 'allocations' && (
           <div>
-            {!hasAllocations ? (
+            {(stockLoading || slaLoading) ? (
+              <div className="space-y-2">
+                <SkeletonRow cols={4} />
+                <SkeletonRow cols={4} />
+              </div>
+            ) : !hasAllocations ? (
               <p className="py-6 text-center text-sm text-[var(--ui-muted)]">No allocations for this client.</p>
             ) : (
               <div className="space-y-2">
