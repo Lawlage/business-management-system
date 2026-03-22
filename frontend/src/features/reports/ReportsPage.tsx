@@ -78,7 +78,7 @@ function ReportsContent() {
   }
 
   const { data: renewalStatus, isLoading: loadingRS } = useQuery<
-    { status: string; count: number; renewals: Renewable[] }[]
+    { status: string; count: number; renewables: Renewable[] }[]
   >({
     queryKey: ['report', 'renewal-status', selectedTenantId],
     queryFn: () =>
@@ -88,7 +88,7 @@ function ReportsContent() {
   })
 
   const { data: byClient, isLoading: loadingBC } = useQuery<
-    { client_name: string; count: number; renewals: Renewable[] }[]
+    { client_name: string; count: number; renewables: Renewable[] }[]
   >({
     queryKey: ['report', 'renewals-by-client', selectedTenantId],
     queryFn: () =>
@@ -254,7 +254,7 @@ function ReportsContent() {
                   <Badge status={group.status} />
                   <span className="text-sm text-[var(--ui-muted)]">{group.count} renewal{group.count !== 1 ? 's' : ''}</span>
                 </div>
-                {group.renewals.map((r) => (
+                {group.renewables.map((r) => (
                   <button
                     key={r.id}
                     onClick={() => setSelectedRenewal(r)}
@@ -296,7 +296,7 @@ function ReportsContent() {
                   <span className="text-sm font-semibold text-[var(--ui-text)]">{group.client_name}</span>
                   <span className="text-sm text-[var(--ui-muted)]">{group.count}</span>
                 </div>
-                {group.renewals.map((r) => (
+                {group.renewables.map((r) => (
                   <button
                     key={r.id}
                     onClick={() => setSelectedRenewal(r)}

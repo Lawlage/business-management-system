@@ -263,6 +263,7 @@ export function CustomFieldsPage() {
     <Card>
       <PageHeader
         title="Custom Fields"
+        description="Define custom fields to capture additional data on products, services, and clients."
         action={
           <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
             + Create Field

@@ -85,6 +85,7 @@ function ProductsContent() {
     <Card>
       <PageHeader
         title="Products"
+        description="Manage your product catalogue — define items, pricing, and default renewal durations."
         action={
           canCreate ? (
             <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
@@ -103,11 +104,12 @@ function ProductsContent() {
       </div>
 
       {allItems.length > 0 && (
-        <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1.2fr_0.6fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+        <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1.2fr_0.6fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
           <span>Name</span>
           <span>Category</span>
           <span>Vendor</span>
           <span>Cost Price</span>
+          <span>Sale Price</span>
           <span>Default Duration</span>
           <span># Applied</span>
         </div>
@@ -115,7 +117,7 @@ function ProductsContent() {
 
       <div className="space-y-2">
         {isFirstLoad ? (
-          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={6} />)
+          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={7} />)
         ) : allItems.length === 0 ? (
           <EmptyState
             message={debouncedSearch ? 'No products match your search.' : 'No products found. Create your first product to get started.'}
@@ -134,11 +136,12 @@ function ProductsContent() {
               className="app-inner-box w-full rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60"
               onClick={() => setSelectedItem(item)}
             >
-              <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_1fr_1.2fr_0.6fr]">
+              <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1.2fr_0.6fr]">
                 <span className="font-medium text-sm text-[var(--ui-text)] truncate">{item.name}</span>
                 <span className="text-sm text-[var(--ui-muted)] truncate">{formatRenewalCategory(item.category)}</span>
                 <span className="text-sm text-[var(--ui-muted)] truncate">{item.vendor ?? '—'}</span>
-                <span className="text-sm text-[var(--ui-muted)]">${item.cost_price}</span>
+                <span className="text-sm text-[var(--ui-muted)]">{item.cost_price ? `$${item.cost_price}` : '—'}</span>
+                <span className="text-sm text-[var(--ui-muted)]">{item.sale_price ? `$${item.sale_price}` : '—'}</span>
                 <span className="text-sm text-[var(--ui-muted)]">
                   {formatFrequency(item.frequency_type, item.frequency_value)}
                 </span>

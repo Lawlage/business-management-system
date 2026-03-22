@@ -201,7 +201,7 @@ export function RecycleBinPage() {
 
   return (
     <Card>
-      <PageHeader title="Recycle Bin" />
+      <PageHeader title="Recycle Bin" description="Review and restore recently deleted records before they are permanently removed." />
 
       {/* Tab bar */}
       <div className="mb-4 flex flex-wrap border-b border-[var(--ui-border)]">

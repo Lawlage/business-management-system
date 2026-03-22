@@ -132,6 +132,7 @@ export function UsersPage() {
     <Card>
       <PageHeader
         title="Tenant Users"
+        description="Manage users and their access levels within this workspace."
         action={
           <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
             + Create User

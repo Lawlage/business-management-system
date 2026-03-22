@@ -17,6 +17,7 @@ class RenewableProduct extends Model
         'category',
         'vendor',
         'cost_price',
+        'sale_price',
         'frequency_type',
         'frequency_value',
         'notes',
@@ -26,6 +27,7 @@ class RenewableProduct extends Model
 
     protected $casts = [
         'cost_price' => 'decimal:2',
+        'sale_price' => 'decimal:2',
     ];
 
     /** @return HasMany<Renewable, $this> */

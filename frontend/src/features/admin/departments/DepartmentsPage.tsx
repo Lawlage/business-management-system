@@ -102,7 +102,7 @@ function DepartmentsContent() {
 
   return (
     <Card>
-      <PageHeader title="Departments" />
+      <PageHeader title="Departments" description="Organise users and records by department." />
 
       {/* Add department form */}
       <div className="mb-6 flex gap-2">

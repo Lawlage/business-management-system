@@ -23,7 +23,7 @@ class RenewableController extends Controller
     {
         $query = Renewable::query()
             ->with([
-                'renewableProduct:id,name,category',
+                'renewableProduct:id,name,category,cost_price,sale_price',
                 'client:id,name',
                 'department:id,name',
             ]);
@@ -87,6 +87,8 @@ class RenewableController extends Controller
             'department_id'          => ['nullable', 'integer'],
             'workflow_status'        => ['nullable', 'string', 'max:100'],
             'sale_price'             => ['nullable', 'numeric', 'min:0'],
+            'price_override'         => ['nullable', 'boolean'],
+            'invoice_date'           => ['nullable', 'date'],
             'frequency_type'         => ['nullable', 'string', 'in:days,months,years,day_of_month'],
             'frequency_value'        => ['nullable', 'integer', 'min:1'],
             'frequency_start_date'   => ['nullable', 'date'],
@@ -101,7 +103,8 @@ class RenewableController extends Controller
         }
 
         if (! isset($payload['sale_price'])) {
-            $payload['sale_price'] = (float) $product->cost_price;
+            $payload['sale_price'] = $product->sale_price !== null ? (float) $product->sale_price : null;
+            $payload['price_override'] = false;
         }
 
         $payload['created_by'] = $request->user()->id;
@@ -120,7 +123,7 @@ class RenewableController extends Controller
             'entity_title' => $renewable->description,
         ]);
 
-        return new JsonResponse($renewable->fresh()->load(['renewableProduct:id,name,category', 'client:id,name', 'department:id,name']), 201);
+        return new JsonResponse($renewable->fresh()->load(['renewableProduct:id,name,category,cost_price,sale_price', 'client:id,name', 'department:id,name']), 201);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -134,6 +137,8 @@ class RenewableController extends Controller
             'department_id'          => ['nullable', 'integer'],
             'workflow_status'        => ['nullable', 'string', 'max:100'],
             'sale_price'             => ['nullable', 'numeric', 'min:0'],
+            'price_override'         => ['nullable', 'boolean'],
+            'invoice_date'           => ['nullable', 'date'],
             'frequency_type'         => ['nullable', 'string', 'in:days,months,years,day_of_month'],
             'frequency_value'        => ['nullable', 'integer', 'min:1'],
             'frequency_start_date'   => ['nullable', 'date'],
@@ -157,7 +162,7 @@ class RenewableController extends Controller
             'entity_title' => $renewable->description,
         ]);
 
-        return new JsonResponse($renewable->fresh()->load(['renewableProduct:id,name,category', 'client:id,name', 'department:id,name']));
+        return new JsonResponse($renewable->fresh()->load(['renewableProduct:id,name,category,cost_price,sale_price', 'client:id,name', 'department:id,name']));
     }
 
     public function destroy(Request $request, int $id): JsonResponse

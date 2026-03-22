@@ -83,6 +83,7 @@ function ClientsContent() {
     <Card>
       <PageHeader
         title="Clients"
+        description="Manage your client accounts, contacts, and assigned account managers."
         action={
           canCreate ? (
             <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>

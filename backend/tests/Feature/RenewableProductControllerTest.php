@@ -133,7 +133,7 @@ class RenewableProductControllerTest extends TestCase
             ->assertJsonPath('frequency_value', 1);
     }
 
-    public function test_create_defaults_cost_price_to_zero(): void
+    public function test_create_with_no_cost_price_stores_null(): void
     {
         [$user, $tenant] = $this->createTenantAdminContext();
 
@@ -142,7 +142,24 @@ class RenewableProductControllerTest extends TestCase
             ->assertCreated()
             ->json();
 
-        $this->assertEquals('0.00', $response['cost_price']);
+        $this->assertNull($response['cost_price']);
+    }
+
+    public function test_create_with_sale_price_stores_and_returns_it(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $response = $this->actingAs($user)
+            ->postJson('/api/products', [
+                'name'       => 'Priced Product',
+                'cost_price' => 50.00,
+                'sale_price' => 75.00,
+            ], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json();
+
+        $this->assertEquals('50.00', $response['cost_price']);
+        $this->assertEquals('75.00', $response['sale_price']);
     }
 
     public function test_create_allows_null_frequency_for_non_expiring_product(): void

@@ -124,6 +124,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
     <Card>
       <PageHeader
         title="Inventory"
+        description="Monitor stock levels, adjust quantities, and manage inventory items across locations."
         action={
           canCreate ? (
             <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>

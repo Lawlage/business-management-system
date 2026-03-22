@@ -111,7 +111,7 @@ export function TenantSettingsPage() {
 
   return (
     <Card>
-      <PageHeader title="Tenant Settings" />
+      <PageHeader title="Tenant Settings" description="Configure timezone, appearance, and workspace preferences." />
 
       <div className="space-y-6">
         {/* Timezone */}

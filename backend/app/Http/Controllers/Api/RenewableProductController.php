@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Renewable;
 use App\Models\RenewableProduct;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
@@ -36,12 +37,12 @@ class RenewableProductController extends Controller
             'category'        => ['nullable', 'string', 'max:100'],
             'vendor'          => ['nullable', 'string', 'max:255'],
             'cost_price'      => ['nullable', 'numeric', 'min:0'],
+            'sale_price'      => ['nullable', 'numeric', 'min:0'],
             'frequency_type'  => ['nullable', 'string', 'in:days,months,years'],
             'frequency_value' => ['nullable', 'integer', 'min:1'],
             'notes'           => ['nullable', 'string'],
         ]);
 
-        $payload['cost_price'] = $payload['cost_price'] ?? 0.00;
         $payload['created_by'] = $request->user()->id;
         $payload['updated_by'] = $request->user()->id;
 
@@ -53,7 +54,7 @@ class RenewableProductController extends Controller
             'entity_title' => $product->name,
         ]);
 
-        return new JsonResponse($product, 201);
+        return new JsonResponse($product->fresh(), 201);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -65,10 +66,14 @@ class RenewableProductController extends Controller
             'category'        => ['nullable', 'string', 'max:100'],
             'vendor'          => ['nullable', 'string', 'max:255'],
             'cost_price'      => ['nullable', 'numeric', 'min:0'],
+            'sale_price'      => ['nullable', 'numeric', 'min:0'],
             'frequency_type'  => ['nullable', 'string', 'in:days,months,years'],
             'frequency_value' => ['nullable', 'integer', 'min:1'],
             'notes'           => ['nullable', 'string'],
         ]);
+
+        $salePriceChanged = array_key_exists('sale_price', $payload)
+            && (string) $payload['sale_price'] !== (string) $product->sale_price;
 
         $payload['updated_by'] = $request->user()->id;
         $product->update($payload);
@@ -79,7 +84,20 @@ class RenewableProductController extends Controller
             'entity_title' => $product->name,
         ]);
 
-        return new JsonResponse($product->fresh());
+        $skippedCount = 0;
+        if ($salePriceChanged) {
+            $skippedCount = Renewable::query()
+                ->where('renewable_product_id', $product->id)
+                ->where('price_override', true)
+                ->count();
+
+            Renewable::query()
+                ->where('renewable_product_id', $product->id)
+                ->where('price_override', false)
+                ->update(['sale_price' => $payload['sale_price']]);
+        }
+
+        return new JsonResponse(array_merge($product->fresh()->toArray(), ['skipped_count' => $skippedCount]));
     }
 
     public function destroy(Request $request, int $id): JsonResponse

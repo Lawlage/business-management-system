@@ -142,10 +142,10 @@ class RenewableControllerTest extends TestCase
         $this->assertSame('Custom Description', $data['description']);
     }
 
-    public function test_create_auto_fills_sale_price_from_product_cost_price(): void
+    public function test_create_auto_fills_sale_price_from_product_sale_price(): void
     {
         [$user, $tenant] = $this->createTenantAdminContext();
-        $product = $this->makeProduct($user, $tenant, ['cost_price' => '99.50']);
+        $product = $this->makeProduct($user, $tenant, ['cost_price' => '50.00', 'sale_price' => '99.50']);
         $clientId = $this->createClient($user, $tenant);
 
         $data = $this->actingAs($user)
@@ -157,6 +157,24 @@ class RenewableControllerTest extends TestCase
             ->json();
 
         $this->assertEquals('99.50', $data['sale_price']);
+        $this->assertFalse($data['price_override']);
+    }
+
+    public function test_create_with_no_product_sale_price_stores_null(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $product = $this->makeProduct($user, $tenant, ['cost_price' => '50.00']);
+        $clientId = $this->createClient($user, $tenant);
+
+        $data = $this->actingAs($user)
+            ->postJson('/api/client-services', [
+                'renewable_product_id' => $product['id'],
+                'client_id'            => $clientId,
+            ], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json();
+
+        $this->assertNull($data['sale_price']);
     }
 
     public function test_create_allows_custom_sale_price(): void
@@ -542,5 +560,71 @@ class RenewableControllerTest extends TestCase
         $this->actingAs($userB)
             ->deleteJson("/api/client-services/{$renewable['id']}", [], $this->tenantHeaders($tenantB))
             ->assertNotFound();
+    }
+
+    // ── Package 2: price_override, invoice_date, cost_price in response ────────
+
+    public function test_create_with_explicit_price_override(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $product = $this->makeProduct($user, $tenant, ['sale_price' => '100.00']);
+        $clientId = $this->createClient($user, $tenant);
+
+        $data = $this->actingAs($user)
+            ->postJson('/api/client-services', [
+                'renewable_product_id' => $product['id'],
+                'client_id'            => $clientId,
+                'sale_price'           => '199.00',
+                'price_override'       => true,
+            ], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json();
+
+        $this->assertEquals('199.00', $data['sale_price']);
+        $this->assertTrue($data['price_override']);
+    }
+
+    public function test_create_and_update_invoice_date(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $product = $this->makeProduct($user, $tenant);
+        $clientId = $this->createClient($user, $tenant);
+
+        $data = $this->actingAs($user)
+            ->postJson('/api/client-services', [
+                'renewable_product_id' => $product['id'],
+                'client_id'            => $clientId,
+                'invoice_date'         => '2026-03-01',
+            ], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json();
+
+        $this->assertStringStartsWith('2026-03-01', $data['invoice_date']);
+
+        $updated = $this->actingAs($user)
+            ->putJson("/api/client-services/{$data['id']}", [
+                'invoice_date' => '2026-04-15',
+            ], $this->tenantHeaders($tenant))
+            ->assertOk()
+            ->json();
+
+        $this->assertStringStartsWith('2026-04-15', $updated['invoice_date']);
+    }
+
+    public function test_index_response_includes_product_cost_price(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $product = $this->makeProduct($user, $tenant, ['cost_price' => '75.00', 'sale_price' => '125.00']);
+        $clientId = $this->createClient($user, $tenant);
+        $this->makeRenewable($user, $tenant, $product['id'], $clientId);
+
+        $item = $this->actingAs($user)
+            ->getJson('/api/client-services', $this->tenantHeaders($tenant))
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertArrayHasKey('renewable_product', $item);
+        $this->assertEquals('75.00', $item['renewable_product']['cost_price']);
+        $this->assertEquals('125.00', $item['renewable_product']['sale_price']);
     }
 }

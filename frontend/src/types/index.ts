@@ -73,7 +73,8 @@ export type RenewableProduct = {
   name: string
   category?: string | null
   vendor?: string | null
-  cost_price: string
+  cost_price: string | null
+  sale_price?: string | null
   frequency_type?: 'days' | 'months' | 'years' | null
   frequency_value?: number | null
   notes?: string | null
@@ -95,6 +96,8 @@ export type Renewable = {
   department?: { id: number; name: string } | null
   workflow_status?: string | null
   sale_price?: string | null
+  price_override?: boolean
+  invoice_date?: string | null
   frequency_type?: FrequencyType | null
   frequency_value?: number | null
   frequency_start_date?: string | null
@@ -297,7 +300,8 @@ export const renewableProductDefaults = {
   name: '',
   category: 'contract',
   vendor: '',
-  cost_price: '0.00',
+  cost_price: '',
+  sale_price: '',
   notes: '',
 }
 

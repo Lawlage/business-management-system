@@ -83,6 +83,7 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
     <Card>
       <PageHeader
         title="Dashboard"
+        description="An overview of upcoming renewals, critical items, and low stock alerts."
         action={
           <Button variant="secondary" size="sm" onClick={() => void refetch()}>
             Refresh

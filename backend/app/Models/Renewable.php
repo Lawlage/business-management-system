@@ -19,6 +19,8 @@ class Renewable extends Model
         'department_id',
         'workflow_status',
         'sale_price',
+        'price_override',
+        'invoice_date',
         'frequency_type',
         'frequency_value',
         'frequency_start_date',
@@ -31,6 +33,8 @@ class Renewable extends Model
 
     protected $casts = [
         'sale_price'           => 'decimal:2',
+        'price_override'       => 'boolean',
+        'invoice_date'         => 'date',
         'next_due_date'        => 'date',
         'frequency_start_date' => 'date',
     ];

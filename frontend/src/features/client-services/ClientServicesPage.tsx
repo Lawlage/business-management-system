@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
@@ -15,7 +16,7 @@ import { LoadMoreButton } from '../../components/LoadMoreButton'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { CreateClientServiceModal } from './CreateClientServiceModal'
 import { ClientServiceDetailModal } from './ClientServiceDetailModal'
-import type { ClientService, PaginatedResponse } from '../../types'
+import type { ClientService, Product, PaginatedResponse } from '../../types'
 import { renewableWorkflowOptions } from '../../types'
 
 const expiryPresets = [
@@ -39,6 +40,24 @@ function ClientServicesContent() {
   const { selectedTenantId, tenantTimezone, role } = useTenant()
   const { authedFetch } = useApi()
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // filterProductId lives in the URL so it reacts to navigate() calls from other pages
+  const filterProductId = searchParams.get('product_id') ?? ''
+  const setFilterProductId = (id: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (id) {
+          next.set('product_id', id)
+        } else {
+          next.delete('product_id')
+        }
+        return next
+      },
+      { replace: true },
+    )
+  }
 
   const [page, setPage] = useState(1)
   const [allClientServices, setAllClientServices] = useState<ClientService[]>([])
@@ -61,23 +80,33 @@ function ClientServicesContent() {
     return () => clearTimeout(timer)
   }, [search])
 
+  // Reset all filters when the tenant changes (not on initial load: null → 'id')
+  const prevTenantId = useRef<string | null | undefined>(undefined)
   useEffect(() => {
-    setSearch('')
-    setDebouncedSearch('')
-    setFilterStatus('')
-    setFilterWorkflow('')
-    setFilterClientId('')
-    setFilterExpiryPreset('')
-    setPage(1)
-    setAllClientServices([])
-  }, [selectedTenantId])
+    if (prevTenantId.current && prevTenantId.current !== selectedTenantId) {
+      setSearch('')
+      setDebouncedSearch('')
+      setFilterStatus('')
+      setFilterWorkflow('')
+      setFilterClientId('')
+      setFilterExpiryPreset('')
+      setPage(1)
+      setAllClientServices([])
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('product_id')
+        return next
+      }, { replace: true })
+    }
+    prevTenantId.current = selectedTenantId
+  }, [selectedTenantId, setSearchParams])
 
   useEffect(() => {
     setPage(1)
     setAllClientServices([])
-  }, [debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterExpiryPreset])
+  }, [debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterProductId, filterExpiryPreset])
 
-  const hasActiveFilters = !!(debouncedSearch || filterStatus || filterWorkflow || filterClientId || filterExpiryPreset)
+  const hasActiveFilters = !!(debouncedSearch || filterStatus || filterWorkflow || filterClientId || filterProductId || filterExpiryPreset)
 
   const clearFilters = () => {
     setSearch('')
@@ -86,6 +115,7 @@ function ClientServicesContent() {
     setFilterWorkflow('')
     setFilterClientId('')
     setFilterExpiryPreset('')
+    setFilterProductId('')
   }
 
   const { data: clientList } = useQuery({
@@ -95,14 +125,22 @@ function ClientServicesContent() {
     staleTime: 30_000,
   })
 
+  const { data: productsData } = useQuery({
+    queryKey: ['products-all', selectedTenantId],
+    queryFn: () => authedFetch<PaginatedResponse<Product>>('/api/products?per_page=200', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
+
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['client-services', selectedTenantId, debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterExpiryPreset, page],
+    queryKey: ['client-services', selectedTenantId, debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterProductId, filterExpiryPreset, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page) })
       if (debouncedSearch) params.set('search', debouncedSearch)
       if (filterStatus) params.set('status', filterStatus)
       if (filterWorkflow) params.set('workflow_status', filterWorkflow)
       if (filterClientId) params.set('client_id', filterClientId)
+      if (filterProductId) params.set('renewable_product_id', filterProductId)
       if (filterExpiryPreset) params.set('expiry_preset', filterExpiryPreset)
       return authedFetch<PaginatedResponse<ClientService>>(`/api/client-services?${params.toString()}`, {
         tenantScoped: true,
@@ -140,6 +178,7 @@ function ClientServicesContent() {
     <Card>
       <PageHeader
         title="Client Services"
+        description="Track products applied to clients, renewal schedules, pricing, and workflow status."
         action={
           canCreate ? (
             <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
@@ -180,6 +219,15 @@ function ClientServicesContent() {
             <option value="">All</option>
             {clientList?.map((c) => (
               <option key={c.id} value={String(c.id)}>{c.name}</option>
+            ))}
+          </Select>
+        </div>
+
+        <div className="min-w-[10rem] max-w-[200px]">
+          <Select label="Product" value={filterProductId} onChange={(e) => setFilterProductId(e.target.value)}>
+            <option value="">All</option>
+            {(productsData?.data ?? []).map((p) => (
+              <option key={p.id} value={String(p.id)}>{p.name}</option>
             ))}
           </Select>
         </div>
@@ -228,37 +276,52 @@ function ClientServicesContent() {
             }
           />
         ) : (
-          allClientServices.map((r) => (
-            <button
-              key={r.id}
-              className="app-inner-box w-full rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60"
-              onClick={() => setSelectedClientService(r)}
-            >
-              <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_1fr]">
-                <span className="font-medium text-sm text-[var(--ui-text)] truncate">
-                  {r.description ?? r.renewable_product?.name ?? '—'}
-                </span>
-                <span className="text-sm text-[var(--ui-muted)] truncate">
-                  {r.client?.name ?? '—'}
-                </span>
-                <span className="text-sm text-[var(--ui-muted)] truncate">
-                  {r.renewable_product?.name ?? '—'}
-                </span>
-                <span className="text-sm text-[var(--ui-muted)]">
-                  {r.next_due_date ? formatDate(r.next_due_date, tenantTimezone) : '—'}
-                </span>
-                <div className="flex flex-col gap-1">
-                  <Badge status={r.status ?? ''} />
-                  {r.workflow_status && (
-                    <span className="text-xs text-[var(--ui-muted)] truncate">{r.workflow_status}</span>
-                  )}
+          allClientServices.map((r) => {
+            const belowCost =
+              r.sale_price != null &&
+              r.renewable_product?.cost_price != null &&
+              parseFloat(r.sale_price) < parseFloat(r.renewable_product.cost_price)
+
+            return (
+              <button
+                key={r.id}
+                className={[
+                  'w-full rounded-md border p-3 text-left transition hover:-translate-y-0.5 hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60',
+                  belowCost
+                    ? 'border-red-300 bg-red-400/20'
+                    : 'app-inner-box border-[var(--ui-border)]',
+                ].join(' ')}
+                onClick={() => setSelectedClientService(r)}
+              >
+                <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_1fr]">
+                  <span className="font-medium text-sm text-[var(--ui-text)] truncate">
+                    {r.description ?? r.renewable_product?.name ?? '—'}
+                    {belowCost && (
+                      <span className="ml-2 text-xs font-normal text-red-600 dark:text-red-400">Below Cost</span>
+                    )}
+                  </span>
+                  <span className="text-sm text-[var(--ui-muted)] truncate">
+                    {r.client?.name ?? '—'}
+                  </span>
+                  <span className="text-sm text-[var(--ui-muted)] truncate">
+                    {r.renewable_product?.name ?? '—'}
+                  </span>
+                  <span className="text-sm text-[var(--ui-muted)]">
+                    {r.next_due_date ? formatDate(r.next_due_date, tenantTimezone) : '—'}
+                  </span>
+                  <div className="flex flex-col gap-1">
+                    <Badge status={r.status ?? ''} />
+                    {r.workflow_status && (
+                      <span className="text-xs text-[var(--ui-muted)] truncate">{r.workflow_status}</span>
+                    )}
+                  </div>
+                  <span className="text-sm text-[var(--ui-muted)]">
+                    {r.sale_price ? `$${r.sale_price}` : '—'}
+                  </span>
                 </div>
-                <span className="text-sm text-[var(--ui-muted)]">
-                  {r.sale_price ? `$${r.sale_price}` : '—'}
-                </span>
-              </div>
-            </button>
-          ))
+              </button>
+            )
+          })
         )}
       </div>
 

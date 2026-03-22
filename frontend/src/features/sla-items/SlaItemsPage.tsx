@@ -84,6 +84,7 @@ function SlaItemsContent() {
     <Card>
       <PageHeader
         title="SLA Items"
+        description="Define SLA tiers and allocate service agreements to clients."
         action={
           canCreate ? (
             <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
