@@ -9,6 +9,7 @@ import { useConfirm } from '../../contexts/ConfirmContext'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
+import { Select } from '../../components/Select'
 import { Textarea } from '../../components/Textarea'
 import { Badge } from '../../components/Badge'
 import { SkeletonRow } from '../../components/SkeletonRow'
@@ -19,7 +20,7 @@ import { CreateClientServiceModal } from '../client-services/CreateClientService
 import { ClientServiceDetailModal } from '../client-services/ClientServiceDetailModal'
 import { AllocateStockModal } from '../inventory/AllocateStockModal'
 import { ApplySlaModal } from '../sla-items/ApplySlaModal'
-import type { Client, Renewable, StockAllocation, SlaAllocation, SlaGroup, PaginatedResponse } from '../../types'
+import type { AccountManager, Client, Renewable, StockAllocation, SlaAllocation, SlaGroup, PaginatedResponse } from '../../types'
 
 type ClientForm = {
   name: string
@@ -28,6 +29,7 @@ type ClientForm = {
   phone: string
   website: string
   notes: string
+  account_manager_id: number | null
 }
 
 type ActiveModal =
@@ -64,6 +66,13 @@ function ClientDetailContent() {
     enabled: !!selectedTenantId && !!id,
   })
 
+  const { data: accountManagers = [] } = useQuery<AccountManager[]>({
+    queryKey: ['account-managers', selectedTenantId],
+    queryFn: () => authedFetch<AccountManager[]>('/api/account-managers', { tenantScoped: true }),
+    enabled: !!selectedTenantId && isEditing,
+    staleTime: 60_000,
+  })
+
   const [form, setForm] = useState<ClientForm>({
     name: '',
     contact_name: '',
@@ -71,6 +80,7 @@ function ClientDetailContent() {
     phone: '',
     website: '',
     notes: '',
+    account_manager_id: null,
   })
 
   const [formInitialized, setFormInitialized] = useState(false)
@@ -82,6 +92,7 @@ function ClientDetailContent() {
       phone: client.phone ?? '',
       website: client.website ?? '',
       notes: client.notes ?? '',
+      account_manager_id: client.account_manager_id ?? null,
     })
     setFormInitialized(true)
   }
@@ -423,7 +434,20 @@ function ClientDetailContent() {
                     value={form.website}
                     onChange={(e) => setField('website', e.target.value)}
                   />
-                  <div />
+                  <Select
+                    label="Account Manager"
+                    value={form.account_manager_id ?? ''}
+                    onChange={(e) =>
+                      setField('account_manager_id', e.target.value ? Number(e.target.value) : null)
+                    }
+                  >
+                    <option value="">None</option>
+                    {accountManagers.map((am) => (
+                      <option key={am.id} value={am.id}>
+                        {am.name}
+                      </option>
+                    ))}
+                  </Select>
                   <Textarea
                     label="Notes"
                     className="md:col-span-2"
@@ -472,6 +496,14 @@ function ClientDetailContent() {
                           {client.website}
                         </a>
                       ) : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--ui-muted)] text-xs font-medium uppercase tracking-wide mb-0.5">Account Manager</dt>
+                    <dd className="text-[var(--ui-text)]">
+                      {client.account_manager
+                        ? `${client.account_manager.first_name} ${client.account_manager.last_name}`
+                        : '—'}
                     </dd>
                   </div>
                   {client.notes && (

@@ -138,6 +138,7 @@ class TenantUserController extends Controller
         $payload = $request->validate([
             'role' => ['nullable', 'in:' . $roles],
             'can_edit' => ['nullable', 'boolean'],
+            'is_account_manager' => ['nullable', 'boolean'],
         ]);
 
         $membership = TenantMembership::query()
@@ -155,6 +156,10 @@ class TenantUserController extends Controller
         if (isset($payload['can_edit']) && $payload['can_edit'] !== $membership->can_edit) {
             $changes['can_edit_from'] = $membership->can_edit ? 'true' : 'false';
             $changes['can_edit_to'] = $payload['can_edit'] ? 'true' : 'false';
+        }
+        if (isset($payload['is_account_manager']) && $payload['is_account_manager'] !== $membership->is_account_manager) {
+            $changes['is_account_manager_from'] = $membership->is_account_manager ? 'true' : 'false';
+            $changes['is_account_manager_to'] = $payload['is_account_manager'] ? 'true' : 'false';
         }
 
         $membership->update(array_filter($payload, fn ($value) => $value !== null));

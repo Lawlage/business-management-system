@@ -1,14 +1,17 @@
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useNotice } from '../../contexts/NoticeContext'
+import { useTenant } from '../../contexts/TenantContext'
 import { Modal } from '../../components/Modal'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
+import { Select } from '../../components/Select'
 import { Textarea } from '../../components/Textarea'
 import { validate, hasErrors } from '../../lib/validation'
 import type { ValidationErrors } from '../../lib/validation'
 import { clientDefaults } from '../../types'
+import type { AccountManager } from '../../types'
 
 type CreateClientModalProps = {
   onClose: () => void
@@ -20,9 +23,17 @@ type ClientForm = typeof clientDefaults
 export function CreateClientModal({ onClose, onCreated }: CreateClientModalProps) {
   const { authedFetch } = useApi()
   const { showNotice } = useNotice()
+  const { selectedTenantId } = useTenant()
 
   const [form, setForm] = useState<ClientForm>({ ...clientDefaults })
   const [errors, setErrors] = useState<ValidationErrors<ClientForm>>({})
+
+  const { data: accountManagers = [] } = useQuery<AccountManager[]>({
+    queryKey: ['account-managers', selectedTenantId],
+    queryFn: () => authedFetch<AccountManager[]>('/api/account-managers', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 60_000,
+  })
 
   const mutation = useMutation({
     mutationFn: async (data: ClientForm) => {
@@ -116,7 +127,20 @@ export function CreateClientModal({ onClose, onCreated }: CreateClientModalProps
           onChange={(e) => setField('website', e.target.value)}
         />
 
-        <div /> {/* spacer for grid alignment */}
+        <Select
+          label="Account Manager"
+          value={form.account_manager_id ?? ''}
+          onChange={(e) =>
+            setField('account_manager_id', e.target.value ? Number(e.target.value) : null)
+          }
+        >
+          <option value="">None</option>
+          {accountManagers.map((am) => (
+            <option key={am.id} value={am.id}>
+              {am.name}
+            </option>
+          ))}
+        </Select>
 
         <Textarea
           label="Notes"

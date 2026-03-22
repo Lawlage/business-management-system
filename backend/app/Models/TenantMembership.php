@@ -17,10 +17,12 @@ class TenantMembership extends Model
         'user_id',
         'role',
         'can_edit',
+        'is_account_manager',
     ];
 
     protected $casts = [
         'can_edit' => 'boolean',
+        'is_account_manager' => 'boolean',
     ];
 
     public function user(): BelongsTo

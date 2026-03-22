@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AccountManagerController;
 use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AuditLogController;
@@ -60,6 +61,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::middleware('tenant.context')->group(function (): void {
         Route::get('/dashboard', [DashboardController::class, 'index']);
+
+        Route::get('/account-managers', [AccountManagerController::class, 'index']);
 
         Route::get('/clients', [ClientController::class, 'index']);
         Route::post('/clients', [ClientController::class, 'store'])->middleware('tenant.permission:create_client');

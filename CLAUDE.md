@@ -154,7 +154,7 @@ All routes are in `backend/routes/api.php`. Three groups:
 
 1. **Public** — `POST /api/auth/login`
 2. **Superadmin** (`auth:sanctum` + `superadmin`) — tenant CRUD, break-glass, global audit logs
-3. **Tenant-scoped** (`auth:sanctum` + `tenant.context`) — products, client services, inventory, clients, SLA items, SLA allocations, stock allocations, departments, attachments, users, custom fields, settings, recycle bin, audit logs
+3. **Tenant-scoped** (`auth:sanctum` + `tenant.context`) — products, client services, inventory, clients, account managers, SLA items, SLA allocations, stock allocations, departments, attachments, users, custom fields, settings, recycle bin, audit logs
 
 Individual routes are further protected with `tenant.permission:<permission>` middleware.
 
@@ -170,6 +170,8 @@ Permission matrix: `app/Support/TenantPermissionMap.php`. Enforcement: `RequireT
 | `global_superadmin` | Separate middleware (`RequireGlobalSuperadmin`); not a tenant role |
 
 `can_edit` flag on `TenantMembership` can revoke `edit_existing` from sub_admins.
+
+`is_account_manager` flag on `TenantMembership` designates a user as an account manager (any role can be flagged). Clients have a nullable `account_manager_id` (stored like `created_by` — user ID from central DB in tenant DB, no FK). `GET /api/account-managers` returns flagged users (no special permission required). Account manager assignment is validated against the current tenant's memberships in `ClientController`.
 
 ### Audit Logging
 
@@ -231,7 +233,8 @@ Each feature has a consistent set of files. Use this table to locate them withou
 | Products | `/app/products` | `/api/products` | `RenewableProductController` | `RenewableProduct` | `features/products/` | `RenewableProductControllerTest` |
 | Client Services | `/app/client-services` | `/api/client-services` | `RenewableController` | `Renewable` | `features/client-services/` | `RenewableControllerTest` |
 | Inventory | `/app/inventory` | `/api/inventory` | `InventoryController` | `InventoryItem` | `features/inventory/` | `InventoryControllerTest` |
-| Clients | `/app/clients` | `/api/clients` | `ClientController` | `Client` | `features/clients/` | — |
+| Clients | `/app/clients` | `/api/clients` | `ClientController` | `Client` | `features/clients/` | `ClientControllerTest` |
+| Account Managers | — | `/api/account-managers` | `AccountManagerController` | `TenantMembership` | — (dropdown only) | `AccountManagerControllerTest` |
 | SLA Items | `/app/sla-items` | `/api/sla-items` | `SlaItemController` | `SlaItem` | `features/sla-items/` | — |
 
 - Controllers: `backend/app/Http/Controllers/Api/`

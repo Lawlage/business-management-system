@@ -32,6 +32,13 @@ export type AuthUser = {
   tenant_memberships: TenantMembership[]
 }
 
+export type AccountManager = {
+  id: number
+  first_name: string
+  last_name: string
+  name: string
+}
+
 export type Client = {
   id: number
   name: string
@@ -40,6 +47,8 @@ export type Client = {
   phone?: string | null
   website?: string | null
   notes?: string | null
+  account_manager_id?: number | null
+  account_manager?: { id: number; first_name: string; last_name: string } | null
   created_at?: string
 }
 
@@ -184,6 +193,7 @@ export type TenantUserMembership = {
   id: number
   role: AppRole
   can_edit: boolean
+  is_account_manager: boolean
   user: {
     id: number
     first_name: string
@@ -308,6 +318,7 @@ export const clientDefaults = {
   phone: '',
   website: '',
   notes: '',
+  account_manager_id: null as number | null,
 }
 
 export const inventoryDefaults = {

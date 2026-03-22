@@ -75,7 +75,7 @@ class DatabaseSeeder extends Seeder
 
         TenantMembership::query()->firstOrCreate(
             ['tenant_id' => $tenant->id, 'user_id' => $tenantAdmin->id],
-            ['role' => TenantRole::TenantAdmin->value, 'can_edit' => true],
+            ['role' => TenantRole::TenantAdmin->value, 'can_edit' => true, 'is_account_manager' => false],
         );
 
         // Seed tenant-scoped data inside the tenant database.
@@ -90,6 +90,7 @@ class DatabaseSeeder extends Seeder
                     'phone' => '+64 21 555 0100',
                     'website' => 'https://acme-industries.example.com',
                     'notes' => 'Primary manufacturing partner.',
+                    'account_manager_id' => null,
                     'created_by' => $tenantAdmin->id,
                     'updated_by' => $tenantAdmin->id,
                     'created_at' => now(),
@@ -104,6 +105,7 @@ class DatabaseSeeder extends Seeder
                     'phone' => '+64 21 555 0200',
                     'website' => 'https://globex.example.com',
                     'notes' => null,
+                    'account_manager_id' => null,
                     'created_by' => $tenantAdmin->id,
                     'updated_by' => $tenantAdmin->id,
                     'created_at' => now(),

@@ -110,4 +110,18 @@ class CrossTenantIsolationTest extends TestCase
 
         $response->assertNotFound();
     }
+
+    public function test_account_manager_must_belong_to_same_tenant(): void
+    {
+        [$adminA, $tenantA] = $this->createTenantAdminContext();
+        [$adminB, $tenantB] = $this->createTenantAdminContext();
+        $foreignManager = $this->createAccountManager($tenantB->id);
+
+        $response = $this->actingAs($adminA)->postJson('/api/clients', [
+            'name' => 'Test Client',
+            'account_manager_id' => $foreignManager->id,
+        ], $this->tenantHeaders($tenantA));
+
+        $response->assertUnprocessable();
+    }
 }

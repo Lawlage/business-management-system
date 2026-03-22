@@ -8,7 +8,10 @@ import { ClientsPage } from '../ClientsPage'
 // Mock the hooks
 vi.mock('../../../hooks/useApi', () => ({
   useApi: () => ({
-    authedFetch: vi.fn().mockResolvedValue({ data: [], current_page: 1, last_page: 1 }),
+    authedFetch: vi.fn().mockImplementation((path: string) => {
+      if (path === '/api/account-managers') return Promise.resolve([])
+      return Promise.resolve({ data: [], current_page: 1, last_page: 1 })
+    }),
   }),
 }))
 

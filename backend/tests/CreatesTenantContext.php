@@ -99,6 +99,21 @@ trait CreatesTenantContext
     }
 
     /**
+     * Create a tenant user flagged as an account manager and return that user.
+     */
+    protected function createAccountManager(string $tenantId, TenantRole $role = TenantRole::SubAdmin): User
+    {
+        $user = $this->createTenantUser($tenantId, $role);
+
+        TenantMembership::query()
+            ->where('tenant_id', $tenantId)
+            ->where('user_id', $user->id)
+            ->update(['is_account_manager' => true]);
+
+        return $user;
+    }
+
+    /**
      * Create a client via the API and return its id.
      */
     protected function createClient(User $user, Tenant $tenant, string $name = 'Test Client'): int

@@ -24,6 +24,11 @@ type CreateUserForm = {
   role: AppRole
 }
 
+type EditMembershipForm = {
+  role: AppRole
+  is_account_manager: boolean
+}
+
 const initialForm: CreateUserForm = {
   first_name: '',
   last_name: '',
@@ -42,6 +47,8 @@ export function UsersPage() {
 
   const [form, setForm] = useState<CreateUserForm>(initialForm)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editingMembership, setEditingMembership] = useState<TenantUserMembership | null>(null)
+  const [editForm, setEditForm] = useState<EditMembershipForm>({ role: 'standard_user', is_account_manager: false })
 
   const { data: users, isLoading } = useQuery<TenantUserMembership[]>({
     queryKey: ['tenant-users', selectedTenantId],
@@ -83,16 +90,18 @@ export function UsersPage() {
     },
   })
 
-  const changeRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: number; role: AppRole }) =>
+  const updateMembershipMutation = useMutation({
+    mutationFn: ({ userId, data }: { userId: number; data: EditMembershipForm }) =>
       authedFetch(`/api/tenant-users/${userId}`, {
         method: 'PUT',
-        body: JSON.stringify({ role }),
+        body: JSON.stringify(data),
         tenantScoped: true,
       }),
     onSuccess: () => {
-      showNotice('Role updated.')
+      showNotice('User updated.')
       void queryClient.invalidateQueries({ queryKey: ['tenant-users', selectedTenantId] })
+      void queryClient.invalidateQueries({ queryKey: ['account-managers', selectedTenantId] })
+      setEditingMembership(null)
     },
     onError: (error: ApiError | Error) => {
       showNotice((error as ApiError | Error)?.message ?? 'Request failed', 'error')
@@ -112,6 +121,11 @@ export function UsersPage() {
 
   function handleCreate() {
     createMutation.mutate(form)
+  }
+
+  function openEdit(membership: TenantUserMembership) {
+    setEditingMembership(membership)
+    setEditForm({ role: membership.role, is_account_manager: membership.is_account_manager })
   }
 
   return (
@@ -156,32 +170,20 @@ export function UsersPage() {
                     )}
                   </p>
                   <p className="mt-0.5 text-xs text-[var(--ui-muted)]">
-                    Last login:{' '}
+                    {membership.role.replace(/_/g, ' ')}
+                    {membership.is_account_manager && ' · Account Manager'}
+                    {' · '}Last login:{' '}
                     {membership.user.last_login_at
                       ? new Date(membership.user.last_login_at).toLocaleString()
                       : 'Never'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isSelf ? (
-                    <span className="text-xs text-[var(--ui-muted)] opacity-60 px-2">{membership.role.replace(/_/g, ' ')}</span>
-                  ) : (
+                  {!isSelf && (
                     <>
-                      <select
-                        className="rounded border border-[var(--ui-border)] bg-[var(--ui-panel)] px-2 py-1 text-xs text-[var(--ui-text)]"
-                        value={membership.role}
-                        disabled={
-                          changeRoleMutation.isPending &&
-                          changeRoleMutation.variables?.userId === membership.user.id
-                        }
-                        onChange={(e) =>
-                          changeRoleMutation.mutate({ userId: membership.user.id, role: e.target.value as AppRole })
-                        }
-                      >
-                        <option value="standard_user">Standard User</option>
-                        <option value="sub_admin">Sub Admin</option>
-                        <option value="tenant_admin">Tenant Admin</option>
-                      </select>
+                      <Button variant="secondary" size="sm" onClick={() => openEdit(membership)}>
+                        Edit
+                      </Button>
                       <button
                         className="rounded border border-red-500 bg-transparent px-2 py-1 text-xs text-red-500 hover:bg-red-500 hover:text-white disabled:opacity-50"
                         onClick={() => void handleRemove(membership.user.id)}
@@ -202,6 +204,54 @@ export function UsersPage() {
           })}
       </div>
 
+      {/* Edit membership modal */}
+      {editingMembership && (
+        <Modal
+          title={`Edit ${editingMembership.user.first_name} ${editingMembership.user.last_name}`}
+          onClose={() => setEditingMembership(null)}
+          maxWidth="sm"
+          footer={
+            <div className="flex justify-end">
+              <Button
+                variant="primary"
+                onClick={() =>
+                  updateMembershipMutation.mutate({
+                    userId: editingMembership.user.id,
+                    data: editForm,
+                  })
+                }
+                isLoading={updateMembershipMutation.isPending}
+              >
+                Save
+              </Button>
+            </div>
+          }
+        >
+          <div className="grid gap-4">
+            <Select
+              label="Role"
+              value={editForm.role}
+              onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value as AppRole }))}
+            >
+              <option value="standard_user">Standard User</option>
+              <option value="sub_admin">Sub Admin</option>
+              <option value="tenant_admin">Tenant Admin</option>
+            </Select>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={editForm.is_account_manager}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, is_account_manager: e.target.checked }))
+                }
+              />
+              <span className="text-sm text-[var(--ui-text)]">Account Manager</span>
+            </label>
+          </div>
+        </Modal>
+      )}
+
+      {/* Create user modal */}
       {isCreateOpen && (
         <Modal
           title="Create User"

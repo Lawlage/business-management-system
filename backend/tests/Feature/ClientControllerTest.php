@@ -229,6 +229,109 @@ class ClientControllerTest extends TestCase
         $this->assertCount(1, $response->json('data'));
     }
 
+    // ── Account Manager ────────────────────────────────────────────────────────
+
+    public function test_create_client_with_account_manager(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+        $accountManager = $this->createAccountManager($tenant->id);
+
+        $response = $this->actingAs($admin)->postJson('/api/clients', [
+            'name' => 'Managed Client',
+            'account_manager_id' => $accountManager->id,
+        ], $this->tenantHeaders($tenant));
+
+        $response->assertCreated()
+            ->assertJsonPath('account_manager.id', $accountManager->id);
+    }
+
+    public function test_create_client_without_account_manager(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+
+        $response = $this->actingAs($admin)->postJson('/api/clients', [
+            'name' => 'Unmanaged Client',
+        ], $this->tenantHeaders($tenant));
+
+        $response->assertCreated()
+            ->assertJsonPath('account_manager', null);
+    }
+
+    public function test_create_client_rejects_non_account_manager(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+        $regularUser = $this->createTenantUser($tenant->id);
+
+        $response = $this->actingAs($admin)->postJson('/api/clients', [
+            'name' => 'Test Client',
+            'account_manager_id' => $regularUser->id,
+        ], $this->tenantHeaders($tenant));
+
+        $response->assertUnprocessable();
+    }
+
+    public function test_create_client_rejects_foreign_tenant_user(): void
+    {
+        [$adminA, $tenantA] = $this->createTenantAdminContext();
+        [$adminB, $tenantB] = $this->createTenantAdminContext();
+        $foreignManager = $this->createAccountManager($tenantB->id);
+
+        $response = $this->actingAs($adminA)->postJson('/api/clients', [
+            'name' => 'Test Client',
+            'account_manager_id' => $foreignManager->id,
+        ], $this->tenantHeaders($tenantA));
+
+        $response->assertUnprocessable();
+    }
+
+    public function test_update_client_sets_account_manager(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+        $accountManager = $this->createAccountManager($tenant->id);
+        $id = $this->createClient($admin, $tenant);
+
+        $response = $this->actingAs($admin)->putJson("/api/clients/{$id}", [
+            'account_manager_id' => $accountManager->id,
+        ], $this->tenantHeaders($tenant));
+
+        $response->assertOk()
+            ->assertJsonPath('account_manager.id', $accountManager->id);
+    }
+
+    public function test_update_client_clears_account_manager(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+        $accountManager = $this->createAccountManager($tenant->id);
+
+        $id = (int) $this->actingAs($admin)->postJson('/api/clients', [
+            'name' => 'Client',
+            'account_manager_id' => $accountManager->id,
+        ], $this->tenantHeaders($tenant))->json('id');
+
+        $response = $this->actingAs($admin)->putJson("/api/clients/{$id}", [
+            'account_manager_id' => null,
+        ], $this->tenantHeaders($tenant));
+
+        $response->assertOk()
+            ->assertJsonPath('account_manager', null);
+    }
+
+    public function test_show_client_includes_account_manager_object(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+        $accountManager = $this->createAccountManager($tenant->id);
+
+        $id = (int) $this->actingAs($admin)->postJson('/api/clients', [
+            'name' => 'Client',
+            'account_manager_id' => $accountManager->id,
+        ], $this->tenantHeaders($tenant))->json('id');
+
+        $response = $this->actingAs($admin)->getJson("/api/clients/{$id}", $this->tenantHeaders($tenant));
+
+        $response->assertOk()
+            ->assertJsonStructure(['account_manager' => ['id', 'first_name', 'last_name']]);
+    }
+
     // ── Cross-tenant isolation ────────────────────────────────────────────────
 
     public function test_user_cannot_access_other_tenants_clients(): void

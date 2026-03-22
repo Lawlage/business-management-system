@@ -7,10 +7,11 @@ import { useConfirm } from '../../contexts/ConfirmContext'
 import { Modal } from '../../components/Modal'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
+import { Select } from '../../components/Select'
 import { Textarea } from '../../components/Textarea'
 import { Badge } from '../../components/Badge'
 import { formatDate } from '../../lib/format'
-import type { Client, Renewable, StockAllocation, PaginatedResponse } from '../../types'
+import type { AccountManager, Client, Renewable, StockAllocation, PaginatedResponse } from '../../types'
 
 type ClientDetailModalProps = {
   client: Client
@@ -27,6 +28,7 @@ type ClientForm = {
   phone: string
   website: string
   notes: string
+  account_manager_id: number | null
 }
 
 export function ClientDetailModal({
@@ -84,6 +86,13 @@ export function ClientDetailModal({
     },
   })
 
+  const { data: accountManagers = [] } = useQuery<AccountManager[]>({
+    queryKey: ['account-managers', selectedTenantId],
+    queryFn: () => authedFetch<AccountManager[]>('/api/account-managers', { tenantScoped: true }),
+    enabled: !!selectedTenantId && canEdit,
+    staleTime: 60_000,
+  })
+
   const [form, setForm] = useState<ClientForm>({
     name: client.name ?? '',
     contact_name: client.contact_name ?? '',
@@ -91,6 +100,7 @@ export function ClientDetailModal({
     phone: client.phone ?? '',
     website: client.website ?? '',
     notes: client.notes ?? '',
+    account_manager_id: client.account_manager_id ?? null,
   })
 
   const setField = <K extends keyof ClientForm>(key: K, value: ClientForm[K]) => {
@@ -302,7 +312,21 @@ export function ClientDetailModal({
           disabled={!canEdit}
         />
 
-        <div /> {/* spacer for grid alignment */}
+        <Select
+          label="Account Manager"
+          value={form.account_manager_id ?? ''}
+          onChange={(e) =>
+            setField('account_manager_id', e.target.value ? Number(e.target.value) : null)
+          }
+          disabled={!canEdit}
+        >
+          <option value="">None</option>
+          {accountManagers.map((am) => (
+            <option key={am.id} value={am.id}>
+              {am.name}
+            </option>
+          ))}
+        </Select>
 
         <Textarea
           label="Notes"

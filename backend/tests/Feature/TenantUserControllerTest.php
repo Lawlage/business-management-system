@@ -236,4 +236,39 @@ class TenantUserControllerTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_tenant_admin_can_toggle_is_account_manager(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+        $user = $this->createTenantUser($tenant->id);
+
+        $response = $this->actingAs($admin)->putJson(
+            "/api/tenant-users/{$user->id}",
+            ['is_account_manager' => true],
+            $this->tenantHeaders($tenant)
+        );
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('tenant_memberships', [
+            'tenant_id' => $tenant->id,
+            'user_id' => $user->id,
+            'is_account_manager' => true,
+        ]);
+    }
+
+    public function test_standard_user_cannot_toggle_is_account_manager(): void
+    {
+        [$admin, $tenant] = $this->createTenantAdminContext();
+        $user = $this->createTenantUser($tenant->id);
+        $other = $this->createTenantUser($tenant->id);
+
+        $response = $this->actingAs($user)->putJson(
+            "/api/tenant-users/{$other->id}",
+            ['is_account_manager' => true],
+            $this->tenantHeaders($tenant)
+        );
+
+        $response->assertForbidden();
+    }
 }
