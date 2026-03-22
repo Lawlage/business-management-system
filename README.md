@@ -16,7 +16,7 @@ For AI coding tools working in this repository, use `agents.md` as the source-of
 - Strict tenant context middleware (`X-Tenant-Id`) and permission middleware.
 - Role model: Global Superadmin, Tenant Admin, Sub Admin, Standard User.
 - Break-glass access for superadmins with reason + confirmation + immutable logs.
-- **Renewables two-layer model**: `RenewableProduct` catalog (template with optional default duration) + `Renewable` (client instance with schedule, computed `next_due_date`, and auto-calculated `status`).
+- **Client Services two-layer model**: `RenewableProduct` catalog (**Products** — template with name, pricing, and optional default duration) + `Renewable` (**Client Services** — client instance with schedule, computed `next_due_date`, and auto-calculated `status`). Products carry `cost_price` and `sale_price`; Client Services inherit the product sale price unless a per-client `price_override` is set.
 - Inventory module with soft deletes and recycle-bin restore; cost/sale pricing fields.
 - SLA Items product catalog with per-client SLA allocations.
 - Departments for grouping renewables and allocations within a tenant.
@@ -153,12 +153,13 @@ docker compose exec mysql mysql -u bms_user -p   # MySQL prompt
 The frontend includes working actions (API-backed) for:
 
 - Dashboard refresh with renewable and low-stock widgets
-- **Renewable Products** create/list/edit with **Load More** pagination; name, category, vendor, cost price, optional default duration; document attachments; "Applied to clients" tab shows linked renewables
-- **Renewables** create/list/edit with **Load More** pagination; linked to a renewable product and a client; per-client price and renewal schedule (days/months/years/day-of-month); computed next due date and urgency status badge; workflow status tracking; document attachments
+- **Products** create/list/edit with **Load More** pagination; name, category, vendor, cost price, sale price (direct value or % margin mode with live profit field), optional default duration; document attachments; "View in Client Services" button filters the Client Services page by product
+- **Client Services** create/list/edit with **Load More** pagination; linked to a product and a client; per-client sale price (inherits from product; per-client override toggle); invoice date; profit display; renewal schedule (days/months/years/day-of-month); computed next due date and urgency status badge; workflow status tracking; document attachments; below-cost rows highlighted in red
+- Filter bar on Client Services includes status, workflow, client, product, and expiry-range filters; product filter is URL-driven (`?product_id=`) so "View in Client Services" deep-links correctly
 - Inventory create/list/delete with **Load More** pagination and per-item quantity input for check-in/check-out; cost price, sale price, barcode, and document attachments on each item
-- Click-to-open foreground edit modals for renewal/inventory records (Escape key dismisses); modals have **Details / Documents** tabs
+- Click-to-open foreground edit modals for client service/inventory records (Escape key dismisses); modals have **Details / Documents** tabs
 - Stock allocation with client + department assignment
-- **Client detail page** (full-page `/clients/:id`) with tabs: Details | Renewals | Allocations | Documents; Allocations tab has **By Item** (accordion) / **By Client** toggle
+- **Client detail page** (full-page `/clients/:id`) with tabs: Details | Client Services | Allocations | Documents; Allocations tab has **By Item** (accordion) / **By Client** toggle
 - **SLA Items** module: create/list/edit SLA product catalog items with SKU, tier, pricing, and document attachments; apply SLA items to clients via `ApplySlaModal`; cancel SLA allocations from item detail
 - **Departments** admin page: simple list with add/delete (tenant admin only); department dropdown available on renewals and stock allocations
 - **Dropdown custom field type**: create custom fields of type `dropdown` with a dynamic options editor; renders as a `<select>` when editing records
