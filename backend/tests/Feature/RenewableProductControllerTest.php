@@ -22,7 +22,7 @@ class RenewableProductControllerTest extends TestCase
      */
     private function makeProduct(mixed $user, mixed $tenant, array $overrides = []): array
     {
-        return $this->actingAs($user)->postJson('/api/renewable-products', array_merge([
+        return $this->actingAs($user)->postJson('/api/products', array_merge([
             'name'     => 'Office 365 License',
             'category' => 'license',
             'vendor'   => 'Microsoft',
@@ -38,7 +38,7 @@ class RenewableProductControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
 
         $this->actingAs($user)
-            ->getJson('/api/renewable-products', $this->tenantHeaders($tenant))
+            ->getJson('/api/products', $this->tenantHeaders($tenant))
             ->assertOk()
             ->assertJsonStructure(['data', 'current_page', 'last_page', 'per_page', 'total']);
     }
@@ -49,7 +49,7 @@ class RenewableProductControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $this->actingAs($user)
-            ->getJson('/api/renewable-products', $this->tenantHeaders($tenant))
+            ->getJson('/api/products', $this->tenantHeaders($tenant))
             ->assertOk();
     }
 
@@ -59,7 +59,7 @@ class RenewableProductControllerTest extends TestCase
         $this->makeProduct($user, $tenant);
 
         $data = $this->actingAs($user)
-            ->getJson('/api/renewable-products', $this->tenantHeaders($tenant))
+            ->getJson('/api/products', $this->tenantHeaders($tenant))
             ->assertOk()
             ->json('data');
 
@@ -73,7 +73,7 @@ class RenewableProductControllerTest extends TestCase
         $this->makeProduct($user, $tenant, ['name' => 'AAA Other Product']);
 
         $data = $this->actingAs($user)
-            ->getJson('/api/renewable-products?search=ZZZ', $this->tenantHeaders($tenant))
+            ->getJson('/api/products?search=ZZZ', $this->tenantHeaders($tenant))
             ->assertOk()
             ->json('data');
 
@@ -88,7 +88,7 @@ class RenewableProductControllerTest extends TestCase
         $this->makeProduct($user, $tenant, ['name' => 'Product B', 'vendor' => 'OtherVendor']);
 
         $data = $this->actingAs($user)
-            ->getJson('/api/renewable-products?search=SpecialVendorX', $this->tenantHeaders($tenant))
+            ->getJson('/api/products?search=SpecialVendorX', $this->tenantHeaders($tenant))
             ->assertOk()
             ->json('data');
 
@@ -103,7 +103,7 @@ class RenewableProductControllerTest extends TestCase
 
         // A search with SQL LIKE wildcard should not throw or return everything.
         $data = $this->actingAs($user)
-            ->getJson('/api/renewable-products?search=%25', $this->tenantHeaders($tenant))
+            ->getJson('/api/products?search=%25', $this->tenantHeaders($tenant))
             ->assertOk()
             ->json('data');
 
@@ -118,7 +118,7 @@ class RenewableProductControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
 
         $this->actingAs($user)
-            ->postJson('/api/renewable-products', [
+            ->postJson('/api/products', [
                 'name'            => 'SSL Certificate',
                 'category'        => 'certificate',
                 'vendor'          => 'DigiCert',
@@ -138,7 +138,7 @@ class RenewableProductControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
 
         $response = $this->actingAs($user)
-            ->postJson('/api/renewable-products', ['name' => 'Free Product'], $this->tenantHeaders($tenant))
+            ->postJson('/api/products', ['name' => 'Free Product'], $this->tenantHeaders($tenant))
             ->assertCreated()
             ->json();
 
@@ -150,7 +150,7 @@ class RenewableProductControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
 
         $this->actingAs($user)
-            ->postJson('/api/renewable-products', [
+            ->postJson('/api/products', [
                 'name'           => 'Non-Expiring License',
                 'frequency_type' => null,
             ], $this->tenantHeaders($tenant))
@@ -163,7 +163,7 @@ class RenewableProductControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
 
         $this->actingAs($user)
-            ->postJson('/api/renewable-products', [], $this->tenantHeaders($tenant))
+            ->postJson('/api/products', [], $this->tenantHeaders($tenant))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['name']);
     }
@@ -174,7 +174,7 @@ class RenewableProductControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::SubAdmin);
 
         $this->actingAs($user)
-            ->postJson('/api/renewable-products', ['name' => 'Sub Admin Product'], $this->tenantHeaders($tenant))
+            ->postJson('/api/products', ['name' => 'Sub Admin Product'], $this->tenantHeaders($tenant))
             ->assertCreated();
     }
 
@@ -184,7 +184,7 @@ class RenewableProductControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $this->actingAs($user)
-            ->postJson('/api/renewable-products', ['name' => 'Should Fail'], $this->tenantHeaders($tenant))
+            ->postJson('/api/products', ['name' => 'Should Fail'], $this->tenantHeaders($tenant))
             ->assertForbidden();
     }
 
@@ -196,7 +196,7 @@ class RenewableProductControllerTest extends TestCase
         $product = $this->makeProduct($user, $tenant);
 
         $this->actingAs($user)
-            ->putJson("/api/renewable-products/{$product['id']}", [
+            ->putJson("/api/products/{$product['id']}", [
                 'name'   => 'Updated Name',
                 'vendor' => 'New Vendor',
             ], $this->tenantHeaders($tenant))
@@ -212,7 +212,7 @@ class RenewableProductControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $this->actingAs($user)
-            ->putJson("/api/renewable-products/{$product['id']}", ['name' => 'Hacked'], $this->tenantHeaders($tenant))
+            ->putJson("/api/products/{$product['id']}", ['name' => 'Hacked'], $this->tenantHeaders($tenant))
             ->assertForbidden();
     }
 
@@ -223,7 +223,7 @@ class RenewableProductControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::SubAdmin, canEdit: false);
 
         $this->actingAs($user)
-            ->putJson("/api/renewable-products/{$product['id']}", ['name' => 'Hacked'], $this->tenantHeaders($tenant))
+            ->putJson("/api/products/{$product['id']}", ['name' => 'Hacked'], $this->tenantHeaders($tenant))
             ->assertForbidden();
     }
 
@@ -235,7 +235,7 @@ class RenewableProductControllerTest extends TestCase
         $product = $this->makeProduct($user, $tenant);
 
         $this->actingAs($user)
-            ->deleteJson("/api/renewable-products/{$product['id']}", [], $this->tenantHeaders($tenant))
+            ->deleteJson("/api/products/{$product['id']}", [], $this->tenantHeaders($tenant))
             ->assertOk()
             ->assertJsonPath('message', 'Renewable product moved to recycle bin.');
     }
@@ -247,7 +247,7 @@ class RenewableProductControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $this->actingAs($user)
-            ->deleteJson("/api/renewable-products/{$product['id']}", [], $this->tenantHeaders($tenant))
+            ->deleteJson("/api/products/{$product['id']}", [], $this->tenantHeaders($tenant))
             ->assertForbidden();
     }
 
@@ -258,7 +258,7 @@ class RenewableProductControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::SubAdmin);
 
         $this->actingAs($user)
-            ->deleteJson("/api/renewable-products/{$product['id']}", [], $this->tenantHeaders($tenant))
+            ->deleteJson("/api/products/{$product['id']}", [], $this->tenantHeaders($tenant))
             ->assertForbidden();
     }
 
@@ -274,7 +274,7 @@ class RenewableProductControllerTest extends TestCase
 
         // Tenant B should see empty list.
         $data = $this->actingAs($userB)
-            ->getJson('/api/renewable-products', $this->tenantHeaders($tenantB))
+            ->getJson('/api/products', $this->tenantHeaders($tenantB))
             ->assertOk()
             ->json('data');
 
@@ -290,7 +290,7 @@ class RenewableProductControllerTest extends TestCase
 
         // UserB tries to update TenantA's product using TenantB's context.
         $this->actingAs($userB)
-            ->putJson("/api/renewable-products/{$product['id']}", ['name' => 'Hacked'], $this->tenantHeaders($tenantB))
+            ->putJson("/api/products/{$product['id']}", ['name' => 'Hacked'], $this->tenantHeaders($tenantB))
             ->assertNotFound();
     }
 
@@ -302,7 +302,7 @@ class RenewableProductControllerTest extends TestCase
         $product = $this->makeProduct($userA, $tenantA);
 
         $this->actingAs($userB)
-            ->deleteJson("/api/renewable-products/{$product['id']}", [], $this->tenantHeaders($tenantB))
+            ->deleteJson("/api/products/{$product['id']}", [], $this->tenantHeaders($tenantB))
             ->assertNotFound();
     }
 }

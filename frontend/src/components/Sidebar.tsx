@@ -2,7 +2,8 @@ import { memo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
-  RefreshCw,
+  Layers,
+  CalendarClock,
   Package,
   Trash2,
   Users,
@@ -57,8 +58,8 @@ export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace
   const mainLinks: NavLink[] = [
     { to: '/app', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
     { to: '/app/clients', label: 'Clients', icon: <Contact size={16} /> },
-    { to: '/app/renewable-products', label: 'Renewable Products', icon: <RefreshCw size={16} /> },
-    { to: '/app/renewables', label: 'Renewables', icon: <RefreshCw size={16} /> },
+    { to: '/app/products', label: 'Products', icon: <Layers size={16} /> },
+    { to: '/app/client-services', label: 'Client Services', icon: <CalendarClock size={16} /> },
     { to: '/app/inventory', label: 'Inventory', icon: <Package size={16} /> },
     ...(role !== 'standard_user'
       ? [{ to: '/app/allocations', label: 'Allocations', icon: <ArrowRightLeft size={16} /> }]

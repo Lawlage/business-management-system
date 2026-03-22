@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 
 class RecycleBinController extends Controller
 {
-    private const ALLOWED_ENTITY_TYPES = ['renewable', 'renewable_product', 'inventory', 'custom_field', 'client', 'sla_item'];
+    private const ALLOWED_ENTITY_TYPES = ['client_service', 'product', 'inventory', 'custom_field', 'client', 'sla_item'];
 
     public function __construct(private readonly AuditLogger $auditLogger)
     {
@@ -44,12 +44,12 @@ class RecycleBinController extends Controller
         }
 
         $entity = match ($entityType) {
-            'renewable'         => Renewable::onlyTrashed()->findOrFail($id),
-            'renewable_product' => RenewableProduct::onlyTrashed()->findOrFail($id),
-            'inventory'         => InventoryItem::onlyTrashed()->findOrFail($id),
-            'custom_field'      => CustomFieldDefinition::onlyTrashed()->findOrFail($id),
-            'client'            => Client::onlyTrashed()->findOrFail($id),
-            'sla_item'          => SlaItem::onlyTrashed()->findOrFail($id),
+            'client_service' => Renewable::onlyTrashed()->findOrFail($id),
+            'product'        => RenewableProduct::onlyTrashed()->findOrFail($id),
+            'inventory'      => InventoryItem::onlyTrashed()->findOrFail($id),
+            'custom_field'   => CustomFieldDefinition::onlyTrashed()->findOrFail($id),
+            'client'         => Client::onlyTrashed()->findOrFail($id),
+            'sla_item'       => SlaItem::onlyTrashed()->findOrFail($id),
         };
 
         $entity->restore();
@@ -69,12 +69,12 @@ class RecycleBinController extends Controller
         }
 
         $entity = match ($entityType) {
-            'renewable'         => Renewable::onlyTrashed()->findOrFail($id),
-            'renewable_product' => RenewableProduct::onlyTrashed()->findOrFail($id),
-            'inventory'         => InventoryItem::onlyTrashed()->findOrFail($id),
-            'custom_field'      => CustomFieldDefinition::onlyTrashed()->findOrFail($id),
-            'client'            => Client::onlyTrashed()->findOrFail($id),
-            'sla_item'          => SlaItem::onlyTrashed()->findOrFail($id),
+            'client_service' => Renewable::onlyTrashed()->findOrFail($id),
+            'product'        => RenewableProduct::onlyTrashed()->findOrFail($id),
+            'inventory'      => InventoryItem::onlyTrashed()->findOrFail($id),
+            'custom_field'   => CustomFieldDefinition::onlyTrashed()->findOrFail($id),
+            'client'         => Client::onlyTrashed()->findOrFail($id),
+            'sla_item'       => SlaItem::onlyTrashed()->findOrFail($id),
         };
 
         $entity->forceDelete();

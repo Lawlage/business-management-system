@@ -11,21 +11,21 @@ import { SkeletonRow } from '../../components/SkeletonRow'
 import { LoadMoreButton } from '../../components/LoadMoreButton'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { formatRenewalCategory, formatFrequency } from '../../lib/format'
-import { CreateRenewableProductModal } from './CreateRenewableProductModal'
-import { RenewableProductDetailModal } from './RenewableProductDetailModal'
-import type { RenewableProduct, PaginatedResponse } from '../../types'
+import { CreateProductModal } from './CreateProductModal'
+import { ProductDetailModal } from './ProductDetailModal'
+import type { Product, PaginatedResponse } from '../../types'
 
-function RenewableProductsContent() {
+function ProductsContent() {
   const { selectedTenantId, role } = useTenant()
   const { authedFetch } = useApi()
   const queryClient = useQueryClient()
 
   const [page, setPage] = useState(1)
-  const [allItems, setAllItems] = useState<RenewableProduct[]>([])
+  const [allItems, setAllItems] = useState<Product[]>([])
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<RenewableProduct | null>(null)
+  const [selectedItem, setSelectedItem] = useState<Product | null>(null)
 
   const canCreate = role !== 'standard_user'
 
@@ -45,11 +45,11 @@ function RenewableProductsContent() {
   }, [debouncedSearch])
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['renewable-products', selectedTenantId, debouncedSearch, page],
+    queryKey: ['products', selectedTenantId, debouncedSearch, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page) })
       if (debouncedSearch) params.set('search', debouncedSearch)
-      return authedFetch<PaginatedResponse<RenewableProduct>>(`/api/renewable-products?${params.toString()}`, {
+      return authedFetch<PaginatedResponse<Product>>(`/api/products?${params.toString()}`, {
         tenantScoped: true,
       })
     },
@@ -68,13 +68,13 @@ function RenewableProductsContent() {
   const hasMore = data ? page < data.last_page : false
 
   const handleCreated = () => {
-    void queryClient.invalidateQueries({ queryKey: ['renewable-products', selectedTenantId] })
+    void queryClient.invalidateQueries({ queryKey: ['products', selectedTenantId] })
     setPage(1)
     setAllItems([])
   }
 
   const handleUpdated = () => {
-    void queryClient.invalidateQueries({ queryKey: ['renewable-products', selectedTenantId] })
+    void queryClient.invalidateQueries({ queryKey: ['products', selectedTenantId] })
     setPage(1)
     setAllItems([])
   }
@@ -84,11 +84,11 @@ function RenewableProductsContent() {
   return (
     <Card>
       <PageHeader
-        title="Renewable Products"
+        title="Products"
         action={
           canCreate ? (
             <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
-              + New Renewable Product
+              + New Product
             </Button>
           ) : undefined
         }
@@ -118,11 +118,11 @@ function RenewableProductsContent() {
           Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={6} />)
         ) : allItems.length === 0 ? (
           <EmptyState
-            message={debouncedSearch ? 'No renewable products match your search.' : 'No renewable products found. Create your first product to get started.'}
+            message={debouncedSearch ? 'No products match your search.' : 'No products found. Create your first product to get started.'}
             action={
               canCreate && !debouncedSearch ? (
                 <Button onClick={() => setIsCreateOpen(true)} variant="primary" size="sm">
-                  New Renewable Product
+                  New Product
                 </Button>
               ) : undefined
             }
@@ -158,14 +158,14 @@ function RenewableProductsContent() {
       )}
 
       {isCreateOpen && (
-        <CreateRenewableProductModal
+        <CreateProductModal
           onClose={() => setIsCreateOpen(false)}
           onCreated={handleCreated}
         />
       )}
 
       {selectedItem && (
-        <RenewableProductDetailModal
+        <ProductDetailModal
           product={selectedItem}
           onClose={() => setSelectedItem(null)}
           onUpdated={handleUpdated}
@@ -177,10 +177,10 @@ function RenewableProductsContent() {
   )
 }
 
-export function RenewableProductsPage() {
+export function ProductsPage() {
   return (
     <ErrorBoundary>
-      <RenewableProductsContent />
+      <ProductsContent />
     </ErrorBoundary>
   )
 }

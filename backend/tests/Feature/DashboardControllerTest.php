@@ -30,12 +30,12 @@ class DashboardControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
         $clientId = $this->createClient($user, $tenant);
 
-        $product = $this->actingAs($user)->postJson('/api/renewable-products', [
+        $product = $this->actingAs($user)->postJson('/api/products', [
             'name' => 'License Product',
         ], $this->tenantHeaders($tenant))->json();
 
         // Renewable due in 3 days (start 4 days ago, every 7 days → 3 days from now).
-        $this->actingAs($user)->postJson('/api/renewables', [
+        $this->actingAs($user)->postJson('/api/client-services', [
             'renewable_product_id' => $product['id'],
             'client_id'            => $clientId,
             'description'          => 'Critical One',
@@ -45,7 +45,7 @@ class DashboardControllerTest extends TestCase
         ], $this->tenantHeaders($tenant));
 
         // Renewable due in 45 days (start 15 days ago, every 60 days → 45 days from now).
-        $this->actingAs($user)->postJson('/api/renewables', [
+        $this->actingAs($user)->postJson('/api/client-services', [
             'renewable_product_id' => $product['id'],
             'client_id'            => $clientId,
             'description'          => 'Non-Critical',
@@ -66,12 +66,12 @@ class DashboardControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
         $clientId = $this->createClient($user, $tenant);
 
-        $product = $this->actingAs($user)->postJson('/api/renewable-products', [
+        $product = $this->actingAs($user)->postJson('/api/products', [
             'name' => 'License Product',
         ], $this->tenantHeaders($tenant))->json();
 
         // Renewable at ~20 days: start 10 days ago, every 30 days → 20 days from now.
-        $this->actingAs($user)->postJson('/api/renewables', [
+        $this->actingAs($user)->postJson('/api/client-services', [
             'renewable_product_id' => $product['id'],
             'client_id'            => $clientId,
             'description'          => 'Twenty Days',
@@ -81,7 +81,7 @@ class DashboardControllerTest extends TestCase
         ], $this->tenantHeaders($tenant));
 
         // Renewable at ~45 days: start 15 days ago, every 60 days → 45 days from now.
-        $this->actingAs($user)->postJson('/api/renewables', [
+        $this->actingAs($user)->postJson('/api/client-services', [
             'renewable_product_id' => $product['id'],
             'client_id'            => $clientId,
             'description'          => 'Forty Five Days',

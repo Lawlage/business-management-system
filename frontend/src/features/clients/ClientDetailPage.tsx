@@ -15,8 +15,8 @@ import { SkeletonRow } from '../../components/SkeletonRow'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { AttachmentList } from '../../components/AttachmentList'
 import { formatDate } from '../../lib/format'
-import { CreateRenewableModal } from '../renewables/CreateRenewableModal'
-import { RenewableDetailModal } from '../renewables/RenewableDetailModal'
+import { CreateClientServiceModal } from '../client-services/CreateClientServiceModal'
+import { ClientServiceDetailModal } from '../client-services/ClientServiceDetailModal'
 import { AllocateStockModal } from '../inventory/AllocateStockModal'
 import { ApplySlaModal } from '../sla-items/ApplySlaModal'
 import type { Client, Renewable, StockAllocation, SlaAllocation, SlaGroup, PaginatedResponse } from '../../types'
@@ -90,11 +90,11 @@ function ClientDetailContent() {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  // Renewables query
+  // Client services query
   const { data: renewalsData, refetch: refetchRenewals } = useQuery<PaginatedResponse<Renewable>>({
     queryKey: ['client-renewables', selectedTenantId, id],
     queryFn: () =>
-      authedFetch<PaginatedResponse<Renewable>>(`/api/renewables?client_id=${id ?? ''}&page=1`, {
+      authedFetch<PaginatedResponse<Renewable>>(`/api/client-services?client_id=${id ?? ''}&page=1`, {
         tenantScoped: true,
       }),
     enabled: !!selectedTenantId && !!id && activeTab === 'renewals',
@@ -317,7 +317,7 @@ function ClientDetailContent() {
                       className="w-full px-4 py-2 text-left text-sm text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition"
                       onClick={() => { setMenuOpen(false); setActiveTab('renewals'); setActiveModal({ type: 'create-renewable' }) }}
                     >
-                      Apply Renewable
+                      Apply Client Service
                     </button>
                   )}
                   {canAllocate && (
@@ -384,7 +384,7 @@ function ClientDetailContent() {
                   : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]',
               ].join(' ')}
             >
-              {tab === 'sla-coverage' ? 'SLA Coverage' : tab}
+              {tab === 'sla-coverage' ? 'SLA Coverage' : tab === 'renewals' ? 'Products' : tab}
             </button>
           ))}
         </div>
@@ -493,11 +493,11 @@ function ClientDetailContent() {
           </>
         )}
 
-        {/* Renewables tab */}
+        {/* Client Services tab */}
         {activeTab === 'renewals' && (
           <div className="space-y-2">
             {!renewalsData || renewalsData.data.length === 0 ? (
-              <p className="py-6 text-center text-sm text-[var(--ui-muted)]">No renewables linked to this client.</p>
+              <p className="py-6 text-center text-sm text-[var(--ui-muted)]">No client services linked to this client.</p>
             ) : (
               renewalsData.data.map((r) => (
                 <button
@@ -653,7 +653,7 @@ function ClientDetailContent() {
 
       {/* Modals */}
       {activeModal?.type === 'create-renewable' && (
-        <CreateRenewableModal
+        <CreateClientServiceModal
           onClose={() => setActiveModal(null)}
           onCreated={() => { void refetchRenewals(); setActiveModal(null) }}
           presetClientId={client.id}
@@ -662,8 +662,8 @@ function ClientDetailContent() {
       )}
 
       {activeModal?.type === 'view-renewable' && (
-        <RenewableDetailModal
-          renewable={activeModal.renewable}
+        <ClientServiceDetailModal
+          clientService={activeModal.renewable}
           onClose={() => setActiveModal(null)}
           onUpdated={() => { void refetchRenewals() }}
           canEdit={canEdit}

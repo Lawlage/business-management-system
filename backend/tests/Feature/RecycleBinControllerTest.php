@@ -20,7 +20,7 @@ class RecycleBinControllerTest extends TestCase
     private function makeProduct(mixed $user, mixed $tenant, string $name = 'Test Product'): int
     {
         return (int) $this->actingAs($user)
-            ->postJson('/api/renewable-products', ['name' => $name], $this->tenantHeaders($tenant))
+            ->postJson('/api/products', ['name' => $name], $this->tenantHeaders($tenant))
             ->assertCreated()
             ->json('id');
     }
@@ -31,7 +31,7 @@ class RecycleBinControllerTest extends TestCase
     private function makeRenewable(mixed $user, mixed $tenant, int $productId, int $clientId): int
     {
         return (int) $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $productId,
                 'client_id'            => $clientId,
             ], $this->tenantHeaders($tenant))
@@ -80,10 +80,10 @@ class RecycleBinControllerTest extends TestCase
         $clientId  = $this->createClient($user, $tenant);
         $id = $this->makeRenewable($user, $tenant, $productId, $clientId);
 
-        $this->actingAs($user)->deleteJson("/api/renewables/{$id}", [], $this->tenantHeaders($tenant));
+        $this->actingAs($user)->deleteJson("/api/client-services/{$id}", [], $this->tenantHeaders($tenant));
 
         $response = $this->actingAs($user)->postJson(
-            "/api/recycle-bin/renewable/{$id}/restore",
+            "/api/recycle-bin/client_service/{$id}/restore",
             [],
             $this->tenantHeaders($tenant)
         );
@@ -98,10 +98,10 @@ class RecycleBinControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
         $productId = $this->makeProduct($user, $tenant, 'Restorable Product');
 
-        $this->actingAs($user)->deleteJson("/api/renewable-products/{$productId}", [], $this->tenantHeaders($tenant));
+        $this->actingAs($user)->deleteJson("/api/products/{$productId}", [], $this->tenantHeaders($tenant));
 
         $response = $this->actingAs($user)->postJson(
-            "/api/recycle-bin/renewable_product/{$productId}/restore",
+            "/api/recycle-bin/product/{$productId}/restore",
             [],
             $this->tenantHeaders($tenant)
         );
@@ -158,12 +158,12 @@ class RecycleBinControllerTest extends TestCase
         $clientId  = $this->createClient($admin, $tenant);
         $id = $this->makeRenewable($admin, $tenant, $productId, $clientId);
 
-        $this->actingAs($admin)->deleteJson("/api/renewables/{$id}", [], $this->tenantHeaders($tenant));
+        $this->actingAs($admin)->deleteJson("/api/client-services/{$id}", [], $this->tenantHeaders($tenant));
 
         $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $response = $this->actingAs($user)->postJson(
-            "/api/recycle-bin/renewable/{$id}/restore",
+            "/api/recycle-bin/client_service/{$id}/restore",
             [],
             $this->tenantHeaders($tenant)
         );

@@ -154,7 +154,7 @@ All routes are in `backend/routes/api.php`. Three groups:
 
 1. **Public** — `POST /api/auth/login`
 2. **Superadmin** (`auth:sanctum` + `superadmin`) — tenant CRUD, break-glass, global audit logs
-3. **Tenant-scoped** (`auth:sanctum` + `tenant.context`) — renewable products, renewables, inventory, clients, SLA items, SLA allocations, stock allocations, departments, attachments, users, custom fields, settings, recycle bin, audit logs
+3. **Tenant-scoped** (`auth:sanctum` + `tenant.context`) — products, client services, inventory, clients, SLA items, SLA allocations, stock allocations, departments, attachments, users, custom fields, settings, recycle bin, audit logs
 
 Individual routes are further protected with `tenant.permission:<permission>` middleware.
 
@@ -164,7 +164,7 @@ Permission matrix: `app/Support/TenantPermissionMap.php`. Enforcement: `RequireT
 
 | Role | Key permissions |
 |---|---|
-| `standard_user` | `adjust_stock` only — cannot edit renewals or inventory details |
+| `standard_user` | `adjust_stock` only — cannot edit client services or inventory details |
 | `sub_admin` | `adjust_stock`, `edit_existing`, `create_renewal`, `create_inventory` |
 | `tenant_admin` | + `delete_record`, `manage_users`, `manage_custom_fields`, `view_audit_logs` |
 | `global_superadmin` | Separate middleware (`RequireGlobalSuperadmin`); not a tenant role |
@@ -193,20 +193,20 @@ frontend/src/
   main.tsx                 # React Query + BrowserRouter setup
   uiSettings.ts            # applyUiTheme() / normalizeUiSettings()
   index.css                # global styles / CSS custom properties
-  types/                   # shared TypeScript types
+  types/index.ts           # ALL shared TypeScript types (RenewableProduct, Renewable, Client, etc.)
   lib/                     # utilities
-  hooks/                   # useApi() → authedFetch with X-Tenant-Id / X-Break-Glass-Token headers
+  hooks/useApi.ts          # useApi() → authedFetch with X-Tenant-Id / X-Break-Glass-Token headers
   contexts/                # AuthContext, TenantContext, NoticeContext, ConfirmContext
   components/              # shared UI: Button, Input, Modal, Badge, Card, Sidebar, TopBar, etc.
   features/
     auth/                  # login page
     dashboard/
-    renewable-products/    # RenewableProductsPage, CreateRenewableProductModal, RenewableProductDetailModal
-    renewables/            # RenewablesPage, CreateRenewableModal, RenewableDetailModal
+    products/              # ProductsPage, CreateProductModal, ProductDetailModal
+    client-services/       # ClientServicesPage, CreateClientServiceModal, ClientServiceDetailModal
     inventory/             # InventoryPage, InventoryDetailModal, CreateInventoryModal, AllocateStockModal
     clients/               # ClientsPage, ClientDetailPage (full-page /clients/:id with tabs)
     sla-items/             # SlaItemsPage, CreateSlaItemModal, SlaItemDetailModal, ApplySlaModal
-    recycle-bin/
+    recycle-bin/           # RecycleBinPage — tabs: client_services, products, inventory
     admin/
       custom-fields/       # CustomFieldsPage (includes dropdown type with options editor)
       departments/         # DepartmentsPage
@@ -222,22 +222,47 @@ frontend/src/
 - Test wrapper requires `QueryClientProvider` + `BrowserRouter` (or `MemoryRouter`) around components — see `frontend/src/test/helpers.tsx` for `createWrapper()`
 - Tests that need route params (`useParams`) must render inside `<Routes><Route path="..." /></Routes>` with the appropriate initial URL
 
+### Feature Module Map
+
+Each feature has a consistent set of files. Use this table to locate them without exploration:
+
+| Feature | UI Route | API prefix | Controller | Model | Frontend dir | Test file |
+|---|---|---|---|---|---|---|
+| Products | `/app/products` | `/api/products` | `RenewableProductController` | `RenewableProduct` | `features/products/` | `RenewableProductControllerTest` |
+| Client Services | `/app/client-services` | `/api/client-services` | `RenewableController` | `Renewable` | `features/client-services/` | `RenewableControllerTest` |
+| Inventory | `/app/inventory` | `/api/inventory` | `InventoryController` | `InventoryItem` | `features/inventory/` | `InventoryControllerTest` |
+| Clients | `/app/clients` | `/api/clients` | `ClientController` | `Client` | `features/clients/` | — |
+| SLA Items | `/app/sla-items` | `/api/sla-items` | `SlaItemController` | `SlaItem` | `features/sla-items/` | — |
+
+- Controllers: `backend/app/Http/Controllers/Api/`
+- Models: `backend/app/Models/`
+- Tenant migrations: `backend/database/migrations/tenant/`
+- Central migrations: `backend/database/migrations/`
+
+### Domain Concept Distinctions
+
+**Product** (UI) / `RenewableProduct` (model/controller) — the product catalogue. Defines *what* can be applied to clients: name, default frequency, description. Not client-specific.
+
+**Client Service** (UI) / `Renewable` (model/controller) — a Product applied to a specific client. Carries `frequency`, `frequency_start_date`, `next_due_date`, `status`, and `client_id`. Created via "Apply to client" on a product. Status is recomputed daily by `app:refresh-renewable-due-dates`.
+
+The recycle-bin `entityType` allowlist is `['client_service', 'product', 'inventory']` (maps to `Renewable` and `RenewableProduct` models internally).
+
 ### Scheduled Tasks
 
 - `app:purge-soft-deleted-records` — permanently deletes soft-deleted records older than 30 days
-- `app:refresh-renewable-due-dates` — recomputes `next_due_date` and `status` for all active `Renewable` records
+- `app:refresh-renewable-due-dates` — recomputes `next_due_date` and `status` for all active `Renewable` (Client Service) records
 
 Both run daily (`app/Console/Kernel.php`).
 
 ### Key Models
 
-Tenant-scoped (use `SoftDeletes`): `RenewableProduct`, `Renewable`, `InventoryItem`, `Client`, `SlaItem`, `SlaAllocation`, `StockAllocation`, `Department`, `Attachment`, `AttachmentLink`, `CustomFieldDefinition`, `CustomFieldValue`, `TenantAuditLog`
+Tenant-scoped (use `SoftDeletes`): `RenewableProduct` (Products), `Renewable` (Client Services), `InventoryItem`, `Client`, `SlaItem`, `SlaAllocation`, `StockAllocation`, `Department`, `Attachment`, `AttachmentLink`, `CustomFieldDefinition`, `CustomFieldValue`, `TenantAuditLog`
 
 Central DB: `Tenant`, `User`, `TenantMembership`, `GlobalAuditLog`, `BreakGlassAccess`
 
 ### Attachment Storage
 
-Uploaded files are stored at `storage/app/tenants/{tenant_id}/attachments/{uuid}.{ext}` on a private local disk. An `Attachment` record holds the file metadata; `AttachmentLink` associates the file with a specific entity (`entity_type` ∈ `renewable|renewable_product|inventory|client|sla_item`, `entity_id`). Download streams the file through the API (`GET /api/attachments/{id}/download`) with tenant-membership verification.
+Uploaded files are stored at `storage/app/tenants/{tenant_id}/attachments/{uuid}.{ext}` on a private local disk. An `Attachment` record holds the file metadata; `AttachmentLink` associates the file with a specific entity (`entity_type` ∈ `client_service|product|inventory|client|sla_item`, `entity_id`). Download streams the file through the API (`GET /api/attachments/{id}/download`) with tenant-membership verification.
 
 ### Key Config Files
 

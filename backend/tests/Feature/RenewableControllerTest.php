@@ -23,7 +23,7 @@ class RenewableControllerTest extends TestCase
      */
     private function makeProduct(mixed $user, mixed $tenant, array $overrides = []): array
     {
-        return $this->actingAs($user)->postJson('/api/renewable-products', array_merge([
+        return $this->actingAs($user)->postJson('/api/products', array_merge([
             'name'       => 'Test Product',
             'cost_price' => '50.00',
         ], $overrides), $this->tenantHeaders($tenant))
@@ -43,7 +43,7 @@ class RenewableControllerTest extends TestCase
      */
     private function makeRenewable(mixed $user, mixed $tenant, int $productId, int $clientId, array $overrides = []): array
     {
-        return $this->actingAs($user)->postJson('/api/renewables', array_merge([
+        return $this->actingAs($user)->postJson('/api/client-services', array_merge([
             'renewable_product_id' => $productId,
             'client_id'            => $clientId,
         ], $overrides), $this->tenantHeaders($tenant))
@@ -58,7 +58,7 @@ class RenewableControllerTest extends TestCase
         [$user, $tenant] = $this->createTenantAdminContext();
 
         $this->actingAs($user)
-            ->getJson('/api/renewables', $this->tenantHeaders($tenant))
+            ->getJson('/api/client-services', $this->tenantHeaders($tenant))
             ->assertOk()
             ->assertJsonStructure(['data', 'current_page', 'last_page', 'per_page', 'total']);
     }
@@ -69,7 +69,7 @@ class RenewableControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $this->actingAs($user)
-            ->getJson('/api/renewables', $this->tenantHeaders($tenant))
+            ->getJson('/api/client-services', $this->tenantHeaders($tenant))
             ->assertOk();
     }
 
@@ -81,7 +81,7 @@ class RenewableControllerTest extends TestCase
         $this->makeRenewable($user, $tenant, $product['id'], $clientId);
 
         $item = $this->actingAs($user)
-            ->getJson('/api/renewables', $this->tenantHeaders($tenant))
+            ->getJson('/api/client-services', $this->tenantHeaders($tenant))
             ->assertOk()
             ->json('data.0');
 
@@ -98,7 +98,7 @@ class RenewableControllerTest extends TestCase
         $clientId = $this->createClient($user, $tenant);
 
         $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $product['id'],
                 'client_id'            => $clientId,
             ], $this->tenantHeaders($tenant))
@@ -114,7 +114,7 @@ class RenewableControllerTest extends TestCase
         $clientId = $this->createClient($user, $tenant);
 
         $data = $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $product['id'],
                 'client_id'            => $clientId,
             ], $this->tenantHeaders($tenant))
@@ -131,7 +131,7 @@ class RenewableControllerTest extends TestCase
         $clientId = $this->createClient($user, $tenant);
 
         $data = $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $product['id'],
                 'client_id'            => $clientId,
                 'description'          => 'Custom Description',
@@ -149,7 +149,7 @@ class RenewableControllerTest extends TestCase
         $clientId = $this->createClient($user, $tenant);
 
         $data = $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $product['id'],
                 'client_id'            => $clientId,
             ], $this->tenantHeaders($tenant))
@@ -166,7 +166,7 @@ class RenewableControllerTest extends TestCase
         $clientId = $this->createClient($user, $tenant);
 
         $data = $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $product['id'],
                 'client_id'            => $clientId,
                 'sale_price'           => '199.00',
@@ -186,7 +186,7 @@ class RenewableControllerTest extends TestCase
         // Start 1 year + 1 day ago, every 1 year → next due is ~364 days from now.
         $startDate = Carbon::now()->subYear()->subDay()->toDateString();
         $data = $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $product['id'],
                 'client_id'            => $clientId,
                 'frequency_type'       => 'years',
@@ -211,7 +211,7 @@ class RenewableControllerTest extends TestCase
         $clientId = $this->createClient($user, $tenant);
 
         $data = $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $product['id'],
                 'client_id'            => $clientId,
             ], $this->tenantHeaders($tenant))
@@ -233,7 +233,7 @@ class RenewableControllerTest extends TestCase
 
         $startDate = Carbon::now()->subMonths(13)->toDateString();
         $data = $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $product['id'],
                 'client_id'            => $clientId,
                 // No frequency_type/value override, but supply a start_date.
@@ -254,7 +254,7 @@ class RenewableControllerTest extends TestCase
         $clientId = $this->createClient($user, $tenant);
 
         $this->actingAs($user)
-            ->postJson('/api/renewables', ['client_id' => $clientId], $this->tenantHeaders($tenant))
+            ->postJson('/api/client-services', ['client_id' => $clientId], $this->tenantHeaders($tenant))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['renewable_product_id']);
     }
@@ -265,7 +265,7 @@ class RenewableControllerTest extends TestCase
         $product = $this->makeProduct($user, $tenant);
 
         $this->actingAs($user)
-            ->postJson('/api/renewables', ['renewable_product_id' => $product['id']], $this->tenantHeaders($tenant))
+            ->postJson('/api/client-services', ['renewable_product_id' => $product['id']], $this->tenantHeaders($tenant))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['client_id']);
     }
@@ -278,7 +278,7 @@ class RenewableControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::SubAdmin);
 
         $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $product['id'],
                 'client_id'            => $clientId,
             ], $this->tenantHeaders($tenant))
@@ -293,7 +293,7 @@ class RenewableControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $this->actingAs($user)
-            ->postJson('/api/renewables', [
+            ->postJson('/api/client-services', [
                 'renewable_product_id' => $product['id'],
                 'client_id'            => $clientId,
             ], $this->tenantHeaders($tenant))
@@ -313,7 +313,7 @@ class RenewableControllerTest extends TestCase
         $this->makeRenewable($user, $tenant, $product['id'], $clientB);
 
         $data = $this->actingAs($user)
-            ->getJson("/api/renewables?client_id={$clientA}", $this->tenantHeaders($tenant))
+            ->getJson("/api/client-services?client_id={$clientA}", $this->tenantHeaders($tenant))
             ->assertOk()
             ->json('data');
 
@@ -332,7 +332,7 @@ class RenewableControllerTest extends TestCase
         $this->makeRenewable($user, $tenant, $productB['id'], $clientId);
 
         $data = $this->actingAs($user)
-            ->getJson("/api/renewables?renewable_product_id={$productA['id']}", $this->tenantHeaders($tenant))
+            ->getJson("/api/client-services?renewable_product_id={$productA['id']}", $this->tenantHeaders($tenant))
             ->assertOk()
             ->json('data');
 
@@ -360,7 +360,7 @@ class RenewableControllerTest extends TestCase
         ]);
 
         $urgentData = $this->actingAs($user)
-            ->getJson('/api/renewables?status=Urgent', $this->tenantHeaders($tenant))
+            ->getJson('/api/client-services?status=Urgent', $this->tenantHeaders($tenant))
             ->assertOk()
             ->json('data');
 
@@ -389,7 +389,7 @@ class RenewableControllerTest extends TestCase
         ]);
 
         $data = $this->actingAs($user)
-            ->getJson('/api/renewables?expiry_preset=next_30_days', $this->tenantHeaders($tenant))
+            ->getJson('/api/client-services?expiry_preset=next_30_days', $this->tenantHeaders($tenant))
             ->assertOk()
             ->json('data');
 
@@ -406,7 +406,7 @@ class RenewableControllerTest extends TestCase
         $this->makeRenewable($user, $tenant, $product['id'], $clientId, ['description' => 'Other Description']);
 
         $data = $this->actingAs($user)
-            ->getJson('/api/renewables?search=ZZZ+Unique', $this->tenantHeaders($tenant))
+            ->getJson('/api/client-services?search=ZZZ+Unique', $this->tenantHeaders($tenant))
             ->assertOk()
             ->json('data');
 
@@ -424,7 +424,7 @@ class RenewableControllerTest extends TestCase
         $renewable = $this->makeRenewable($user, $tenant, $product['id'], $clientId);
 
         $this->actingAs($user)
-            ->putJson("/api/renewables/{$renewable['id']}", [
+            ->putJson("/api/client-services/{$renewable['id']}", [
                 'description' => 'Updated Description',
                 'notes'       => 'Some notes',
             ], $this->tenantHeaders($tenant))
@@ -445,7 +445,7 @@ class RenewableControllerTest extends TestCase
         $startDate = Carbon::now()->subMonths(6)->toDateString();
 
         $updated = $this->actingAs($user)
-            ->putJson("/api/renewables/{$renewable['id']}", [
+            ->putJson("/api/client-services/{$renewable['id']}", [
                 'frequency_type'       => 'months',
                 'frequency_value'      => 12,
                 'frequency_start_date' => $startDate,
@@ -465,7 +465,7 @@ class RenewableControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $this->actingAs($user)
-            ->putJson("/api/renewables/{$renewable['id']}", ['description' => 'Hacked'], $this->tenantHeaders($tenant))
+            ->putJson("/api/client-services/{$renewable['id']}", ['description' => 'Hacked'], $this->tenantHeaders($tenant))
             ->assertForbidden();
     }
 
@@ -479,7 +479,7 @@ class RenewableControllerTest extends TestCase
         $renewable = $this->makeRenewable($user, $tenant, $product['id'], $clientId);
 
         $this->actingAs($user)
-            ->deleteJson("/api/renewables/{$renewable['id']}", [], $this->tenantHeaders($tenant))
+            ->deleteJson("/api/client-services/{$renewable['id']}", [], $this->tenantHeaders($tenant))
             ->assertOk()
             ->assertJsonPath('message', 'Renewable moved to recycle bin.');
     }
@@ -493,7 +493,7 @@ class RenewableControllerTest extends TestCase
         $user = $this->createTenantUser($tenant->id, TenantRole::StandardUser);
 
         $this->actingAs($user)
-            ->deleteJson("/api/renewables/{$renewable['id']}", [], $this->tenantHeaders($tenant))
+            ->deleteJson("/api/client-services/{$renewable['id']}", [], $this->tenantHeaders($tenant))
             ->assertForbidden();
     }
 
@@ -509,7 +509,7 @@ class RenewableControllerTest extends TestCase
         $this->makeRenewable($userA, $tenantA, $product['id'], $clientId);
 
         $data = $this->actingAs($userB)
-            ->getJson('/api/renewables', $this->tenantHeaders($tenantB))
+            ->getJson('/api/client-services', $this->tenantHeaders($tenantB))
             ->assertOk()
             ->json('data');
 
@@ -526,7 +526,7 @@ class RenewableControllerTest extends TestCase
         $renewable = $this->makeRenewable($userA, $tenantA, $product['id'], $clientId);
 
         $this->actingAs($userB)
-            ->putJson("/api/renewables/{$renewable['id']}", ['description' => 'Hacked'], $this->tenantHeaders($tenantB))
+            ->putJson("/api/client-services/{$renewable['id']}", ['description' => 'Hacked'], $this->tenantHeaders($tenantB))
             ->assertNotFound();
     }
 
@@ -540,7 +540,7 @@ class RenewableControllerTest extends TestCase
         $renewable = $this->makeRenewable($userA, $tenantA, $product['id'], $clientId);
 
         $this->actingAs($userB)
-            ->deleteJson("/api/renewables/{$renewable['id']}", [], $this->tenantHeaders($tenantB))
+            ->deleteJson("/api/client-services/{$renewable['id']}", [], $this->tenantHeaders($tenantB))
             ->assertNotFound();
     }
 }

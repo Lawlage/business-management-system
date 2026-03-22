@@ -8,8 +8,8 @@ import type { QueryClient } from '@tanstack/react-query'
 export const chunkPrefetchers: Record<string, () => Promise<unknown>> = {
   '/app':                       () => import('../features/dashboard/DashboardPage'),
   '/app/clients':               () => import('../features/clients/ClientsPage'),
-  '/app/renewable-products':    () => import('../features/renewable-products/RenewableProductsPage'),
-  '/app/renewables':            () => import('../features/renewables/RenewablesPage'),
+  '/app/products':              () => import('../features/products/ProductsPage'),
+  '/app/client-services':       () => import('../features/client-services/ClientServicesPage'),
   '/app/inventory':             () => import('../features/inventory/InventoryPage'),
   '/app/allocations':           () => import('../features/stock-allocations/StockAllocationsPage'),
   '/app/reports':               () => import('../features/reports/ReportsPage'),
@@ -40,10 +40,10 @@ type PrefetchCtx = {
 }
 
 export const dataPrefetchers: Record<string, (ctx: PrefetchCtx) => void> = {
-  '/app/renewables': ({ queryClient, authedFetch, tenantId }) => {
+  '/app/client-services': ({ queryClient, authedFetch, tenantId }) => {
     void queryClient.prefetchQuery({
-      queryKey: ['renewables', tenantId, '', '', '', '', '', 1],
-      queryFn: () => authedFetch('/api/renewables?page=1', { tenantScoped: true }),
+      queryKey: ['client-services', tenantId, '', '', '', '', '', 1],
+      queryFn: () => authedFetch('/api/client-services?page=1', { tenantScoped: true }),
     })
     void queryClient.prefetchQuery({
       queryKey: ['clients-all', tenantId],
@@ -65,10 +65,10 @@ export const dataPrefetchers: Record<string, (ctx: PrefetchCtx) => void> = {
     })
   },
 
-  '/app/renewable-products': ({ queryClient, authedFetch, tenantId }) => {
+  '/app/products': ({ queryClient, authedFetch, tenantId }) => {
     void queryClient.prefetchQuery({
-      queryKey: ['renewable-products', tenantId, '', 1],
-      queryFn: () => authedFetch('/api/renewable-products?page=1', { tenantScoped: true }),
+      queryKey: ['products', tenantId, '', 1],
+      queryFn: () => authedFetch('/api/products?page=1', { tenantScoped: true }),
     })
   },
 

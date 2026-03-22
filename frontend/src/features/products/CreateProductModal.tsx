@@ -19,7 +19,7 @@ type Props = {
 
 type ProductForm = typeof renewableProductDefaults
 
-export function CreateRenewableProductModal({ onClose, onCreated }: Props) {
+export function CreateProductModal({ onClose, onCreated }: Props) {
   const { authedFetch } = useApi()
   const { showNotice } = useNotice()
 
@@ -32,7 +32,7 @@ export function CreateRenewableProductModal({ onClose, onCreated }: Props) {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      authedFetch('/api/renewable-products', {
+      authedFetch('/api/products', {
         method: 'POST',
         body: JSON.stringify({
           ...form,
@@ -42,18 +42,18 @@ export function CreateRenewableProductModal({ onClose, onCreated }: Props) {
         tenantScoped: true,
       }),
     onSuccess: () => {
-      showNotice('Renewable product created.')
+      showNotice('Product created.')
       onCreated()
       onClose()
     },
     onError: (err: unknown) => {
-      showNotice((err as { message?: string })?.message ?? 'Failed to create renewable product.', 'error')
+      showNotice((err as { message?: string })?.message ?? 'Failed to create product.', 'error')
     },
   })
 
   return (
     <Modal
-      title="Create Renewable Product"
+      title="Create Product"
       onClose={onClose}
       footer={
         <div className="flex justify-end">

@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AttachmentController extends Controller
 {
-    private const ALLOWED_ENTITY_TYPES = ['renewal', 'inventory', 'client', 'sla_item'];
+    private const ALLOWED_ENTITY_TYPES = ['client_service', 'product', 'inventory', 'client', 'sla_item'];
 
     private const MAX_FILE_SIZE_KB = 20480; // 20 MB
 

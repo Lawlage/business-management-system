@@ -102,12 +102,12 @@ describe('ClientDetailPage', () => {
     })
   })
 
-  it('renders Details, Renewals, Allocations, Documents tabs', async () => {
+  it('renders Details, Products, Allocations, Documents tabs', async () => {
     setup()
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument())
 
     expect(screen.getByRole('button', { name: /details/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /renewals/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /products/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /allocations/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /documents/i })).toBeInTheDocument()
   })

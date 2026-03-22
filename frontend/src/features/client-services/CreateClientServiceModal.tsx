@@ -12,17 +12,17 @@ import { SearchCombobox } from '../../components/SearchCombobox'
 import FrequencyPicker from '../../components/FrequencyPicker'
 import { useNotice } from '../../contexts/NoticeContext'
 import { renewableWorkflowOptions } from '../../types'
-import type { Client, Department, PaginatedResponse, RenewableProduct, FrequencyValue } from '../../types'
+import type { Client, Department, PaginatedResponse, Product, FrequencyValue } from '../../types'
 
 type Props = {
-  initialProduct?: RenewableProduct
+  initialProduct?: Product
   presetClientId?: number | null
   presetClientName?: string
   onClose: () => void
   onCreated: () => void
 }
 
-export function CreateRenewableModal({
+export function CreateClientServiceModal({
   initialProduct,
   presetClientId,
   presetClientName,
@@ -33,7 +33,7 @@ export function CreateRenewableModal({
   const { selectedTenantId } = useTenant()
   const { showNotice } = useNotice()
 
-  const [selectedProduct, setSelectedProduct] = useState<RenewableProduct | null>(initialProduct ?? null)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(initialProduct ?? null)
   const [description, setDescription] = useState(initialProduct?.name ?? '')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [clientId, setClientId] = useState<number | null>(presetClientId ?? null)
@@ -51,9 +51,9 @@ export function CreateRenewableModal({
 
   // Load all products for combobox (only if no initialProduct)
   const { data: productsData, isLoading: loadingProducts } = useQuery({
-    queryKey: ['renewable-products-all', selectedTenantId],
+    queryKey: ['products-all', selectedTenantId],
     queryFn: () =>
-      authedFetch<PaginatedResponse<RenewableProduct>>('/api/renewable-products?per_page=200', {
+      authedFetch<PaginatedResponse<Product>>('/api/products?per_page=200', {
         tenantScoped: true,
       }),
     enabled: !!selectedTenantId && !initialProduct,
@@ -89,7 +89,7 @@ export function CreateRenewableModal({
   }))
   const departments = departmentsData ?? []
 
-  function handleProductSelect(p: RenewableProduct) {
+  function handleProductSelect(p: Product) {
     setSelectedProduct(p)
     if (!description) setDescription(p.name)
     if (p.frequency_type && p.frequency_value != null) {
@@ -101,7 +101,7 @@ export function CreateRenewableModal({
 
   const createMutation = useMutation({
     mutationFn: () =>
-      authedFetch('/api/renewables', {
+      authedFetch('/api/client-services', {
         method: 'POST',
         body: JSON.stringify({
           renewable_product_id: selectedProduct!.id,
@@ -118,12 +118,12 @@ export function CreateRenewableModal({
         tenantScoped: true,
       }),
     onSuccess: () => {
-      showNotice('Renewable created.')
+      showNotice('Client service created.')
       onCreated()
       onClose()
     },
     onError: (err: unknown) => {
-      showNotice((err as { message?: string })?.message ?? 'Failed to create renewable.', 'error')
+      showNotice((err as { message?: string })?.message ?? 'Failed to create client service.', 'error')
     },
   })
 
@@ -131,7 +131,7 @@ export function CreateRenewableModal({
 
   return (
     <Modal
-      title="Create Renewable"
+      title="Create Client Service"
       onClose={onClose}
       footer={
         <div className="flex justify-end">
@@ -151,7 +151,7 @@ export function CreateRenewableModal({
         {!initialProduct ? (
           <div className="md:col-span-2">
             <SearchCombobox
-              label="Renewable Product"
+              label="Product"
               required
               placeholder="Search products..."
               options={productOptions}
@@ -171,7 +171,7 @@ export function CreateRenewableModal({
         ) : (
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
-              Renewable Product
+              Product
             </label>
             <input
               value={initialProduct.name}

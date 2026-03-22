@@ -15,8 +15,8 @@ import { AttachmentList } from '../../components/AttachmentList'
 import FrequencyPicker from '../../components/FrequencyPicker'
 import { formatDate, formatFrequency } from '../../lib/format'
 import { renewableCategoryOptions } from '../../types'
-import type { RenewableProduct, Renewable, PaginatedResponse, FrequencyValue } from '../../types'
-import { CreateRenewableModal } from '../renewables/CreateRenewableModal'
+import type { Product, ClientService, PaginatedResponse, FrequencyValue } from '../../types'
+import { CreateClientServiceModal } from '../client-services/CreateClientServiceModal'
 
 type ProductForm = {
   name: string
@@ -27,14 +27,14 @@ type ProductForm = {
 }
 
 type Props = {
-  product: RenewableProduct
+  product: Product
   onClose: () => void
   onUpdated: () => void
   canEdit: boolean
   canDelete: boolean
 }
 
-export function RenewableProductDetailModal({ product, onClose, onUpdated, canEdit, canDelete }: Props) {
+export function ProductDetailModal({ product, onClose, onUpdated, canEdit, canDelete }: Props) {
   const { authedFetch } = useApi()
   const { selectedTenantId, tenantTimezone } = useTenant()
   const { showNotice } = useNotice()
@@ -62,10 +62,10 @@ export function RenewableProductDetailModal({ product, onClose, onUpdated, canEd
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  const { data: renewablesData, refetch: refetchRenewables } = useQuery<PaginatedResponse<Renewable>>({
-    queryKey: ['renewable-product-renewables', selectedTenantId, product.id],
+  const { data: clientServicesData, refetch: refetchClientServices } = useQuery<PaginatedResponse<ClientService>>({
+    queryKey: ['product-client-services', selectedTenantId, product.id],
     queryFn: () =>
-      authedFetch<PaginatedResponse<Renewable>>(`/api/renewables?renewable_product_id=${product.id}`, {
+      authedFetch<PaginatedResponse<ClientService>>(`/api/client-services?renewable_product_id=${product.id}`, {
         tenantScoped: true,
       }),
     enabled: !!selectedTenantId && activeTab === 'applied',
@@ -74,7 +74,7 @@ export function RenewableProductDetailModal({ product, onClose, onUpdated, canEd
 
   const saveMutation = useMutation({
     mutationFn: () =>
-      authedFetch(`/api/renewable-products/${product.id}`, {
+      authedFetch(`/api/products/${product.id}`, {
         method: 'PUT',
         body: JSON.stringify({
           ...form,
@@ -84,7 +84,7 @@ export function RenewableProductDetailModal({ product, onClose, onUpdated, canEd
         tenantScoped: true,
       }),
     onSuccess: () => {
-      showNotice('Renewable product updated.')
+      showNotice('Product updated.')
       onUpdated()
       onClose()
     },
@@ -95,10 +95,10 @@ export function RenewableProductDetailModal({ product, onClose, onUpdated, canEd
 
   const deleteMutation = useMutation({
     mutationFn: () =>
-      authedFetch(`/api/renewable-products/${product.id}`, { method: 'DELETE', tenantScoped: true }),
+      authedFetch(`/api/products/${product.id}`, { method: 'DELETE', tenantScoped: true }),
     onSuccess: () => {
-      showNotice('Renewable product moved to recycle bin.')
-      void queryClient.invalidateQueries({ queryKey: ['renewable-products', selectedTenantId] })
+      showNotice('Product moved to recycle bin.')
+      void queryClient.invalidateQueries({ queryKey: ['products', selectedTenantId] })
       onUpdated()
       onClose()
     },
@@ -109,7 +109,7 @@ export function RenewableProductDetailModal({ product, onClose, onUpdated, canEd
 
   const handleDelete = async () => {
     const confirmed = await confirm({
-      title: 'Delete renewable product?',
+      title: 'Delete product?',
       message: 'This will move the product to recycle bin.',
       confirmLabel: 'Delete',
       variant: 'danger',
@@ -117,7 +117,7 @@ export function RenewableProductDetailModal({ product, onClose, onUpdated, canEd
     if (confirmed) deleteMutation.mutate()
   }
 
-  const renewables = renewablesData?.data ?? []
+  const clientServices = clientServicesData?.data ?? []
 
   return (
     <>
@@ -229,12 +229,12 @@ export function RenewableProductDetailModal({ product, onClose, onUpdated, canEd
 
         {activeTab === 'applied' && (
           <div className="space-y-2">
-            {renewables.length === 0 ? (
+            {clientServices.length === 0 ? (
               <p className="py-6 text-center text-sm text-[var(--ui-muted)]">
                 Not applied to any clients yet.
               </p>
             ) : (
-              renewables.map((r) => (
+              clientServices.map((r) => (
                 <div
                   key={r.id}
                   className="app-inner-box flex items-center gap-3 rounded-md border border-[var(--ui-border)] p-3"
@@ -261,7 +261,7 @@ export function RenewableProductDetailModal({ product, onClose, onUpdated, canEd
 
         {activeTab === 'documents' && (
           <AttachmentList
-            entityType="renewable_product"
+            entityType="product"
             entityId={product.id}
             canEdit={canEdit}
           />
@@ -269,13 +269,13 @@ export function RenewableProductDetailModal({ product, onClose, onUpdated, canEd
       </Modal>
 
       {isApplyOpen && (
-        <CreateRenewableModal
+        <CreateClientServiceModal
           initialProduct={product}
           onClose={() => setIsApplyOpen(false)}
           onCreated={() => {
             setIsApplyOpen(false)
-            void refetchRenewables()
-            void queryClient.invalidateQueries({ queryKey: ['renewables', selectedTenantId] })
+            void refetchClientServices()
+            void queryClient.invalidateQueries({ queryKey: ['client-services', selectedTenantId] })
           }}
         />
       )}

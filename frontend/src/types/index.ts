@@ -72,6 +72,9 @@ export type RenewableProduct = {
   created_at?: string
 }
 
+// Alias used by the Products feature
+export type Product = RenewableProduct
+
 export type Renewable = {
   id: number
   renewable_product_id: number
@@ -91,6 +94,9 @@ export type Renewable = {
   notes?: string | null
   created_at?: string
 }
+
+// Alias used by the Client Services feature
+export type ClientService = Renewable
 
 export type InventoryItem = {
   id: number

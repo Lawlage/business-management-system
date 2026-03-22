@@ -26,8 +26,8 @@ import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 
 // Lazy-loaded feature pages (Phase 7: code splitting)
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
-const RenewableProductsPage = lazy(() => import('./features/renewable-products/RenewableProductsPage').then((m) => ({ default: m.RenewableProductsPage })))
-const RenewablesPage = lazy(() => import('./features/renewables/RenewablesPage').then((m) => ({ default: m.RenewablesPage })))
+const ProductsPage = lazy(() => import('./features/products/ProductsPage').then((m) => ({ default: m.ProductsPage })))
+const ClientServicesPage = lazy(() => import('./features/client-services/ClientServicesPage').then((m) => ({ default: m.ClientServicesPage })))
 const InventoryPage = lazy(() => import('./features/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })))
 const ClientsPage = lazy(() => import('./features/clients/ClientsPage').then((m) => ({ default: m.ClientsPage })))
 const ClientDetailPage = lazy(() => import('./features/clients/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })))
@@ -46,7 +46,7 @@ const ReportsPage = lazy(() => import('./features/reports/ReportsPage').then((m)
 const AccountPage = lazy(() => import('./features/account/AccountPage').then((m) => ({ default: m.AccountPage })))
 
 // Lazy-loaded modals (only needed when opened from dashboard)
-const RenewableDetailModal = lazy(() => import('./features/renewables/RenewableDetailModal').then((m) => ({ default: m.RenewableDetailModal })))
+const ClientServiceDetailModal = lazy(() => import('./features/client-services/ClientServiceDetailModal').then((m) => ({ default: m.ClientServiceDetailModal })))
 const InventoryDetailModal = lazy(() => import('./features/inventory/InventoryDetailModal').then((m) => ({ default: m.InventoryDetailModal })))
 
 function PageLoader() {
@@ -279,19 +279,19 @@ function AppContent() {
                   }
                 />
                 <Route
-                  path="/app/renewable-products"
+                  path="/app/products"
                   element={
                     role === 'global_superadmin' && !isSuperadminTenantWorkspace
                       ? <Navigate to="/superadmin/access" replace />
-                      : <RenewableProductsPage />
+                      : <ProductsPage />
                   }
                 />
                 <Route
-                  path="/app/renewables"
+                  path="/app/client-services"
                   element={
                     role === 'global_superadmin' && !isSuperadminTenantWorkspace
                       ? <Navigate to="/superadmin/access" replace />
-                      : <RenewablesPage />
+                      : <ClientServicesPage />
                   }
                 />
                 <Route
@@ -350,12 +350,12 @@ function AppContent() {
           {/* Modals opened from dashboard */}
           {dashboardRenewal && (
             <Suspense fallback={null}>
-              <RenewableDetailModal
-                renewable={dashboardRenewal}
+              <ClientServiceDetailModal
+                clientService={dashboardRenewal}
                 onClose={() => setDashboardRenewal(null)}
                 onUpdated={() => {
                   void queryClient.invalidateQueries({ queryKey: ['dashboard', selectedTenantId] })
-                  void queryClient.invalidateQueries({ queryKey: ['renewables', selectedTenantId] })
+                  void queryClient.invalidateQueries({ queryKey: ['client-services', selectedTenantId] })
                 }}
                 canDelete={role === 'tenant_admin' || role === 'global_superadmin'}
                 canEdit={canEditRecords}

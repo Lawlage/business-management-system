@@ -15,9 +15,9 @@ import { AttachmentList } from '../../components/AttachmentList'
 import FrequencyPicker from '../../components/FrequencyPicker'
 import { formatDate, formatFrequency } from '../../lib/format'
 import { renewableWorkflowOptions } from '../../types'
-import type { Renewable, Department, FrequencyValue } from '../../types'
+import type { ClientService, Department, FrequencyValue } from '../../types'
 
-type RenewableForm = {
+type ClientServiceForm = {
   description: string
   sale_price: string
   workflow_status: string
@@ -26,14 +26,14 @@ type RenewableForm = {
 }
 
 type Props = {
-  renewable: Renewable
+  clientService: ClientService
   onClose: () => void
   onUpdated: () => void
   canEdit: boolean
   canDelete: boolean
 }
 
-export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, canDelete }: Props) {
+export function ClientServiceDetailModal({ clientService, onClose, onUpdated, canEdit, canDelete }: Props) {
   const { authedFetch } = useApi()
   const { selectedTenantId, tenantTimezone } = useTenant()
   const { showNotice } = useNotice()
@@ -42,23 +42,23 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
 
   const [activeTab, setActiveTab] = useState<'details' | 'documents'>('details')
 
-  const [form, setForm] = useState<RenewableForm>({
-    description: renewable.description ?? '',
-    sale_price: renewable.sale_price ?? '0.00',
-    workflow_status: renewable.workflow_status ?? '',
-    notes: renewable.notes ?? '',
-    department_id: renewable.department_id ?? null,
+  const [form, setForm] = useState<ClientServiceForm>({
+    description: clientService.description ?? '',
+    sale_price: clientService.sale_price ?? '0.00',
+    workflow_status: clientService.workflow_status ?? '',
+    notes: clientService.notes ?? '',
+    department_id: clientService.department_id ?? null,
   })
 
   const today = new Date().toISOString().split('T')[0]
 
   const [frequency, setFrequency] = useState<FrequencyValue | null>(
-    renewable.frequency_type && renewable.frequency_value != null
+    clientService.frequency_type && clientService.frequency_value != null
       ? {
-          type: renewable.frequency_type,
-          value: renewable.frequency_value,
-          startDate: renewable.frequency_start_date
-            ? renewable.frequency_start_date.split('T')[0]
+          type: clientService.frequency_type,
+          value: clientService.frequency_value,
+          startDate: clientService.frequency_start_date
+            ? clientService.frequency_start_date.split('T')[0]
             : today,
         }
       : null,
@@ -71,13 +71,13 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
     staleTime: 30_000,
   })
 
-  const setField = <K extends keyof RenewableForm>(key: K, value: RenewableForm[K]) => {
+  const setField = <K extends keyof ClientServiceForm>(key: K, value: ClientServiceForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
   const saveMutation = useMutation({
     mutationFn: () =>
-      authedFetch(`/api/renewables/${renewable.id}`, {
+      authedFetch(`/api/client-services/${clientService.id}`, {
         method: 'PUT',
         body: JSON.stringify({
           ...form,
@@ -88,7 +88,7 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
         tenantScoped: true,
       }),
     onSuccess: () => {
-      showNotice('Renewable updated.')
+      showNotice('Client service updated.')
       onUpdated()
       onClose()
     },
@@ -99,10 +99,10 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
 
   const deleteMutation = useMutation({
     mutationFn: () =>
-      authedFetch(`/api/renewables/${renewable.id}`, { method: 'DELETE', tenantScoped: true }),
+      authedFetch(`/api/client-services/${clientService.id}`, { method: 'DELETE', tenantScoped: true }),
     onSuccess: () => {
-      showNotice('Renewable moved to recycle bin.')
-      void queryClient.invalidateQueries({ queryKey: ['renewables', selectedTenantId] })
+      showNotice('Client service moved to recycle bin.')
+      void queryClient.invalidateQueries({ queryKey: ['client-services', selectedTenantId] })
       onUpdated()
       onClose()
     },
@@ -113,8 +113,8 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
 
   const handleDelete = async () => {
     const confirmed = await confirm({
-      title: 'Delete renewable?',
-      message: 'This will move the renewable to recycle bin.',
+      title: 'Delete client service?',
+      message: 'This will move the client service to recycle bin.',
       confirmLabel: 'Delete',
       variant: 'danger',
     })
@@ -122,11 +122,11 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
   }
 
   const departments = departmentsData ?? []
-  const productName = renewable.renewable_product?.name ?? `Product #${renewable.renewable_product_id}`
+  const productName = clientService.renewable_product?.name ?? `Product #${clientService.renewable_product_id}`
 
   return (
     <Modal
-      title={renewable.description ?? productName}
+      title={clientService.description ?? productName}
       onClose={onClose}
       footer={
         <div className="flex items-center justify-between">
@@ -186,20 +186,20 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
             <label className="block text-xs font-medium uppercase tracking-wide mb-1" style={{ color: 'var(--ui-muted)' }}>
               Client
             </label>
-            <p className="text-sm text-[var(--ui-text)]">{renewable.client?.name ?? '—'}</p>
+            <p className="text-sm text-[var(--ui-text)]">{clientService.client?.name ?? '—'}</p>
           </div>
           <div>
             <label className="block text-xs font-medium uppercase tracking-wide mb-1" style={{ color: 'var(--ui-muted)' }}>
               Status
             </label>
-            <Badge status={renewable.status ?? ''} />
+            <Badge status={clientService.status ?? ''} />
           </div>
           <div>
             <label className="block text-xs font-medium uppercase tracking-wide mb-1" style={{ color: 'var(--ui-muted)' }}>
               Next Due Date
             </label>
             <p className="text-sm text-[var(--ui-text)]">
-              {renewable.next_due_date ? formatDate(renewable.next_due_date, tenantTimezone) : '—'}
+              {clientService.next_due_date ? formatDate(clientService.next_due_date, tenantTimezone) : '—'}
             </p>
           </div>
 
@@ -240,9 +240,9 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
               Renewal Frequency
-              {!canEdit && renewable.frequency_type && (
+              {!canEdit && clientService.frequency_type && (
                 <span className="ml-2 font-normal text-[var(--ui-muted)]">
-                  ({formatFrequency(renewable.frequency_type, renewable.frequency_value)})
+                  ({formatFrequency(clientService.frequency_type, clientService.frequency_value)})
                 </span>
               )}
             </label>
@@ -254,9 +254,9 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
               />
             ) : (
               <p className="text-sm text-[var(--ui-muted)]">
-                {formatFrequency(renewable.frequency_type, renewable.frequency_value)}
-                {renewable.frequency_start_date
-                  ? ` · starting ${formatDate(renewable.frequency_start_date, tenantTimezone)}`
+                {formatFrequency(clientService.frequency_type, clientService.frequency_value)}
+                {clientService.frequency_start_date
+                  ? ` · starting ${formatDate(clientService.frequency_start_date, tenantTimezone)}`
                   : ''}
               </p>
             )}
@@ -288,8 +288,8 @@ export function RenewableDetailModal({ renewable, onClose, onUpdated, canEdit, c
 
       {activeTab === 'documents' && (
         <AttachmentList
-          entityType="renewable"
-          entityId={renewable.id}
+          entityType="client_service"
+          entityId={clientService.id}
           canEdit={canEdit}
         />
       )}

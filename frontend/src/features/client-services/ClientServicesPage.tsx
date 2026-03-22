@@ -13,9 +13,9 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import { LoadMoreButton } from '../../components/LoadMoreButton'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
-import { CreateRenewableModal } from './CreateRenewableModal'
-import { RenewableDetailModal } from './RenewableDetailModal'
-import type { Renewable, PaginatedResponse } from '../../types'
+import { CreateClientServiceModal } from './CreateClientServiceModal'
+import { ClientServiceDetailModal } from './ClientServiceDetailModal'
+import type { ClientService, PaginatedResponse } from '../../types'
 import { renewableWorkflowOptions } from '../../types'
 
 const expiryPresets = [
@@ -35,15 +35,15 @@ const statusOptions = [
   { value: 'Expired', label: 'Expired' },
 ]
 
-function RenewablesContent() {
+function ClientServicesContent() {
   const { selectedTenantId, tenantTimezone, role } = useTenant()
   const { authedFetch } = useApi()
   const queryClient = useQueryClient()
 
   const [page, setPage] = useState(1)
-  const [allRenewables, setAllRenewables] = useState<Renewable[]>([])
+  const [allClientServices, setAllClientServices] = useState<ClientService[]>([])
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [selectedRenewable, setSelectedRenewable] = useState<Renewable | null>(null)
+  const [selectedClientService, setSelectedClientService] = useState<ClientService | null>(null)
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -69,12 +69,12 @@ function RenewablesContent() {
     setFilterClientId('')
     setFilterExpiryPreset('')
     setPage(1)
-    setAllRenewables([])
+    setAllClientServices([])
   }, [selectedTenantId])
 
   useEffect(() => {
     setPage(1)
-    setAllRenewables([])
+    setAllClientServices([])
   }, [debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterExpiryPreset])
 
   const hasActiveFilters = !!(debouncedSearch || filterStatus || filterWorkflow || filterClientId || filterExpiryPreset)
@@ -96,7 +96,7 @@ function RenewablesContent() {
   })
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['renewables', selectedTenantId, debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterExpiryPreset, page],
+    queryKey: ['client-services', selectedTenantId, debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterExpiryPreset, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page) })
       if (debouncedSearch) params.set('search', debouncedSearch)
@@ -104,7 +104,7 @@ function RenewablesContent() {
       if (filterWorkflow) params.set('workflow_status', filterWorkflow)
       if (filterClientId) params.set('client_id', filterClientId)
       if (filterExpiryPreset) params.set('expiry_preset', filterExpiryPreset)
-      return authedFetch<PaginatedResponse<Renewable>>(`/api/renewables?${params.toString()}`, {
+      return authedFetch<PaginatedResponse<ClientService>>(`/api/client-services?${params.toString()}`, {
         tenantScoped: true,
       })
     },
@@ -114,24 +114,24 @@ function RenewablesContent() {
   useEffect(() => {
     if (!data) return
     if (page === 1) {
-      setAllRenewables(data.data)
+      setAllClientServices(data.data)
     } else {
-      setAllRenewables((prev) => [...prev, ...data.data])
+      setAllClientServices((prev) => [...prev, ...data.data])
     }
   }, [data, page])
 
   const hasMore = data ? page < data.last_page : false
 
   const handleCreated = () => {
-    void queryClient.invalidateQueries({ queryKey: ['renewables', selectedTenantId] })
+    void queryClient.invalidateQueries({ queryKey: ['client-services', selectedTenantId] })
     setPage(1)
-    setAllRenewables([])
+    setAllClientServices([])
   }
 
   const handleUpdated = () => {
-    void queryClient.invalidateQueries({ queryKey: ['renewables', selectedTenantId] })
+    void queryClient.invalidateQueries({ queryKey: ['client-services', selectedTenantId] })
     setPage(1)
-    setAllRenewables([])
+    setAllClientServices([])
   }
 
   const isFirstLoad = isLoading && page === 1
@@ -139,11 +139,11 @@ function RenewablesContent() {
   return (
     <Card>
       <PageHeader
-        title="Renewables"
+        title="Client Services"
         action={
           canCreate ? (
             <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
-              + Apply Renewable
+              + Apply Client Service
             </Button>
           ) : undefined
         }
@@ -151,7 +151,7 @@ function RenewablesContent() {
 
       <div className="mb-3">
         <Input
-          placeholder="Search renewables..."
+          placeholder="Search client services..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -202,7 +202,7 @@ function RenewablesContent() {
         </Button>
       </div>
 
-      {allRenewables.length > 0 && (
+      {allClientServices.length > 0 && (
         <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
           <span>Description</span>
           <span>Client</span>
@@ -216,23 +216,23 @@ function RenewablesContent() {
       <div className="space-y-2">
         {isFirstLoad ? (
           Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={6} />)
-        ) : allRenewables.length === 0 ? (
+        ) : allClientServices.length === 0 ? (
           <EmptyState
-            message={hasActiveFilters ? 'No renewables match your filters.' : 'No renewables found. Apply a renewable product to a client to get started.'}
+            message={hasActiveFilters ? 'No client services match your filters.' : 'No client services found. Apply a product to a client to get started.'}
             action={
               canCreate && !hasActiveFilters ? (
                 <Button onClick={() => setIsCreateOpen(true)} variant="primary" size="sm">
-                  Apply Renewable
+                  Apply Client Service
                 </Button>
               ) : undefined
             }
           />
         ) : (
-          allRenewables.map((r) => (
+          allClientServices.map((r) => (
             <button
               key={r.id}
               className="app-inner-box w-full rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60"
-              onClick={() => setSelectedRenewable(r)}
+              onClick={() => setSelectedClientService(r)}
             >
               <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_1fr]">
                 <span className="font-medium text-sm text-[var(--ui-text)] truncate">
@@ -262,7 +262,7 @@ function RenewablesContent() {
         )}
       </div>
 
-      {!isFirstLoad && allRenewables.length > 0 && (
+      {!isFirstLoad && allClientServices.length > 0 && (
         <LoadMoreButton
           hasMore={hasMore}
           isLoading={isFetching && !isFirstLoad}
@@ -271,16 +271,16 @@ function RenewablesContent() {
       )}
 
       {isCreateOpen && (
-        <CreateRenewableModal
+        <CreateClientServiceModal
           onClose={() => setIsCreateOpen(false)}
           onCreated={handleCreated}
         />
       )}
 
-      {selectedRenewable && (
-        <RenewableDetailModal
-          renewable={selectedRenewable}
-          onClose={() => setSelectedRenewable(null)}
+      {selectedClientService && (
+        <ClientServiceDetailModal
+          clientService={selectedClientService}
+          onClose={() => setSelectedClientService(null)}
           onUpdated={handleUpdated}
           canEdit={canEdit}
           canDelete={canDelete}
@@ -290,10 +290,10 @@ function RenewablesContent() {
   )
 }
 
-export function RenewablesPage() {
+export function ClientServicesPage() {
   return (
     <ErrorBoundary>
-      <RenewablesContent />
+      <ClientServicesContent />
     </ErrorBoundary>
   )
 }

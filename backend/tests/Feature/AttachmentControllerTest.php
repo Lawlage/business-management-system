@@ -25,7 +25,7 @@ class AttachmentControllerTest extends TestCase
     {
         [$user, $tenant] = $this->createTenantAdminContext();
 
-        $this->actingAs($user)->getJson('/api/attachments/renewal/1', $this->tenantHeaders($tenant))
+        $this->actingAs($user)->getJson('/api/attachments/client_service/1', $this->tenantHeaders($tenant))
             ->assertOk()
             ->assertJsonStructure([]);
     }
@@ -49,7 +49,7 @@ class AttachmentControllerTest extends TestCase
 
         $response = $this->actingAs($user)->postJson('/api/attachments', [
             'file' => $file,
-            'entity_type' => 'renewal',
+            'entity_type' => 'client_service',
             'entity_id' => 1,
         ], $this->tenantHeaders($tenant));
 
@@ -66,7 +66,7 @@ class AttachmentControllerTest extends TestCase
 
         $this->actingAs($user)->postJson('/api/attachments', [
             'file' => $file,
-            'entity_type' => 'renewal',
+            'entity_type' => 'client_service',
             'entity_id' => 1,
         ], $this->tenantHeaders($tenant))->assertForbidden();
     }
@@ -124,7 +124,7 @@ class AttachmentControllerTest extends TestCase
 
         $attachment = $this->actingAs($admin)->postJson('/api/attachments', [
             'file' => $file,
-            'entity_type' => 'renewal',
+            'entity_type' => 'client_service',
             'entity_id' => 1,
         ], $this->tenantHeaders($tenant))->json();
 

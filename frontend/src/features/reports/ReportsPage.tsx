@@ -12,7 +12,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { formatDate } from '../../lib/format'
-import { RenewableDetailModal } from '../renewables/RenewableDetailModal'
+import { ClientServiceDetailModal } from '../client-services/ClientServiceDetailModal'
 import { InventoryDetailModal } from '../inventory/InventoryDetailModal'
 import type { Renewable, StockAllocation, SlaAllocation, Client, InventoryItem } from '../../types'
 
@@ -719,8 +719,8 @@ function ReportsContent() {
 
       {/* Detail modals for clickable rows */}
       {selectedRenewal && (
-        <RenewableDetailModal
-          renewable={selectedRenewal}
+        <ClientServiceDetailModal
+          clientService={selectedRenewal}
           onClose={() => setSelectedRenewal(null)}
           onUpdated={() => setSelectedRenewal(null)}
           canDelete={canDelete}
