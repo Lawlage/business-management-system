@@ -508,7 +508,7 @@ function ClientDetailContent() {
                   className="app-inner-box w-full flex items-center justify-between gap-3 rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105"
                   onClick={() => setActiveModal({ type: 'view-renewable', renewable: r })}
                 >
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-[var(--ui-text)]">
                       {r.description ?? r.renewable_product?.name ?? `Service #${r.id}`}
                     </p>
@@ -516,9 +516,17 @@ function ClientDetailContent() {
                       {r.renewable_product?.name ?? '—'}
                       {r.next_due_date ? ` · Due ${formatDate(r.next_due_date, tenantTimezone)}` : ''}
                       {r.service_type === 'one_off' ? ' · One-off' : ''}
+                      {(r.quantity ?? 1) > 1 ? ` · Qty: ${r.quantity}` : ''}
                     </p>
                   </div>
-                  <Badge status={r.status ?? ''} />
+                  <div className="flex items-center gap-3 shrink-0">
+                    {r.sale_price && (
+                      <span className="text-sm text-[var(--ui-muted)]">
+                        ${((r.quantity ?? 1) * parseFloat(r.sale_price)).toFixed(2)}
+                      </span>
+                    )}
+                    <Badge status={r.status ?? ''} />
+                  </div>
                 </button>
               ))
             )}

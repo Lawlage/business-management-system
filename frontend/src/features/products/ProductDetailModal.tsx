@@ -327,6 +327,7 @@ export function ProductDetailModal({ product, onClose, onUpdated, canEdit, canDe
                   className="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-input-bg)] px-3 py-2 text-sm text-[var(--ui-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60"
                   value={profitEdit}
                   onChange={(e) => setProfitEdit(e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   onBlur={handleProfitBlur}
                   autoFocus
                 />

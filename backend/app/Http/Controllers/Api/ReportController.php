@@ -21,17 +21,23 @@ class ReportController extends Controller
         $data = $this->reportService->renewalStatusSummary();
 
         return $this->respondWithFormat($request, $data, 'renewable-status-summary',
-            ['Status', 'Description', 'Product', 'Category', 'Client', 'Next Due Date'],
+            ['Status', 'Description', 'Product', 'Category', 'Client', 'Qty', 'Sale Price', 'Total', 'Next Due Date'],
             function (array $data): array {
                 $rows = [];
                 foreach ($data as $group) {
                     foreach ($group['renewables'] as $r) {
+                        $qty = (int) ($r['quantity'] ?? 1);
+                        $price = $r['sale_price'] ?? null;
+                        $total = $price !== null ? number_format($qty * (float) $price, 2) : '';
                         $rows[] = [
                             $group['status'],
                             $r['description'],
                             $r['renewable_product']['name'] ?? '',
                             $r['renewable_product']['category'] ?? '',
                             $r['client']['name'] ?? '',
+                            $qty,
+                            $price ?? '',
+                            $total,
                             substr((string) ($r['next_due_date'] ?? ''), 0, 10),
                         ];
                     }
@@ -47,17 +53,23 @@ class ReportController extends Controller
         $data = $this->reportService->renewalsByClient($clientId);
 
         return $this->respondWithFormat($request, $data, 'renewables-by-client',
-            ['Client', 'Description', 'Product', 'Status', 'Category', 'Next Due Date', 'Workflow Status'],
+            ['Client', 'Description', 'Product', 'Status', 'Category', 'Qty', 'Sale Price', 'Total', 'Next Due Date', 'Workflow Status'],
             function (array $data): array {
                 $rows = [];
                 foreach ($data as $group) {
                     foreach ($group['renewables'] as $r) {
+                        $qty = (int) ($r['quantity'] ?? 1);
+                        $price = $r['sale_price'] ?? null;
+                        $total = $price !== null ? number_format($qty * (float) $price, 2) : '';
                         $rows[] = [
                             $group['client_name'],
                             $r['description'],
                             $r['renewable_product']['name'] ?? '',
                             $r['status'] ?? '',
                             $r['renewable_product']['category'] ?? '',
+                            $qty,
+                            $price ?? '',
+                            $total,
                             substr((string) ($r['next_due_date'] ?? ''), 0, 10),
                             $r['workflow_status'] ?? '',
                         ];
@@ -80,15 +92,23 @@ class ReportController extends Controller
         $data = $this->reportService->renewalsExpiring($from, $to);
 
         return $this->respondWithFormat($request, $data, 'renewables-expiring',
-            ['Description', 'Product', 'Client', 'Status', 'Category', 'Next Due Date'],
-            fn (array $data): array => array_map(fn ($r) => [
-                $r['description'],
-                $r['renewable_product']['name'] ?? '',
-                $r['client']['name'] ?? '',
-                $r['status'] ?? '',
-                $r['renewable_product']['category'] ?? '',
-                substr((string) ($r['next_due_date'] ?? ''), 0, 10),
-            ], $data),
+            ['Description', 'Product', 'Client', 'Status', 'Category', 'Qty', 'Sale Price', 'Total', 'Next Due Date'],
+            fn (array $data): array => array_map(function ($r) {
+                $qty = (int) ($r['quantity'] ?? 1);
+                $price = $r['sale_price'] ?? null;
+                $total = $price !== null ? number_format($qty * (float) $price, 2) : '';
+                return [
+                    $r['description'],
+                    $r['renewable_product']['name'] ?? '',
+                    $r['client']['name'] ?? '',
+                    $r['status'] ?? '',
+                    $r['renewable_product']['category'] ?? '',
+                    $qty,
+                    $price ?? '',
+                    $total,
+                    substr((string) ($r['next_due_date'] ?? ''), 0, 10),
+                ];
+            }, $data),
         );
     }
 
@@ -170,14 +190,18 @@ class ReportController extends Controller
         $data = $this->reportService->clientPortfolio($clientId);
 
         return $this->respondWithFormat($request, $data, 'client-portfolio-' . $clientId,
-            ['Type', 'Description / Item', 'Status', 'Date', 'Quantity', 'Unit Price'],
+            ['Type', 'Description / Item', 'Status', 'Date', 'Quantity', 'Unit Price', 'Total'],
             function (array $data): array {
                 $rows = [];
                 foreach ($data['renewables'] as $r) {
-                    $rows[] = ['renewable', $r['description'], $r['status'] ?? '', substr((string) ($r['next_due_date'] ?? ''), 0, 10), '', ''];
+                    $qty = (int) ($r['quantity'] ?? 1);
+                    $price = $r['sale_price'] ?? null;
+                    $total = $price !== null ? number_format($qty * (float) $price, 2) : '';
+                    $rows[] = ['renewable', $r['description'], $r['status'] ?? '', substr((string) ($r['next_due_date'] ?? ''), 0, 10), $qty, $price ?? '', $total];
                 }
                 foreach ($data['allocations'] as $a) {
-                    $rows[] = ['allocation', $a['inventory_item']['name'] ?? '', $a['status'], substr((string) $a['created_at'], 0, 10), $a['quantity'], $a['unit_price'] ?? ''];
+                    $total = $a['unit_price'] ? number_format($a['quantity'] * (float) $a['unit_price'], 2) : '';
+                    $rows[] = ['allocation', $a['inventory_item']['name'] ?? '', $a['status'], substr((string) $a['created_at'], 0, 10), $a['quantity'], $a['unit_price'] ?? '', $total];
                 }
                 return $rows;
             },

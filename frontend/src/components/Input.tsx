@@ -5,7 +5,7 @@ type InputProps = {
   required?: boolean
 } & React.InputHTMLAttributes<HTMLInputElement>
 
-export function Input({ label, error, hint, required, id, className = '', ...rest }: InputProps) {
+export function Input({ label, error, hint, required, id, className = '', onFocus, ...rest }: InputProps) {
   const inputId = id ?? (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined)
 
   const inputClasses = [
@@ -15,6 +15,11 @@ export function Input({ label, error, hint, required, id, className = '', ...res
   ]
     .filter(Boolean)
     .join(' ')
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (rest.type === 'number') e.target.select()
+    onFocus?.(e)
+  }
 
   return (
     <div>
@@ -27,7 +32,7 @@ export function Input({ label, error, hint, required, id, className = '', ...res
           {required && <span className="ml-0.5 text-red-400">*</span>}
         </label>
       )}
-      <input id={inputId} required={required} className={inputClasses} {...rest} />
+      <input id={inputId} required={required} className={inputClasses} onFocus={handleFocus} {...rest} />
       {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
       {!error && hint && <p className="mt-1 text-xs text-[var(--ui-muted)]">{hint}</p>}
     </div>

@@ -96,6 +96,7 @@ export type Renewable = {
   department?: { id: number; name: string } | null
   workflow_status?: string | null
   sale_price?: string | null
+  quantity?: number
   price_override?: boolean
   invoice_date?: string | null
   frequency_type?: FrequencyType | null
@@ -313,6 +314,7 @@ export const renewableDefaults = {
   department_id: null as number | null,
   workflow_status: '',
   sale_price: '0.00',
+  quantity: 1,
   notes: '',
 }
 

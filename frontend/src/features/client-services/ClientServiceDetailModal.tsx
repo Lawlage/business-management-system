@@ -22,6 +22,7 @@ type PriceMode = 'value' | 'margin'
 type ClientServiceForm = {
   description: string
   sale_price: string
+  quantity: number
   price_override: boolean
   invoice_date: string
   workflow_status: string
@@ -49,6 +50,7 @@ export function ClientServiceDetailModal({ clientService, onClose, onUpdated, ca
   const [form, setForm] = useState<ClientServiceForm>({
     description: clientService.description ?? '',
     sale_price: clientService.sale_price ?? '',
+    quantity: clientService.quantity ?? 1,
     price_override: clientService.price_override ?? false,
     invoice_date: clientService.invoice_date ? clientService.invoice_date.split('T')[0] : '',
     workflow_status: clientService.workflow_status ?? '',
@@ -127,6 +129,7 @@ export function ClientServiceDetailModal({ clientService, onClose, onUpdated, ca
         body: JSON.stringify({
           description: form.description || null,
           sale_price: form.sale_price || null,
+          quantity: form.quantity,
           price_override: form.price_override,
           invoice_date: form.invoice_date || null,
           workflow_status: form.workflow_status || null,
@@ -360,6 +363,7 @@ export function ClientServiceDetailModal({ clientService, onClose, onUpdated, ca
                   className="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-input-bg)] px-3 py-2 text-sm text-[var(--ui-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60"
                   value={profitEdit}
                   onChange={(e) => setProfitEdit(e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   onBlur={handleProfitBlur}
                   autoFocus
                 />
@@ -404,6 +408,26 @@ export function ClientServiceDetailModal({ clientService, onClose, onUpdated, ca
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Quantity + Total */}
+          <div>
+            <Input
+              label="Quantity"
+              type="number"
+              min={1}
+              value={String(form.quantity)}
+              onChange={(e) => setField('quantity', Math.max(1, parseInt(e.target.value) || 1))}
+              disabled={!canEdit}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
+              Total
+            </label>
+            <p className="text-sm text-[var(--ui-text)] px-3 py-2 rounded border border-[var(--ui-border)] bg-[var(--ui-input-bg)]">
+              {form.sale_price ? `$${(form.quantity * parseFloat(form.sale_price)).toFixed(2)}` : '—'}
+            </p>
           </div>
 
           <div>

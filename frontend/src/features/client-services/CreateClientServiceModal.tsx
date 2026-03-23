@@ -45,6 +45,7 @@ export function CreateClientServiceModal({
   const [priceMode, setPriceMode] = useState<PriceMode>('value')
   const [marginPct, setMarginPct] = useState('')
   const [profitEdit, setProfitEdit] = useState<string | null>(null)
+  const [quantity, setQuantity] = useState(1)
   const [invoiceDate, setInvoiceDate] = useState('')
   const [workflowStatus, setWorkflowStatus] = useState('')
   const [notes, setNotes] = useState('')
@@ -167,6 +168,7 @@ export function CreateClientServiceModal({
           client_id: clientId,
           department_id: departmentId || null,
           sale_price: salePrice || null,
+          quantity,
           price_override: priceOverride,
           invoice_date: invoiceDate || null,
           workflow_status: workflowStatus || null,
@@ -342,6 +344,7 @@ export function CreateClientServiceModal({
                   className="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-input-bg)] px-3 py-2 text-sm text-[var(--ui-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60"
                   value={profitEdit}
                   onChange={(e) => setProfitEdit(e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   onBlur={handleProfitBlur}
                   autoFocus
                 />
@@ -379,6 +382,25 @@ export function CreateClientServiceModal({
             </div>
           </div>
         )}
+
+        {/* Quantity + Total */}
+        <div>
+          <Input
+            label="Quantity"
+            type="number"
+            min={1}
+            value={String(quantity)}
+            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
+            Total
+          </label>
+          <p className="text-sm text-[var(--ui-text)] px-3 py-2 rounded border border-[var(--ui-border)] bg-[var(--ui-input-bg)]">
+            {salePrice ? `$${(quantity * parseFloat(salePrice)).toFixed(2)}` : '—'}
+          </p>
+        </div>
 
         <Input
           label="Description"

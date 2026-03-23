@@ -202,6 +202,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
                       [item.id]: e.target.value,
                     }))
                   }
+                  onFocus={(e) => e.target.select()}
                   className="w-16 rounded-md border border-[var(--ui-border)] px-2 py-1.5 text-sm app-panel"
                   aria-label="Adjustment quantity"
                 />

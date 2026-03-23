@@ -255,19 +255,21 @@ function ClientServicesContent() {
       )}
 
       {allClientServices.length > 0 && (
-        <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+        <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_0.5fr_0.8fr_0.8fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
           <span>Description</span>
           <span>Client</span>
           <span>Product</span>
           <span>Next Due</span>
           <span>Status / Workflow</span>
+          <span>Qty</span>
           <span>Sale Price</span>
+          <span>Total</span>
         </div>
       )}
 
       <div className="space-y-2">
         {isFirstLoad ? (
-          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={6} />)
+          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={8} />)
         ) : allClientServices.length === 0 ? (
           <EmptyState
             message={hasActiveFilters ? 'No client services match your filters.' : 'No client services found. Apply a product to a client to get started.'}
@@ -297,7 +299,7 @@ function ClientServicesContent() {
                 ].join(' ')}
                 onClick={() => setSelectedClientService(r)}
               >
-                <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_1fr]">
+                <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_0.5fr_0.8fr_0.8fr]">
                   <span className="font-medium text-sm text-[var(--ui-text)] truncate">
                     {r.description ?? r.renewable_product?.name ?? '—'}
                     {belowCost && (
@@ -320,7 +322,13 @@ function ClientServicesContent() {
                     )}
                   </div>
                   <span className="text-sm text-[var(--ui-muted)]">
+                    {r.quantity != null && r.quantity > 1 ? r.quantity : '1'}
+                  </span>
+                  <span className="text-sm text-[var(--ui-muted)]">
                     {r.sale_price ? `$${r.sale_price}` : '—'}
+                  </span>
+                  <span className="text-sm text-[var(--ui-muted)]">
+                    {r.sale_price ? `$${((r.quantity ?? 1) * parseFloat(r.sale_price)).toFixed(2)}` : '—'}
                   </span>
                 </div>
               </button>

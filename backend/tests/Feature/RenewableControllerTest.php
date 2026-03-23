@@ -627,4 +627,73 @@ class RenewableControllerTest extends TestCase
         $this->assertEquals('75.00', $item['renewable_product']['cost_price']);
         $this->assertEquals('125.00', $item['renewable_product']['sale_price']);
     }
+
+    // ── Quantity ──────────────────────────────────────────────────────────────
+
+    public function test_create_defaults_quantity_to_one(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $product = $this->makeProduct($user, $tenant);
+        $clientId = $this->createClient($user, $tenant);
+        $renewable = $this->makeRenewable($user, $tenant, $product['id'], $clientId);
+
+        $this->assertEquals(1, $renewable['quantity']);
+    }
+
+    public function test_create_with_explicit_quantity(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $product = $this->makeProduct($user, $tenant, ['sale_price' => '20.00']);
+        $clientId = $this->createClient($user, $tenant);
+        $renewable = $this->makeRenewable($user, $tenant, $product['id'], $clientId, ['quantity' => 5]);
+
+        $this->assertEquals(5, $renewable['quantity']);
+    }
+
+    public function test_update_quantity(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $product = $this->makeProduct($user, $tenant);
+        $clientId = $this->createClient($user, $tenant);
+        $renewable = $this->makeRenewable($user, $tenant, $product['id'], $clientId, ['quantity' => 2]);
+
+        $updated = $this->actingAs($user)
+            ->putJson("/api/client-services/{$renewable['id']}", ['quantity' => 10], $this->tenantHeaders($tenant))
+            ->assertOk()
+            ->json();
+
+        $this->assertEquals(10, $updated['quantity']);
+    }
+
+    public function test_create_rejects_quantity_below_one(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $product = $this->makeProduct($user, $tenant);
+        $clientId = $this->createClient($user, $tenant);
+
+        $this->actingAs($user)
+            ->postJson('/api/client-services', [
+                'renewable_product_id' => $product['id'],
+                'client_id'            => $clientId,
+                'quantity'             => 0,
+            ], $this->tenantHeaders($tenant))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['quantity']);
+    }
+
+    public function test_create_rejects_quantity_exceeding_max(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+        $product = $this->makeProduct($user, $tenant);
+        $clientId = $this->createClient($user, $tenant);
+
+        $this->actingAs($user)
+            ->postJson('/api/client-services', [
+                'renewable_product_id' => $product['id'],
+                'client_id'            => $clientId,
+                'quantity'             => 1000000,
+            ], $this->tenantHeaders($tenant))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['quantity']);
+    }
 }
