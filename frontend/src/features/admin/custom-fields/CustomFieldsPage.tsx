@@ -19,7 +19,6 @@ import { Modal } from '../../../components/Modal'
 const ENTITY_TYPE_OPTIONS = [
   { value: 'renewal', label: 'Renewal' },
   { value: 'inventory', label: 'Inventory' },
-  { value: 'sla_item', label: 'SLA Item' },
 ]
 
 const fieldTypeLabels: Record<string, string> = {

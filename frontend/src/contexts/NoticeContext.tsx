@@ -28,8 +28,9 @@ export function NoticeProvider({ children }: { children: ReactNode }) {
       const id = nextId.current++
       setNotices((prev) => [...prev, { id, message, type }])
 
-      // All notices auto-dismiss after 10 seconds
-      window.setTimeout(() => dismissNotice(id), 10000)
+      // Auto-dismiss: success = 5s, error = 15s
+      const duration = type === 'error' ? 15000 : 5000
+      window.setTimeout(() => dismissNotice(id), duration)
     },
     [dismissNotice],
   )

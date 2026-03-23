@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
+import { useDebounce } from '../../hooks/useDebounce'
 import { useTenant } from '../../contexts/TenantContext'
 import { Card } from '../../components/Card'
 import { PageHeader } from '../../components/PageHeader'
@@ -24,20 +25,13 @@ function ClientsContent() {
   const [allClients, setAllClients] = useState<Client[]>([])
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
 
   const canCreate = role !== 'standard_user'
-
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
 
   // Reset on tenant switch
   useEffect(() => {
     setSearch('')
-    setDebouncedSearch('')
     setPage(1)
     setAllClients([])
   }, [selectedTenantId])
@@ -48,7 +42,7 @@ function ClientsContent() {
     setAllClients([])
   }, [debouncedSearch])
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['clients', selectedTenantId, debouncedSearch, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page) })
@@ -101,9 +95,15 @@ function ClientsContent() {
         />
       </div>
 
+      {isError && (
+        <div className="mb-4 rounded-md border border-red-700 bg-red-950/60 p-3 text-sm text-red-300">
+          {(error as { message?: string })?.message ?? 'Failed to load data.'}
+        </div>
+      )}
+
       {/* Table header -- hidden on mobile */}
       {allClients.length > 0 && (
-        <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.5fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+        <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.5fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
           <span>Name</span>
           <span>Contact Name</span>
           <span>Email</span>

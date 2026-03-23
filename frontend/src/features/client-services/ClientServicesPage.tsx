@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
+import { useDebounce } from '../../hooks/useDebounce'
 import { useTenant } from '../../contexts/TenantContext'
 import { formatDate } from '../../lib/format'
 import { Card } from '../../components/Card'
 import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/Button'
 import { Badge } from '../../components/Badge'
+import { StatusLegend } from '../../components/StatusLegend'
 import { Input } from '../../components/Input'
 import { Select } from '../../components/Select'
 import { EmptyState } from '../../components/EmptyState'
@@ -65,7 +67,7 @@ function ClientServicesContent() {
   const [selectedClientService, setSelectedClientService] = useState<ClientService | null>(null)
 
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
   const [filterStatus, setFilterStatus] = useState('')
   const [filterWorkflow, setFilterWorkflow] = useState('')
   const [filterClientId, setFilterClientId] = useState('')
@@ -75,17 +77,11 @@ function ClientServicesContent() {
   const canEdit = role !== 'standard_user'
   const canDelete = role === 'tenant_admin' || role === 'global_superadmin'
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
-
   // Reset all filters when the tenant changes (not on initial load: null → 'id')
   const prevTenantId = useRef<string | null | undefined>(undefined)
   useEffect(() => {
     if (prevTenantId.current && prevTenantId.current !== selectedTenantId) {
       setSearch('')
-      setDebouncedSearch('')
       setFilterStatus('')
       setFilterWorkflow('')
       setFilterClientId('')
@@ -110,7 +106,6 @@ function ClientServicesContent() {
 
   const clearFilters = () => {
     setSearch('')
-    setDebouncedSearch('')
     setFilterStatus('')
     setFilterWorkflow('')
     setFilterClientId('')
@@ -132,7 +127,7 @@ function ClientServicesContent() {
     staleTime: 30_000,
   })
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['client-services', selectedTenantId, debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterProductId, filterExpiryPreset, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page) })
@@ -180,11 +175,14 @@ function ClientServicesContent() {
         title="Client Services"
         description="Track products applied to clients, renewal schedules, pricing, and workflow status."
         action={
-          canCreate ? (
-            <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
-              + Apply Client Service
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-3">
+            <StatusLegend statuses={['No action needed', 'Upcoming', 'Action Required', 'Urgent', 'Expired']} />
+            {canCreate && (
+              <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
+                + Apply Client Service
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -250,8 +248,14 @@ function ClientServicesContent() {
         </Button>
       </div>
 
+      {isError && (
+        <div className="mb-4 rounded-md border border-red-700 bg-red-950/60 p-3 text-sm text-red-300">
+          {(error as { message?: string })?.message ?? 'Failed to load data.'}
+        </div>
+      )}
+
       {allClientServices.length > 0 && (
-        <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+        <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
           <span>Description</span>
           <span>Client</span>
           <span>Product</span>

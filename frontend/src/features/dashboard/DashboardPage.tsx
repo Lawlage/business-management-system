@@ -61,7 +61,7 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
 
   const { data: clientsData } = useQuery<PaginatedResponse<Client>>({
     queryKey: ['clients-list', selectedTenantId],
-    queryFn: () => authedFetch<PaginatedResponse<Client>>('/api/clients?per_page=200', { tenantScoped: true }),
+    queryFn: () => authedFetch<PaginatedResponse<Client>>('/api/clients?per_page=500', { tenantScoped: true }),
     enabled: !!selectedTenantId,
     staleTime: 60_000,
   })

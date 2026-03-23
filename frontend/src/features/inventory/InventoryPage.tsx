@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
+import { useDebounce } from '../../hooks/useDebounce'
 import { useTenant } from '../../contexts/TenantContext'
 import { useNotice } from '../../contexts/NoticeContext'
 import { formatDate } from '../../lib/format'
@@ -30,20 +31,13 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [adjustQtys, setAdjustQtys] = useState<Record<number, string | number>>({})
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
 
   const canCreate = role !== 'standard_user'
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
 
   // Reset on tenant switch
   useEffect(() => {
     setSearch('')
-    setDebouncedSearch('')
     setPage(1)
     setAllItems([])
   }, [selectedTenantId])
@@ -54,7 +48,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
     setAllItems([])
   }, [debouncedSearch])
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['inventory', selectedTenantId, debouncedSearch, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page) })
@@ -141,6 +135,12 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+
+      {isError && (
+        <div className="mb-4 rounded-md border border-red-700 bg-red-950/60 p-3 text-sm text-red-300">
+          {(error as { message?: string })?.message ?? 'Failed to load data.'}
+        </div>
+      )}
 
       {/* Table header -- hidden on mobile */}
       {allItems.length > 0 && (

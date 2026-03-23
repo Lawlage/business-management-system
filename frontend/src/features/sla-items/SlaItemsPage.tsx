@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
+import { useDebounce } from '../../hooks/useDebounce'
 import { useTenant } from '../../contexts/TenantContext'
 import { Card } from '../../components/Card'
 import { PageHeader } from '../../components/PageHeader'
@@ -22,16 +23,11 @@ function SlaItemsContent() {
   const [page, setPage] = useState(1)
   const [allItems, setAllItems] = useState<SlaItem[]>([])
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<SlaItem | null>(null)
 
   const canCreate = role !== 'standard_user'
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
 
   useEffect(() => {
     setPage(1)
@@ -43,7 +39,7 @@ function SlaItemsContent() {
     setAllItems([])
   }, [debouncedSearch])
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['sla-items', selectedTenantId, debouncedSearch, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page) })
@@ -102,8 +98,14 @@ function SlaItemsContent() {
         />
       </div>
 
+      {isError && (
+        <div className="mb-4 rounded-md border border-red-700 bg-red-950/60 p-3 text-sm text-red-300">
+          {(error as { message?: string })?.message ?? 'Failed to load data.'}
+        </div>
+      )}
+
       {allItems.length > 0 && (
-        <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+        <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
           <span>Name</span>
           <span>SKU</span>
           <span>Tier</span>

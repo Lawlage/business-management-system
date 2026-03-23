@@ -9,6 +9,7 @@ type Props = {
   error?: string
   disabled?: boolean
   className?: string
+  currencySymbol?: string
 }
 
 /**
@@ -18,7 +19,7 @@ type Props = {
  * - On blur: if the field is empty or invalid, resets to "0.00".
  * - Supports full backspace/delete — the field goes blank, then defaults on blur.
  */
-export function CurrencyInput({ id, label, required, value, onChange, error, disabled, className }: Props) {
+export function CurrencyInput({ id, label, required, value, onChange, error, disabled, className, currencySymbol = '$' }: Props) {
   // Track the raw string the user is typing (may be blank during editing)
   const [rawValue, setRawValue] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -93,7 +94,7 @@ export function CurrencyInput({ id, label, required, value, onChange, error, dis
           className="absolute left-3 top-1/2 -translate-y-1/2 text-sm select-none pointer-events-none"
           style={{ color: 'var(--ui-text-muted, var(--ui-text))' }}
         >
-          $
+          {currencySymbol}
         </span>
         <input
           ref={inputRef}

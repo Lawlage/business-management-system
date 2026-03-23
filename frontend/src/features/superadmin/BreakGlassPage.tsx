@@ -162,6 +162,7 @@ export function BreakGlassPage() {
             variant="secondary"
             onClick={() => startMutation.mutate()}
             isLoading={startMutation.isPending}
+            disabled={!breakGlassConfirmed || !selectedTenantId || !breakGlassReason}
           >
             Start Break-Glass
           </Button>
