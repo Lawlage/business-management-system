@@ -46,7 +46,15 @@ function ClientDetailContent() {
   const confirm = useConfirm()
   const queryClient = useQueryClient()
 
-  const [activeTab, setActiveTab] = useState<'details' | 'services' | 'stock' | 'documents'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'services' | 'stock' | 'documents'>(() => {
+    const saved = sessionStorage.getItem('clientDetailTab')
+    if (saved === 'services' || saved === 'stock' || saved === 'documents') return saved
+    return 'details'
+  })
+  const handleTabChange = (tab: typeof activeTab) => {
+    setActiveTab(tab)
+    sessionStorage.setItem('clientDetailTab', tab)
+  }
   const [isEditing, setIsEditing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeModal, setActiveModal] = useState<ActiveModal>(null)
@@ -278,7 +286,7 @@ function ClientDetailContent() {
                   {canEdit && (
                     <button
                       className="w-full px-4 py-2 text-left text-sm text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition"
-                      onClick={() => { setMenuOpen(false); setActiveTab('services'); setActiveModal({ type: 'create-renewable' }) }}
+                      onClick={() => { setMenuOpen(false); handleTabChange('services'); setActiveModal({ type: 'create-renewable' }) }}
                     >
                       Apply Client Service
                     </button>
@@ -295,7 +303,7 @@ function ClientDetailContent() {
                     className="w-full px-4 py-2 text-left text-sm text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition"
                     onClick={() => {
                       setMenuOpen(false)
-                      setActiveTab('documents')
+                      handleTabChange('documents')
                       setTimeout(() => fileInputRef.current?.click(), 50)
                     }}
                   >
@@ -331,7 +339,7 @@ function ClientDetailContent() {
           {(['details', 'services', 'stock', 'documents'] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleTabChange(tab)}
               className={[
                 'px-4 py-2 text-sm font-medium capitalize transition',
                 activeTab === tab

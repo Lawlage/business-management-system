@@ -17,6 +17,8 @@ import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
 import { NoticeToast } from './components/NoticeToast'
 import { ConfirmDialog } from './components/ConfirmDialog'
+import { SessionTimeoutWarning } from './components/SessionTimeoutWarning'
+import { KeyboardShortcutsOverlay } from './components/KeyboardShortcutsOverlay'
 import { SkeletonRow } from './components/SkeletonRow'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
@@ -83,6 +85,16 @@ function AppContent() {
 
   // Sidebar open/close (mobile drawer)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Sidebar collapsed state (desktop icon-only mode)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true')
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem('sidebarCollapsed', String(next))
+      return next
+    })
+  }
 
   // Close drawer whenever route changes
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
@@ -234,10 +246,12 @@ function AppContent() {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           onLinkHover={prefetchRoute}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={toggleSidebarCollapsed}
         />
 
         <main className="min-w-0 flex-1 overflow-y-auto overflow-x-auto p-4 md:p-6">
-          <div className="min-w-max md:min-w-0 space-y-4">
+          <div key={location.pathname} className="page-enter min-w-max md:min-w-0 space-y-4">
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
@@ -373,6 +387,8 @@ function AppContent() {
 
       <NoticeToast />
       <ConfirmDialog />
+      <SessionTimeoutWarning />
+      <KeyboardShortcutsOverlay />
     </div>
   )
 }

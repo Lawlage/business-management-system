@@ -15,6 +15,8 @@ import {
   ArrowRightLeft,
   BarChart2,
   FolderCog,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react'
 import type { AppRole } from '../types'
 
@@ -24,6 +26,8 @@ type SidebarProps = {
   isOpen: boolean
   onClose: () => void
   onLinkHover?: (to: string) => void
+  collapsed?: boolean
+  onToggleCollapsed?: () => void
 }
 
 type NavLink = {
@@ -32,7 +36,7 @@ type NavLink = {
   icon: React.ReactNode
 }
 
-export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace, isOpen, onClose, onLinkHover }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace, isOpen, onClose, onLinkHover, collapsed = false, onToggleCollapsed }: SidebarProps) {
   const location = useLocation()
 
   const isActive = (to: string) => location.pathname === to
@@ -40,6 +44,7 @@ export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace
   const linkClass = (to: string) =>
     [
       'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition hover:bg-[var(--ui-inner-bg)] app-button',
+      collapsed ? 'justify-center' : '',
       isActive(to) ? 'font-semibold text-[var(--ui-button-bg)]' : '',
     ]
       .filter(Boolean)
@@ -83,6 +88,31 @@ export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace
     { to: '/superadmin/access', label: 'Tenant Access', icon: <Users size={16} /> },
   ]
 
+  function renderSection(title: string, links: NavLink[]) {
+    return (
+      <div className="mb-4">
+        {!collapsed && (
+          <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">{title}</p>
+        )}
+        <nav className="space-y-1">
+          {links.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={linkClass(link.to)}
+              onClick={onClose}
+              onMouseEnter={() => onLinkHover?.(link.to)}
+              title={collapsed ? link.label : undefined}
+            >
+              {link.icon}
+              {!collapsed && link.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+    )
+  }
+
   return (
     <>
       {/* Mobile backdrop — tapping it closes the drawer */}
@@ -97,61 +127,40 @@ export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace
       <aside
         className={[
           // Base: fixed overlay drawer (mobile default)
-          'fixed inset-y-0 left-0 z-50 flex h-full w-60 flex-col overflow-y-auto',
-          'transform transition-transform duration-200 ease-in-out',
+          'fixed inset-y-0 left-0 z-50 flex h-full flex-col overflow-y-auto',
+          'transform transition-all duration-200 ease-in-out',
+          collapsed ? 'w-14' : 'w-60',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           // Desktop: revert to normal flex-flow item
           'md:relative md:translate-x-0 md:flex-shrink-0',
           'app-panel border-r border-[var(--ui-border)]',
         ].join(' ')}
       >
-      <div className="px-4 pb-3 pt-5">
-        <span className="text-lg font-bold tracking-tight text-[var(--ui-text)]">BMS</span>
+      <div className={collapsed ? 'px-2 pb-3 pt-5 text-center' : 'px-4 pb-3 pt-5'}>
+        <span className="text-lg font-bold tracking-tight text-[var(--ui-text)]">
+          {collapsed ? 'B' : 'BMS'}
+        </span>
       </div>
 
-      <div className="flex-1 p-4">
-      {showMainSection && (
-        <div className="mb-4">
-          <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">Main</p>
-          <nav className="space-y-1">
-            {mainLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose} onMouseEnter={() => onLinkHover?.(link.to)}>
-                {link.icon}
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      )}
+      <div className={`flex-1 ${collapsed ? 'px-1' : 'p-4'}`}>
+        {showMainSection && renderSection('Main', mainLinks)}
+        {showAdminSection && renderSection('Admin Settings', adminLinks)}
+        {showSuperadminSection && renderSection('Superadmin', superadminLinks)}
+      </div>
 
-      {showAdminSection && (
-        <div className="mb-4">
-          <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">Admin Settings</p>
-          <nav className="space-y-1">
-            {adminLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose} onMouseEnter={() => onLinkHover?.(link.to)}>
-                {link.icon}
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+      {/* Collapse toggle (desktop only) */}
+      {onToggleCollapsed && (
+        <div className="hidden md:block border-t border-[var(--ui-border)] p-2">
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className="w-full flex items-center justify-center gap-2 rounded-md px-2 py-1.5 text-xs text-[var(--ui-muted)] hover:bg-[var(--ui-inner-bg)] transition"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <PanelLeftOpen size={14} /> : <><PanelLeftClose size={14} /> Collapse</>}
+          </button>
         </div>
       )}
-
-      {showSuperadminSection && (
-        <div className="mb-4">
-          <p className="mb-2 text-xs uppercase tracking-wide text-[var(--ui-muted)]">Superadmin</p>
-          <nav className="space-y-1">
-            {superadminLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={linkClass(link.to)} onClick={onClose} onMouseEnter={() => onLinkHover?.(link.to)}>
-                {link.icon}
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      )}
-      </div> {/* flex-1 nav area */}
       </aside>
     </>
   )

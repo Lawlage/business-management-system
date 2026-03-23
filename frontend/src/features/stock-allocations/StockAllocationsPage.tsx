@@ -110,7 +110,7 @@ function StockAllocationsContent() {
       </div>
 
       {allAllocations.length > 0 && (
-        <div className="mb-2 hidden md:grid md:grid-cols-[2fr_2fr_1fr_1fr_1fr_1fr_80px] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+        <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_2fr_1fr_1fr_1fr_1fr_80px] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
           <span>Item</span>
           <span>Client</span>
           <span>Qty</span>
