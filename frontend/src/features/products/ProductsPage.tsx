@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useDebounce } from '../../hooks/useDebounce'
@@ -31,15 +31,21 @@ function ProductsContent() {
 
   const canCreate = role !== 'standard_user'
 
-  useEffect(() => {
+  // Reset on tenant switch
+  const [prevTenantId, setPrevTenantId] = useState(selectedTenantId)
+  if (selectedTenantId !== prevTenantId) {
+    setPrevTenantId(selectedTenantId)
     setPage(1)
     setAllItems([])
-  }, [selectedTenantId])
+  }
 
-  useEffect(() => {
+  // Reset pagination on search change
+  const [prevSearch, setPrevSearch] = useState(debouncedSearch)
+  if (debouncedSearch !== prevSearch) {
+    setPrevSearch(debouncedSearch)
     setPage(1)
     setAllItems([])
-  }, [debouncedSearch])
+  }
 
   const { data, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['products', selectedTenantId, debouncedSearch, page],
@@ -53,14 +59,18 @@ function ProductsContent() {
     enabled: !!selectedTenantId,
   })
 
-  useEffect(() => {
-    if (!data) return
-    if (page === 1) {
-      setAllItems(data.data)
-    } else {
-      setAllItems((prev) => [...prev, ...data.data])
+  // Accumulate paginated data
+  const [prevData, setPrevData] = useState(data)
+  if (data !== prevData) {
+    setPrevData(data)
+    if (data) {
+      if (page === 1) {
+        setAllItems(data.data)
+      } else {
+        setAllItems((prev) => [...prev, ...data.data])
+      }
     }
-  }, [data, page])
+  }
 
   const hasMore = data ? page < data.last_page : false
 

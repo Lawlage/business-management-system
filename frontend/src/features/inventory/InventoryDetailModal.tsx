@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
@@ -120,14 +120,17 @@ export function InventoryDetailModal({
   })
 
   // Seed customValues state from fetched values
-  useEffect(() => {
-    if (!customFieldValues) return
-    const map: Record<number, string | number | boolean | null> = {}
-    for (const v of customFieldValues) {
-      map[v.definition_id] = v.value
+  const [prevCustomFieldValues, setPrevCustomFieldValues] = useState(customFieldValues)
+  if (customFieldValues !== prevCustomFieldValues) {
+    setPrevCustomFieldValues(customFieldValues)
+    if (customFieldValues) {
+      const map: Record<number, string | number | boolean | null> = {}
+      for (const v of customFieldValues) {
+        map[v.definition_id] = v.value
+      }
+      setCustomValues(map)
     }
-    setCustomValues(map)
-  }, [customFieldValues])
+  }
 
   const saveMutation = useMutation({
     mutationFn: async () => {

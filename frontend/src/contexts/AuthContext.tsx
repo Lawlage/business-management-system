@@ -19,14 +19,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('auth_token'))
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(() => !!localStorage.getItem('auth_token'))
+
+  // Set loading when token changes (render-time adjustment)
+  const [prevToken, setPrevToken] = useState(token)
+  if (token !== prevToken) {
+    setPrevToken(token)
+    if (token) {
+      setIsLoading(true)
+    }
+  }
 
   useEffect(() => {
-    if (!token) {
-      setIsLoading(false)
-      setIsAuthenticated(false)
-      return
-    }
+    if (!token) return
 
     fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },

@@ -42,9 +42,13 @@ export function SearchCombobox({
     : options
 
   // Reset highlighted index when filtered list changes or dropdown opens/closes
-  useEffect(() => {
+  const [prevFilteredLen, setPrevFilteredLen] = useState(filtered.length)
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (filtered.length !== prevFilteredLen || open !== prevOpen) {
+    setPrevFilteredLen(filtered.length)
+    setPrevOpen(open)
     setHighlightedIndex(-1)
-  }, [filtered.length, open])
+  }
 
   // Scroll highlighted option into view
   useEffect(() => {

@@ -97,7 +97,11 @@ function AppContent() {
   }
 
   // Close drawer whenever route changes
-  useEffect(() => { setSidebarOpen(false) }, [location.pathname])
+  const [prevPathname, setPrevPathname] = useState(location.pathname)
+  if (location.pathname !== prevPathname) {
+    setPrevPathname(location.pathname)
+    setSidebarOpen(false)
+  }
 
   // Light/dark mode — defaults to light, persisted in localStorage
   const [colorMode, setColorMode] = useState<'light' | 'dark'>(() => {

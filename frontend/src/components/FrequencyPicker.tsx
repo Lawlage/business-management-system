@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { FrequencyValue } from '../types'
 
 interface FrequencyPickerProps {
@@ -31,15 +31,17 @@ export default function FrequencyPicker({
   const displayType = value?.type && VALID_TYPES.has(value.type) ? value.type : null
 
   const [inputText, setInputText] = useState<string>(String(value?.value ?? 1))
-  const lastValidRef = useRef<number>(value?.value ?? 1)
+  const [lastValid, setLastValid] = useState<number>(value?.value ?? 1)
 
   // Sync when value changes externally (e.g. product selected in parent)
-  useEffect(() => {
+  const [prevValue, setPrevValue] = useState(value?.value)
+  if (value?.value !== prevValue) {
+    setPrevValue(value?.value)
     if (value?.value != null) {
       setInputText(String(value.value))
-      lastValidRef.current = value.value
+      setLastValid(value.value)
     }
-  }, [value?.value])
+  }
 
   function handleUnitChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const unit = e.target.value
@@ -47,7 +49,7 @@ export default function FrequencyPicker({
       onChange(null)
       return
     }
-    const num = lastValidRef.current
+    const num = lastValid
     const today = new Date().toISOString().split('T')[0]
     onChange({
       type: unit as FrequencyValue['type'],
@@ -66,7 +68,7 @@ export default function FrequencyPicker({
     setInputText(raw)
     const num = parseInt(raw, 10)
     if (!isNaN(num) && num >= 1 && value) {
-      lastValidRef.current = num
+      setLastValid(num)
       onChange({ ...value, value: num })
     }
   }
@@ -74,10 +76,10 @@ export default function FrequencyPicker({
   function handleInputBlur() {
     const num = parseInt(inputText, 10)
     if (isNaN(num) || num < 1) {
-      setInputText(String(lastValidRef.current))
-      if (value) onChange({ ...value, value: lastValidRef.current })
+      setInputText(String(lastValid))
+      if (value) onChange({ ...value, value: lastValid })
     } else {
-      lastValidRef.current = num
+      setLastValid(num)
       setInputText(String(num))
     }
   }
@@ -118,7 +120,7 @@ export default function FrequencyPicker({
         <option value="">None</option>
         {UNIT_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>
-            {lastValidRef.current === 1 ? opt.singular : opt.plural}
+            {lastValid === 1 ? opt.singular : opt.plural}
           </option>
         ))}
       </select>

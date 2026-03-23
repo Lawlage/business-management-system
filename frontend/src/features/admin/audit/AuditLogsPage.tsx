@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTenant } from '../../../contexts/TenantContext'
 import { useApi } from '../../../hooks/useApi'
@@ -37,25 +37,27 @@ export function AuditLogsPage() {
     staleTime: 0,
   })
 
-  useEffect(() => {
-    if (!data) return
-    const incoming = data.tenant_logs.data
-    setTenantEvents((prev) => (tenantPage === 1 ? incoming : [...prev, ...incoming]))
-  }, [data, tenantPage])
-
-  useEffect(() => {
-    if (!data) return
-    const incoming = data.break_glass_logs.data
-    setBgEvents((prev) => (bgPage === 1 ? incoming : [...prev, ...incoming]))
-  }, [data, bgPage])
+  // Accumulate tenant logs
+  const [prevData, setPrevData] = useState(data)
+  if (data !== prevData) {
+    setPrevData(data)
+    if (data) {
+      const incomingTenant = data.tenant_logs.data
+      setTenantEvents((prev) => (tenantPage === 1 ? incomingTenant : [...prev, ...incomingTenant]))
+      const incomingBg = data.break_glass_logs.data
+      setBgEvents((prev) => (bgPage === 1 ? incomingBg : [...prev, ...incomingBg]))
+    }
+  }
 
   // Reset accumulated lists when tenant changes
-  useEffect(() => {
+  const [prevTenantId, setPrevTenantId] = useState(selectedTenantId)
+  if (selectedTenantId !== prevTenantId) {
+    setPrevTenantId(selectedTenantId)
     setTenantPage(1)
     setBgPage(1)
     setTenantEvents([])
     setBgEvents([])
-  }, [selectedTenantId])
+  }
 
   const tenantHasMore =
     !!data && data.tenant_logs.current_page < data.tenant_logs.last_page

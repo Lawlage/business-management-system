@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
@@ -33,17 +33,21 @@ function ClientsContent() {
   const canCreate = role !== 'standard_user'
 
   // Reset on tenant switch
-  useEffect(() => {
+  const [prevTenantId, setPrevTenantId] = useState(selectedTenantId)
+  if (selectedTenantId !== prevTenantId) {
+    setPrevTenantId(selectedTenantId)
     setSearch('')
     setPage(1)
     setAllClients([])
-  }, [selectedTenantId])
+  }
 
   // Reset pagination on search change
-  useEffect(() => {
+  const [prevSearch, setPrevSearch] = useState(debouncedSearch)
+  if (debouncedSearch !== prevSearch) {
+    setPrevSearch(debouncedSearch)
     setPage(1)
     setAllClients([])
-  }, [debouncedSearch])
+  }
 
   const { data, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['clients', selectedTenantId, debouncedSearch, page],
@@ -57,14 +61,18 @@ function ClientsContent() {
     enabled: !!selectedTenantId,
   })
 
-  useEffect(() => {
-    if (!data) return
-    if (page === 1) {
-      setAllClients(data.data)
-    } else {
-      setAllClients((prev) => [...prev, ...data.data])
+  // Accumulate paginated data
+  const [prevData, setPrevData] = useState(data)
+  if (data !== prevData) {
+    setPrevData(data)
+    if (data) {
+      if (page === 1) {
+        setAllClients(data.data)
+      } else {
+        setAllClients((prev) => [...prev, ...data.data])
+      }
     }
-  }, [data, page])
+  }
 
   const hasMore = data ? page < data.last_page : false
 

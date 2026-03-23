@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
@@ -30,10 +30,13 @@ function StockAllocationsContent() {
   const canAllocate = role === 'sub_admin' || role === 'tenant_admin' || role === 'global_superadmin'
 
   // Reset on tenant switch or filter change
-  useEffect(() => {
+  const resetKey = `${selectedTenantId}|${statusFilter}`
+  const [prevResetKey, setPrevResetKey] = useState(resetKey)
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey)
     setPage(1)
     setAllAllocations([])
-  }, [selectedTenantId, statusFilter])
+  }
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['stock-allocations', selectedTenantId, statusFilter, page],
@@ -48,14 +51,18 @@ function StockAllocationsContent() {
     enabled: !!selectedTenantId,
   })
 
-  useEffect(() => {
-    if (!data) return
-    if (page === 1) {
-      setAllAllocations(data.data)
-    } else {
-      setAllAllocations((prev) => [...prev, ...data.data])
+  // Accumulate paginated data
+  const [prevData, setPrevData] = useState(data)
+  if (data !== prevData) {
+    setPrevData(data)
+    if (data) {
+      if (page === 1) {
+        setAllAllocations(data.data)
+      } else {
+        setAllAllocations((prev) => [...prev, ...data.data])
+      }
     }
-  }, [data, page])
+  }
 
   const hasMore = data ? page < data.last_page : false
 
