@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Renewal;
 use App\Services\AuditLogger;
-use App\Services\RenewalStatusService;
+use App\Services\RenewableStatusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 class RenewalController extends Controller
 {
     public function __construct(
-        private readonly RenewalStatusService $statusService,
+        private readonly RenewableStatusService $statusService,
         private readonly AuditLogger $auditLogger,
     ) {
     }
@@ -94,10 +94,8 @@ class RenewalController extends Controller
 
         $payload['auto_renews'] = (bool) ($payload['auto_renews'] ?? false);
 
-        $payload['status'] = $this->statusService->fromExpiration(
+        $payload['status'] = $this->statusService->statusFromNextDueDate(
             Carbon::parse($payload['expiration_date']),
-            $payload['workflow_status'] ?? null,
-            $payload['auto_renews'],
         );
         $payload['created_by'] = $request->user()->id;
         $payload['updated_by'] = $request->user()->id;
@@ -136,13 +134,7 @@ class RenewalController extends Controller
 
         if (isset($payload['expiration_date']) || array_key_exists('workflow_status', $payload) || array_key_exists('auto_renews', $payload)) {
             $expirationDate = Carbon::parse($payload['expiration_date'] ?? $renewal->expiration_date);
-            $workflowStatus = array_key_exists('workflow_status', $payload)
-                ? $payload['workflow_status']
-                : $renewal->workflow_status;
-            $autoRenews = array_key_exists('auto_renews', $payload)
-                ? (bool) $payload['auto_renews']
-                : (bool) $renewal->auto_renews;
-            $payload['status'] = $this->statusService->fromExpiration($expirationDate, $workflowStatus, $autoRenews);
+            $payload['status'] = $this->statusService->statusFromNextDueDate($expirationDate);
         }
 
         $payload['updated_by'] = $request->user()->id;

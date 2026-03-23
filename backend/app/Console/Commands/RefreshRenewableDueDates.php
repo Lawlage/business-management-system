@@ -29,7 +29,7 @@ class RefreshRenewableDueDates extends Command
                     ->where(function ($q): void {
                         $q->where('service_type', 'recurring')->orWhereNull('service_type');
                     })
-                    ->chunk(200, function ($renewables): void {
+                    ->chunk(500, function ($renewables): void {
                         foreach ($renewables as $renewable) {
                             $computed = $this->statusService->computeForRenewable($renewable);
                             $renewable->update($computed);

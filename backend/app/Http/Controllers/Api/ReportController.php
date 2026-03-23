@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\ReportService;
 use Carbon\Carbon;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -19,28 +20,25 @@ class ReportController extends Controller
     {
         $data = $this->reportService->renewalStatusSummary();
 
-        if ($request->input('format') === 'csv') {
-            $rows = [];
-            foreach ($data as $group) {
-                foreach ($group['renewables'] as $r) {
-                    $rows[] = [
-                        $group['status'],
-                        $r['description'],
-                        $r['renewable_product']['name'] ?? '',
-                        $r['renewable_product']['category'] ?? '',
-                        $r['client']['name'] ?? '',
-                        substr((string) ($r['next_due_date'] ?? ''), 0, 10),
-                    ];
+        return $this->respondWithFormat($request, $data, 'renewable-status-summary',
+            ['Status', 'Description', 'Product', 'Category', 'Client', 'Next Due Date'],
+            function (array $data): array {
+                $rows = [];
+                foreach ($data as $group) {
+                    foreach ($group['renewables'] as $r) {
+                        $rows[] = [
+                            $group['status'],
+                            $r['description'],
+                            $r['renewable_product']['name'] ?? '',
+                            $r['renewable_product']['category'] ?? '',
+                            $r['client']['name'] ?? '',
+                            substr((string) ($r['next_due_date'] ?? ''), 0, 10),
+                        ];
+                    }
                 }
-            }
-            return $this->csvResponse(
-                ['Status', 'Description', 'Product', 'Category', 'Client', 'Next Due Date'],
-                $rows,
-                'renewable-status-summary',
-            );
-        }
-
-        return new JsonResponse($data);
+                return $rows;
+            },
+        );
     }
 
     public function renewalsByClient(Request $request): JsonResponse|Response
@@ -48,29 +46,26 @@ class ReportController extends Controller
         $clientId = $request->filled('client_id') ? (int) $request->input('client_id') : null;
         $data = $this->reportService->renewalsByClient($clientId);
 
-        if ($request->input('format') === 'csv') {
-            $rows = [];
-            foreach ($data as $group) {
-                foreach ($group['renewables'] as $r) {
-                    $rows[] = [
-                        $group['client_name'],
-                        $r['description'],
-                        $r['renewable_product']['name'] ?? '',
-                        $r['status'] ?? '',
-                        $r['renewable_product']['category'] ?? '',
-                        substr((string) ($r['next_due_date'] ?? ''), 0, 10),
-                        $r['workflow_status'] ?? '',
-                    ];
+        return $this->respondWithFormat($request, $data, 'renewables-by-client',
+            ['Client', 'Description', 'Product', 'Status', 'Category', 'Next Due Date', 'Workflow Status'],
+            function (array $data): array {
+                $rows = [];
+                foreach ($data as $group) {
+                    foreach ($group['renewables'] as $r) {
+                        $rows[] = [
+                            $group['client_name'],
+                            $r['description'],
+                            $r['renewable_product']['name'] ?? '',
+                            $r['status'] ?? '',
+                            $r['renewable_product']['category'] ?? '',
+                            substr((string) ($r['next_due_date'] ?? ''), 0, 10),
+                            $r['workflow_status'] ?? '',
+                        ];
+                    }
                 }
-            }
-            return $this->csvResponse(
-                ['Client', 'Description', 'Product', 'Status', 'Category', 'Next Due Date', 'Workflow Status'],
-                $rows,
-                'renewables-by-client',
-            );
-        }
-
-        return new JsonResponse($data);
+                return $rows;
+            },
+        );
     }
 
     public function renewalsExpiring(Request $request): JsonResponse|Response
@@ -84,31 +79,26 @@ class ReportController extends Controller
         $to = Carbon::parse($request->input('to'));
         $data = $this->reportService->renewalsExpiring($from, $to);
 
-        if ($request->input('format') === 'csv') {
-            $rows = array_map(fn ($r) => [
+        return $this->respondWithFormat($request, $data, 'renewables-expiring',
+            ['Description', 'Product', 'Client', 'Status', 'Category', 'Next Due Date'],
+            fn (array $data): array => array_map(fn ($r) => [
                 $r['description'],
                 $r['renewable_product']['name'] ?? '',
                 $r['client']['name'] ?? '',
                 $r['status'] ?? '',
                 $r['renewable_product']['category'] ?? '',
                 substr((string) ($r['next_due_date'] ?? ''), 0, 10),
-            ], $data);
-            return $this->csvResponse(
-                ['Description', 'Product', 'Client', 'Status', 'Category', 'Next Due Date'],
-                $rows,
-                'renewables-expiring',
-            );
-        }
-
-        return new JsonResponse($data);
+            ], $data),
+        );
     }
 
     public function inventorySummary(Request $request): JsonResponse|Response
     {
         $data = $this->reportService->inventorySummary();
 
-        if ($request->input('format') === 'csv') {
-            $rows = array_map(fn ($item) => [
+        return $this->respondWithFormat($request, $data, 'inventory-summary',
+            ['Name', 'SKU', 'On Hand', 'Minimum', 'Allocated', 'Low Stock', 'Location', 'Vendor'],
+            fn (array $data): array => array_map(fn ($item) => [
                 $item['name'],
                 $item['sku'],
                 $item['quantity_on_hand'],
@@ -117,15 +107,8 @@ class ReportController extends Controller
                 $item['is_low_stock'] ? 'Yes' : 'No',
                 $item['location'] ?? '',
                 $item['vendor'] ?? '',
-            ], $data);
-            return $this->csvResponse(
-                ['Name', 'SKU', 'On Hand', 'Minimum', 'Allocated', 'Low Stock', 'Location', 'Vendor'],
-                $rows,
-                'inventory-summary',
-            );
-        }
-
-        return new JsonResponse($data);
+            ], $data),
+        );
     }
 
     public function stockMovements(Request $request): JsonResponse|Response
@@ -141,23 +124,17 @@ class ReportController extends Controller
         $itemId = $request->filled('item_id') ? (int) $request->input('item_id') : null;
         $data = $this->reportService->stockMovementHistory($from, $to, $itemId);
 
-        if ($request->input('format') === 'csv') {
-            $rows = array_map(fn ($t) => [
+        return $this->respondWithFormat($request, $data, 'stock-movements',
+            ['Item', 'SKU', 'Type', 'Quantity', 'Reason', 'Date'],
+            fn (array $data): array => array_map(fn ($t) => [
                 $t['inventory_item']['name'] ?? '',
                 $t['inventory_item']['sku'] ?? '',
                 $t['type'],
                 $t['quantity'],
                 $t['reason'] ?? '',
                 substr((string) $t['created_at'], 0, 10),
-            ], $data);
-            return $this->csvResponse(
-                ['Item', 'SKU', 'Type', 'Quantity', 'Reason', 'Date'],
-                $rows,
-                'stock-movements',
-            );
-        }
-
-        return new JsonResponse($data);
+            ], $data),
+        );
     }
 
     public function stockAllocations(Request $request): JsonResponse|Response
@@ -167,8 +144,9 @@ class ReportController extends Controller
         $status = $request->filled('status') ? (string) $request->input('status') : null;
         $data = $this->reportService->stockAllocationReport($clientId, $itemId, $status);
 
-        if ($request->input('format') === 'csv') {
-            $rows = array_map(fn ($a) => [
+        return $this->respondWithFormat($request, $data, 'stock-allocations',
+            ['Item', 'SKU', 'Client', 'Quantity', 'Unit Price', 'Total', 'Status', 'Notes', 'Date'],
+            fn (array $data): array => array_map(fn ($a) => [
                 $a['inventory_item']['name'] ?? '',
                 $a['inventory_item']['sku'] ?? '',
                 $a['client']['name'] ?? '',
@@ -178,15 +156,8 @@ class ReportController extends Controller
                 $a['status'],
                 $a['notes'] ?? '',
                 substr((string) $a['created_at'], 0, 10),
-            ], $data);
-            return $this->csvResponse(
-                ['Item', 'SKU', 'Client', 'Quantity', 'Unit Price', 'Total', 'Status', 'Notes', 'Date'],
-                $rows,
-                'stock-allocations',
-            );
-        }
-
-        return new JsonResponse($data);
+            ], $data),
+        );
     }
 
     public function clientPortfolio(Request $request): JsonResponse|Response
@@ -198,22 +169,19 @@ class ReportController extends Controller
         $clientId = (int) $request->input('client_id');
         $data = $this->reportService->clientPortfolio($clientId);
 
-        if ($request->input('format') === 'csv') {
-            $rows = [];
-            foreach ($data['renewables'] as $r) {
-                $rows[] = ['renewable', $r['description'], $r['status'] ?? '', substr((string) ($r['next_due_date'] ?? ''), 0, 10), '', ''];
-            }
-            foreach ($data['allocations'] as $a) {
-                $rows[] = ['allocation', $a['inventory_item']['name'] ?? '', $a['status'], substr((string) $a['created_at'], 0, 10), $a['quantity'], $a['unit_price'] ?? ''];
-            }
-            return $this->csvResponse(
-                ['Type', 'Description / Item', 'Status', 'Date', 'Quantity', 'Unit Price'],
-                $rows,
-                'client-portfolio-' . $clientId,
-            );
-        }
-
-        return new JsonResponse($data);
+        return $this->respondWithFormat($request, $data, 'client-portfolio-' . $clientId,
+            ['Type', 'Description / Item', 'Status', 'Date', 'Quantity', 'Unit Price'],
+            function (array $data): array {
+                $rows = [];
+                foreach ($data['renewables'] as $r) {
+                    $rows[] = ['renewable', $r['description'], $r['status'] ?? '', substr((string) ($r['next_due_date'] ?? ''), 0, 10), '', ''];
+                }
+                foreach ($data['allocations'] as $a) {
+                    $rows[] = ['allocation', $a['inventory_item']['name'] ?? '', $a['status'], substr((string) $a['created_at'], 0, 10), $a['quantity'], $a['unit_price'] ?? ''];
+                }
+                return $rows;
+            },
+        );
     }
 
     public function slaAllocations(Request $request): JsonResponse|Response
@@ -223,8 +191,9 @@ class ReportController extends Controller
 
         $data = $this->reportService->slaAllocationReport($clientId, $status);
 
-        if ($request->input('format') === 'csv') {
-            $rows = array_map(fn ($a) => [
+        return $this->respondWithFormat($request, $data, 'sla-allocations',
+            ['SLA Item', 'SLA Group', 'Client', 'Department', 'Quantity', 'Renewal Date', 'Status'],
+            fn (array $data): array => array_map(fn ($a) => [
                 $a['sla_item']['name'] ?? '',
                 $a['sla_item']['sla_group']['name'] ?? '',
                 $a['client']['name'] ?? '',
@@ -232,48 +201,48 @@ class ReportController extends Controller
                 $a['quantity'],
                 $a['renewal_date'] ? substr((string) $a['renewal_date'], 0, 10) : '',
                 $a['status'],
-            ], $data);
-
-            return $this->csvResponse(
-                ['SLA Item', 'SLA Group', 'Client', 'Department', 'Quantity', 'Renewal Date', 'Status'],
-                $rows,
-                'sla-allocations',
-            );
-        }
-
-        return new JsonResponse($data);
+            ], $data),
+        );
     }
 
     public function departmentsReport(Request $request): JsonResponse|Response
     {
         $data = $this->reportService->departmentsReport();
 
-        if ($request->input('format') === 'csv') {
-            $rows = array_map(fn ($d) => [
+        return $this->respondWithFormat($request, $data, 'departments',
+            ['Department', 'Manager', 'Renewal Count'],
+            fn (array $data): array => array_map(fn ($d) => [
                 $d['name'],
                 isset($d['manager']) ? (($d['manager']['first_name'] ?? '') . ' ' . ($d['manager']['last_name'] ?? '')) : '',
                 $d['renewables_count'] ?? 0,
-            ], $data);
+            ], $data),
+        );
+    }
 
-            return $this->csvResponse(
-                ['Department', 'Manager', 'Renewal Count'],
-                $rows,
-                'departments',
-            );
+    /**
+     * Return JSON or CSV based on the request's `format` parameter.
+     *
+     * @param list<string> $csvHeaders  Column headers for the CSV output.
+     * @param Closure(array): list<list<mixed>> $rowMapper  Converts data into CSV rows.
+     */
+    private function respondWithFormat(
+        Request $request,
+        array $data,
+        string $csvFilename,
+        array $csvHeaders,
+        Closure $rowMapper,
+    ): JsonResponse|Response {
+        if ($request->input('format') === 'csv') {
+            $rows = $rowMapper($data);
+            $csv = $this->reportService->toCsv($csvHeaders, $rows);
+            $filename = $csvFilename . '-' . now()->format('Y-m-d') . '.csv';
+
+            return response($csv, 200, [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]);
         }
 
         return new JsonResponse($data);
-    }
-
-    /** @param list<string> $headers @param list<list<mixed>> $rows */
-    private function csvResponse(array $headers, array $rows, string $name): Response
-    {
-        $csv = $this->reportService->toCsv($headers, $rows);
-        $filename = $name . '-' . now()->format('Y-m-d') . '.csv';
-
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ]);
     }
 }

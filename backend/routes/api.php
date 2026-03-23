@@ -35,6 +35,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::get('/health', fn () => response()->json(['status' => 'ok']));
+
 // Login is rate-limited to 6 attempts per minute per IP to prevent brute-force.
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
 Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');

@@ -10,7 +10,6 @@
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
-        "spatie/laravel-permission": "^6.24",
         "stancl/tenancy": "^3.9"
     },
     "require-dev": {

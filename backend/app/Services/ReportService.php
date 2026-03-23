@@ -23,6 +23,7 @@ class ReportService
             ->with(['renewableProduct:id,name,category', 'client:id,name'])
             ->orderByRaw("FIELD(status, 'Urgent', 'Action Required', 'Upcoming', 'No action needed', 'Expired')")
             ->orderByRaw('ISNULL(next_due_date), next_due_date ASC')
+            ->limit(5000)
             ->get();
 
         $grouped = $renewables->groupBy(fn ($r) => $r->status ?? 'No status');
@@ -80,16 +81,18 @@ class ReportService
      */
     public function inventorySummary(): array
     {
-        $items = InventoryItem::query()->get();
+        $items = InventoryItem::query()
+            ->leftJoin('stock_allocations', function ($join) {
+                $join->on('inventory_items.id', '=', 'stock_allocations.inventory_item_id')
+                     ->where('stock_allocations.status', '=', 'allocated');
+            })
+            ->selectRaw('inventory_items.*, COALESCE(SUM(stock_allocations.quantity), 0) as total_allocated')
+            ->groupBy('inventory_items.id')
+            ->orderBy('inventory_items.name')
+            ->get();
 
-        $allocatedQtys = StockAllocation::query()
-            ->where('status', 'allocated')
-            ->selectRaw('inventory_item_id, SUM(quantity) as total_allocated')
-            ->groupBy('inventory_item_id')
-            ->pluck('total_allocated', 'inventory_item_id');
-
-        return $items->map(function (InventoryItem $item) use ($allocatedQtys) {
-            $allocated = (int) ($allocatedQtys[$item->id] ?? 0);
+        return $items->map(function (InventoryItem $item) {
+            $allocated = (int) $item->total_allocated;
             return [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -101,7 +104,7 @@ class ReportService
                 'location' => $item->location,
                 'vendor' => $item->vendor,
             ];
-        })->sortBy('name')->values()->toArray();
+        })->values()->toArray();
     }
 
     /**

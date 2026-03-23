@@ -30,7 +30,7 @@ class CustomFieldController extends Controller
     {
         $payload = $request->validate([
             'entity_type'     => ['required', 'array', 'min:1'],
-            'entity_type.*'   => ['required', 'string', 'in:renewal,inventory,sla_item'],
+            'entity_type.*'   => ['required', 'string', 'in:renewal,inventory'],
             'name'            => ['required', 'string', 'max:255'],
             'key'             => ['required', 'string', 'max:255', 'alpha_dash'],
             'field_type'      => ['required', 'in:text,number,date,boolean,json,currency,dropdown'],
@@ -65,7 +65,7 @@ class CustomFieldController extends Controller
         $payload = $request->validate([
             'name'            => ['required', 'string', 'max:255'],
             'entity_type'     => ['required', 'array', 'min:1'],
-            'entity_type.*'   => ['required', 'string', 'in:renewal,inventory,sla_item'],
+            'entity_type.*'   => ['required', 'string', 'in:renewal,inventory'],
             'dropdown_options' => ['nullable', 'array'],
             'dropdown_options.*' => ['string', 'max:255'],
         ]);
