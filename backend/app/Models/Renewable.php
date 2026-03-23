@@ -26,6 +26,7 @@ class Renewable extends Model
         'frequency_start_date',
         'next_due_date',
         'status',
+        'service_type',
         'notes',
         'created_by',
         'updated_by',

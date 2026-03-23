@@ -70,6 +70,10 @@ export function ClientServiceDetailModal({ clientService, onClose, onUpdated, ca
       : null,
   )
 
+  const [serviceType, setServiceType] = useState<'recurring' | 'one_off'>(
+    clientService.service_type === 'one_off' ? 'one_off' : 'recurring',
+  )
+
   const [priceMode, setPriceMode] = useState<PriceMode>('value')
   const [marginPct, setMarginPct] = useState('')
   const [profitEdit, setProfitEdit] = useState<string | null>(null)
@@ -126,11 +130,12 @@ export function ClientServiceDetailModal({ clientService, onClose, onUpdated, ca
           price_override: form.price_override,
           invoice_date: form.invoice_date || null,
           workflow_status: form.workflow_status || null,
+          service_type: serviceType,
           notes: form.notes || null,
           department_id: form.department_id,
-          frequency_type: frequency?.type ?? null,
-          frequency_value: frequency?.value ?? null,
-          frequency_start_date: frequency?.startDate ?? null,
+          frequency_type: serviceType === 'recurring' ? (frequency?.type ?? null) : null,
+          frequency_value: serviceType === 'recurring' ? (frequency?.value ?? null) : null,
+          frequency_start_date: serviceType === 'recurring' ? (frequency?.startDate ?? null) : null,
         }),
         tenantScoped: true,
       }),
@@ -240,7 +245,12 @@ export function ClientServiceDetailModal({ clientService, onClose, onUpdated, ca
             <label className="block text-xs font-medium uppercase tracking-wide mb-1" style={{ color: 'var(--ui-muted)' }}>
               Status
             </label>
-            <Badge status={clientService.status ?? ''} />
+            <div className="flex items-center gap-2">
+              <Badge status={clientService.status ?? ''} />
+              {clientService.service_type === 'one_off' && (
+                <span className="text-xs text-[var(--ui-muted)]">One-off</span>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium uppercase tracking-wide mb-1" style={{ color: 'var(--ui-muted)' }}>
@@ -414,30 +424,57 @@ export function ClientServiceDetailModal({ clientService, onClose, onUpdated, ca
             </select>
           </div>
 
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
-              Renewal Frequency
-              {!canEdit && clientService.frequency_type && (
-                <span className="ml-2 font-normal text-[var(--ui-muted)]">
-                  ({formatFrequency(clientService.frequency_type, clientService.frequency_value)})
-                </span>
+          {canEdit && (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
+                Service Type
+              </label>
+              <div className="flex rounded overflow-hidden border border-[var(--ui-border)] text-sm w-fit">
+                {(['recurring', 'one_off'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setServiceType(type)}
+                    className={[
+                      'px-4 py-1.5 transition',
+                      serviceType === type
+                        ? 'bg-[var(--ui-button-bg)] text-[var(--ui-button-text)]'
+                        : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]',
+                    ].join(' ')}
+                  >
+                    {type === 'one_off' ? 'One-off' : 'Recurring'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {serviceType === 'recurring' && (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
+                Renewal Schedule
+                {!canEdit && clientService.frequency_type && (
+                  <span className="ml-2 font-normal text-[var(--ui-muted)]">
+                    ({formatFrequency(clientService.frequency_type, clientService.frequency_value)})
+                  </span>
+                )}
+              </label>
+              {canEdit ? (
+                <FrequencyPicker
+                  value={frequency}
+                  onChange={setFrequency}
+                  showStartDate
+                />
+              ) : (
+                <p className="text-sm text-[var(--ui-muted)]">
+                  {formatFrequency(clientService.frequency_type, clientService.frequency_value)}
+                  {clientService.frequency_start_date
+                    ? ` · starting ${formatDate(clientService.frequency_start_date, tenantTimezone)}`
+                    : ''}
+                </p>
               )}
-            </label>
-            {canEdit ? (
-              <FrequencyPicker
-                value={frequency}
-                onChange={setFrequency}
-                showStartDate
-              />
-            ) : (
-              <p className="text-sm text-[var(--ui-muted)]">
-                {formatFrequency(clientService.frequency_type, clientService.frequency_value)}
-                {clientService.frequency_start_date
-                  ? ` · starting ${formatDate(clientService.frequency_start_date, tenantTimezone)}`
-                  : ''}
-              </p>
-            )}
-          </div>
+            </div>
+          )}
 
           <Select
             label="Workflow Status"

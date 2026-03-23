@@ -13,7 +13,6 @@ export const chunkPrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/inventory':             () => import('../features/inventory/InventoryPage'),
   '/app/allocations':           () => import('../features/stock-allocations/StockAllocationsPage'),
   '/app/reports':               () => import('../features/reports/ReportsPage'),
-  '/app/sla-items':             () => import('../features/sla-items/SlaItemsPage'),
   '/app/recycle-bin':           () => import('../features/recycle-bin/RecycleBinPage'),
   '/app/admin/users':           () => import('../features/admin/users/UsersPage'),
   '/app/admin/departments':     () => import('../features/admin/departments/DepartmentsPage'),
@@ -69,13 +68,6 @@ export const dataPrefetchers: Record<string, (ctx: PrefetchCtx) => void> = {
     void queryClient.prefetchQuery({
       queryKey: ['products', tenantId, '', 1],
       queryFn: () => authedFetch('/api/products?page=1', { tenantScoped: true }),
-    })
-  },
-
-  '/app/sla-items': ({ queryClient, authedFetch, tenantId }) => {
-    void queryClient.prefetchQuery({
-      queryKey: ['sla-items', tenantId, '', 1],
-      queryFn: () => authedFetch('/api/sla-items?page=1', { tenantScoped: true }),
     })
   },
 

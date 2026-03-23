@@ -36,9 +36,8 @@ const mockClient = {
 function setup(path = '/app/clients/1') {
   const authedFetch = vi.fn().mockImplementation((url: string) => {
     if (url.includes('/api/clients/')) return Promise.resolve(mockClient)
-    if (url.includes('/api/renewals')) return Promise.resolve({ data: [], current_page: 1, last_page: 1 })
+    if (url.includes('/api/client-services')) return Promise.resolve({ data: [], current_page: 1, last_page: 1 })
     if (url.includes('/api/stock-allocations')) return Promise.resolve({ data: [], current_page: 1, last_page: 1 })
-    if (url.includes('/api/sla-allocations')) return Promise.resolve({ data: [], current_page: 1, last_page: 1 })
     if (url.includes('/api/attachments')) return Promise.resolve([])
     return Promise.resolve({})
   })
@@ -102,13 +101,13 @@ describe('ClientDetailPage', () => {
     })
   })
 
-  it('renders Details, Products, Allocations, Documents tabs', async () => {
+  it('renders Details, Services, Stock, Documents tabs', async () => {
     setup()
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Test Client' })).toBeInTheDocument())
 
     expect(screen.getByRole('button', { name: /details/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /products/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /allocations/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /services/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /stock/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /documents/i })).toBeInTheDocument()
   })
 

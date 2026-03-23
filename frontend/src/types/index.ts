@@ -103,6 +103,7 @@ export type Renewable = {
   frequency_start_date?: string | null
   next_due_date?: string | null
   status?: string | null
+  service_type?: 'recurring' | 'one_off' | null
   notes?: string | null
   created_at?: string
 }

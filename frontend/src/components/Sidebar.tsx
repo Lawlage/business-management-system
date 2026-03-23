@@ -14,7 +14,6 @@ import {
   Contact,
   ArrowRightLeft,
   BarChart2,
-  ShieldCheck,
   FolderCog,
 } from 'lucide-react'
 import type { AppRole } from '../types'
@@ -67,7 +66,6 @@ export const Sidebar = memo(function Sidebar({ role, isSuperadminTenantWorkspace
     ...(role !== 'standard_user'
       ? [{ to: '/app/reports', label: 'Reports', icon: <BarChart2 size={16} /> }]
       : []),
-    { to: '/app/sla-items', label: 'SLA Items', icon: <ShieldCheck size={16} /> },
     { to: '/app/recycle-bin', label: 'Recycle Bin', icon: <Trash2 size={16} /> },
   ]
 

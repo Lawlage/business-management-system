@@ -19,8 +19,7 @@ import { formatDate } from '../../lib/format'
 import { CreateClientServiceModal } from '../client-services/CreateClientServiceModal'
 import { ClientServiceDetailModal } from '../client-services/ClientServiceDetailModal'
 import { AllocateStockModal } from '../inventory/AllocateStockModal'
-import { ApplySlaModal } from '../sla-items/ApplySlaModal'
-import type { AccountManager, Client, Renewable, StockAllocation, SlaAllocation, SlaGroup, PaginatedResponse } from '../../types'
+import type { AccountManager, Client, Renewable, StockAllocation, PaginatedResponse } from '../../types'
 
 type ClientForm = {
   name: string
@@ -36,7 +35,6 @@ type ActiveModal =
   | { type: 'create-renewable' }
   | { type: 'view-renewable'; renewable: Renewable }
   | { type: 'allocate-stock' }
-  | { type: 'apply-sla' }
   | null
 
 function ClientDetailContent() {
@@ -48,7 +46,7 @@ function ClientDetailContent() {
   const confirm = useConfirm()
   const queryClient = useQueryClient()
 
-  const [activeTab, setActiveTab] = useState<'details' | 'renewals' | 'allocations' | 'documents' | 'sla-coverage'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'services' | 'stock' | 'documents'>('details')
   const [isEditing, setIsEditing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeModal, setActiveModal] = useState<ActiveModal>(null)
@@ -108,7 +106,7 @@ function ClientDetailContent() {
       authedFetch<PaginatedResponse<Renewable>>(`/api/client-services?client_id=${id ?? ''}&page=1`, {
         tenantScoped: true,
       }),
-    enabled: !!selectedTenantId && !!id && activeTab === 'renewals',
+    enabled: !!selectedTenantId && !!id && activeTab === 'services',
   })
 
   // Stock allocations query
@@ -118,37 +116,8 @@ function ClientDetailContent() {
       authedFetch<PaginatedResponse<StockAllocation>>(`/api/stock-allocations?client_id=${id ?? ''}`, {
         tenantScoped: true,
       }),
-    enabled: !!selectedTenantId && !!id && activeTab === 'allocations',
+    enabled: !!selectedTenantId && !!id && activeTab === 'stock',
   })
-
-  // SLA allocations query
-  const { data: slaData, isLoading: slaLoading, refetch: refetchSla } = useQuery<PaginatedResponse<SlaAllocation>>({
-    queryKey: ['client-sla-allocations', selectedTenantId, id],
-    queryFn: () =>
-      authedFetch<PaginatedResponse<SlaAllocation>>(`/api/sla-allocations?client_id=${id ?? ''}`, {
-        tenantScoped: true,
-      }),
-    enabled: !!selectedTenantId && !!id && activeTab === 'allocations',
-  })
-
-  // SLA coverage data
-  const { data: slaGroups = [] } = useQuery<SlaGroup[]>({
-    queryKey: ['sla-groups', selectedTenantId],
-    queryFn: () => authedFetch<SlaGroup[]>('/api/sla-groups', { tenantScoped: true }),
-    enabled: !!selectedTenantId && activeTab === 'sla-coverage',
-    staleTime: 60_000,
-  })
-
-  const { data: activeSlaData } = useQuery<PaginatedResponse<SlaAllocation>>({
-    queryKey: ['client-sla-active', selectedTenantId, id],
-    queryFn: () =>
-      authedFetch<PaginatedResponse<SlaAllocation>>(`/api/sla-allocations?client_id=${id ?? ''}&status=active&per_page=200`, {
-        tenantScoped: true,
-      }),
-    enabled: !!selectedTenantId && !!id && activeTab === 'sla-coverage',
-  })
-
-  const activeSlaItemIds = new Set((activeSlaData?.data ?? []).map((a) => a.sla_item_id))
 
   const cancelStockMutation = useMutation({
     mutationFn: (allocationId: number) =>
@@ -160,21 +129,6 @@ function ClientDetailContent() {
       showNotice('Allocation cancelled.')
       void refetchStock()
       void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
-    },
-    onError: (err: unknown) => {
-      showNotice((err as { message?: string })?.message ?? 'Cancel failed.', 'error')
-    },
-  })
-
-  const cancelSlaMutation = useMutation({
-    mutationFn: (allocationId: number) =>
-      authedFetch(`/api/sla-allocations/${allocationId}/cancel`, {
-        method: 'POST',
-        tenantScoped: true,
-      }),
-    onSuccess: () => {
-      showNotice('SLA allocation cancelled.')
-      void refetchSla()
     },
     onError: (err: unknown) => {
       showNotice((err as { message?: string })?.message ?? 'Cancel failed.', 'error')
@@ -289,8 +243,6 @@ function ClientDetailContent() {
   }
 
   const stockAllocations = stockData?.data ?? []
-  const slaAllocations = slaData?.data ?? []
-  const hasAllocations = stockAllocations.length > 0 || slaAllocations.length > 0
 
   return (
     <>
@@ -326,7 +278,7 @@ function ClientDetailContent() {
                   {canEdit && (
                     <button
                       className="w-full px-4 py-2 text-left text-sm text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition"
-                      onClick={() => { setMenuOpen(false); setActiveTab('renewals'); setActiveModal({ type: 'create-renewable' }) }}
+                      onClick={() => { setMenuOpen(false); setActiveTab('services'); setActiveModal({ type: 'create-renewable' }) }}
                     >
                       Apply Client Service
                     </button>
@@ -337,14 +289,6 @@ function ClientDetailContent() {
                       onClick={() => { setMenuOpen(false); setActiveModal({ type: 'allocate-stock' }) }}
                     >
                       Allocate Stock
-                    </button>
-                  )}
-                  {canAllocate && (
-                    <button
-                      className="w-full px-4 py-2 text-left text-sm text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition"
-                      onClick={() => { setMenuOpen(false); setActiveModal({ type: 'apply-sla' }) }}
-                    >
-                      Apply SLA
                     </button>
                   )}
                   <button
@@ -384,7 +328,7 @@ function ClientDetailContent() {
 
         {/* Tabs */}
         <div className="mb-4 flex gap-1 border-b border-[var(--ui-border)]">
-          {(['details', 'renewals', 'allocations', 'documents', 'sla-coverage'] as const).map((tab) => (
+          {(['details', 'services', 'stock', 'documents'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -395,7 +339,7 @@ function ClientDetailContent() {
                   : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]',
               ].join(' ')}
             >
-              {tab === 'sla-coverage' ? 'SLA Coverage' : tab === 'renewals' ? 'Products' : tab}
+              {tab === 'services' ? 'Services' : tab === 'stock' ? 'Stock' : tab}
             </button>
           ))}
         </div>
@@ -482,11 +426,23 @@ function ClientDetailContent() {
                   </div>
                   <div>
                     <dt className="text-[var(--ui-muted)] text-xs font-medium uppercase tracking-wide mb-0.5">Email</dt>
-                    <dd className="text-[var(--ui-text)]">{client.email || '—'}</dd>
+                    <dd className="text-[var(--ui-text)]">
+                      {client.email ? (
+                        <a href={`mailto:${client.email}`} className="underline hover:text-[var(--ui-accent)]">
+                          {client.email}
+                        </a>
+                      ) : '—'}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-[var(--ui-muted)] text-xs font-medium uppercase tracking-wide mb-0.5">Phone</dt>
-                    <dd className="text-[var(--ui-text)]">{client.phone || '—'}</dd>
+                    <dd className="text-[var(--ui-text)]">
+                      {client.phone ? (
+                        <a href={`tel:${client.phone}`} className="underline hover:text-[var(--ui-accent)]">
+                          {client.phone}
+                        </a>
+                      ) : '—'}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-[var(--ui-muted)] text-xs font-medium uppercase tracking-wide mb-0.5">Website</dt>
@@ -525,9 +481,16 @@ function ClientDetailContent() {
           </>
         )}
 
-        {/* Client Services tab */}
-        {activeTab === 'renewals' && (
+        {/* Services tab */}
+        {activeTab === 'services' && (
           <div className="space-y-2">
+            {canEdit && (
+              <div className="flex justify-end">
+                <Button variant="primary" size="sm" onClick={() => setActiveModal({ type: 'create-renewable' })}>
+                  + Add Service
+                </Button>
+              </div>
+            )}
             {!renewalsData || renewalsData.data.length === 0 ? (
               <p className="py-6 text-center text-sm text-[var(--ui-muted)]">No client services linked to this client.</p>
             ) : (
@@ -539,11 +502,12 @@ function ClientDetailContent() {
                 >
                   <div>
                     <p className="text-sm font-medium text-[var(--ui-text)]">
-                      {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+                      {r.description ?? r.renewable_product?.name ?? `Service #${r.id}`}
                     </p>
                     <p className="text-xs text-[var(--ui-muted)]">
                       {r.renewable_product?.name ?? '—'}
                       {r.next_due_date ? ` · Due ${formatDate(r.next_due_date, tenantTimezone)}` : ''}
+                      {r.service_type === 'one_off' ? ' · One-off' : ''}
                     </p>
                   </div>
                   <Badge status={r.status ?? ''} />
@@ -553,20 +517,20 @@ function ClientDetailContent() {
           </div>
         )}
 
-        {/* Allocations tab */}
-        {activeTab === 'allocations' && (
+        {/* Stock tab */}
+        {activeTab === 'stock' && (
           <div>
-            {(stockLoading || slaLoading) ? (
+            {stockLoading ? (
               <div className="space-y-2">
                 <SkeletonRow cols={4} />
                 <SkeletonRow cols={4} />
               </div>
-            ) : !hasAllocations ? (
-              <p className="py-6 text-center text-sm text-[var(--ui-muted)]">No allocations for this client.</p>
+            ) : stockAllocations.length === 0 ? (
+              <p className="py-6 text-center text-sm text-[var(--ui-muted)]">No stock allocations for this client.</p>
             ) : (
               <div className="space-y-2">
                 {stockAllocations.map((a) => (
-                  <div key={`s-${a.id}`} className="app-inner-box flex items-center gap-3 rounded-md border border-[var(--ui-border)] p-3">
+                  <div key={a.id} className="app-inner-box flex items-center gap-3 rounded-md border border-[var(--ui-border)] p-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[var(--ui-text)]">{a.inventory_item?.name ?? '—'}</p>
                       <p className="text-xs text-[var(--ui-muted)]">
@@ -591,34 +555,6 @@ function ClientDetailContent() {
                     </div>
                   </div>
                 ))}
-                {slaAllocations.map((a) => (
-                  <div key={`a-${a.id}`} className="app-inner-box flex items-center gap-3 rounded-md border border-[var(--ui-border)] p-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[var(--ui-text)]">
-                        {a.sla_item?.name ?? '—'} <span className="text-xs font-normal text-[var(--ui-muted)]">(SLA)</span>
-                      </p>
-                      <p className="text-xs text-[var(--ui-muted)]">
-                        {a.sla_item?.sku} · Qty: {a.quantity}
-                        {a.unit_price ? ` · $${a.unit_price} ea · Total: $${(a.quantity * parseFloat(a.unit_price)).toFixed(2)}` : ''}
-                        {a.department ? ` · ${a.department.name}` : ''}
-                        {' · '}{formatDate(a.created_at, tenantTimezone)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge status={a.status} />
-                      {a.status === 'active' && canAllocate && (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => cancelSlaMutation.mutate(a.id)}
-                          isLoading={cancelSlaMutation.isPending}
-                        >
-                          Cancel
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
               </div>
             )}
           </div>
@@ -627,6 +563,13 @@ function ClientDetailContent() {
         {/* Documents tab */}
         {activeTab === 'documents' && client && (
           <div className="space-y-3">
+            {canEdit && (
+              <div className="flex justify-end">
+                <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  Upload Document
+                </Button>
+              </div>
+            )}
             {uploading && (
               <p className="text-sm text-[var(--ui-muted)]">Uploading...</p>
             )}
@@ -636,49 +579,6 @@ function ClientDetailContent() {
               canEdit={canEdit}
               hideUpload={true}
             />
-          </div>
-        )}
-
-        {/* SLA Coverage heat map tab */}
-        {activeTab === 'sla-coverage' && (
-          <div>
-            {slaGroups.length === 0 ? (
-              <p className="py-6 text-center text-sm text-[var(--ui-muted)]">No SLA groups defined. Add groups in Settings.</p>
-            ) : (
-              <div className="space-y-4">
-                {slaGroups.map((group) => {
-                  const items = group.sla_items ?? []
-                  return (
-                    <div key={group.id}>
-                      <h4 className="mb-2 text-sm font-semibold text-[var(--ui-text)]">{group.name}</h4>
-                      {items.length === 0 ? (
-                        <p className="text-xs text-[var(--ui-muted)]">No SLA items in this group.</p>
-                      ) : (
-                        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(160px, 1fr))` }}>
-                          {items.map((item) => {
-                            const covered = activeSlaItemIds.has(item.id)
-                            return (
-                              <div
-                                key={item.id}
-                                className={[
-                                  'rounded-md border px-3 py-2 text-sm',
-                                  covered
-                                    ? 'border-green-600 bg-green-950/30 text-green-400'
-                                    : 'border-amber-600 bg-amber-950/20 text-amber-400',
-                                ].join(' ')}
-                              >
-                                <span className="mr-1">{covered ? '✓' : '—'}</span>
-                                {item.name}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </div>
         )}
       </Card>
@@ -712,15 +612,6 @@ function ClientDetailContent() {
             void refetchStock()
             void queryClient.invalidateQueries({ queryKey: ['inventory', selectedTenantId] })
           }}
-        />
-      )}
-
-      {activeModal?.type === 'apply-sla' && (
-        <ApplySlaModal
-          presetClientId={client.id}
-          presetClientName={client.name}
-          onClose={() => setActiveModal(null)}
-          onApplied={() => { void refetchSla() }}
         />
       )}
     </>

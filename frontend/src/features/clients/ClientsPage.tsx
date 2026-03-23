@@ -103,11 +103,12 @@ function ClientsContent() {
 
       {/* Table header -- hidden on mobile */}
       {allClients.length > 0 && (
-        <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+        <div className="mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.5fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
           <span>Name</span>
           <span>Contact Name</span>
           <span>Email</span>
           <span>Phone</span>
+          <span>Account Manager</span>
         </div>
       )}
 
@@ -132,11 +133,16 @@ function ClientsContent() {
               className="app-inner-box w-full rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60"
               onClick={() => navigate(`/app/clients/${client.id}`)}
             >
-              <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.5fr_1fr]">
+              <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.5fr]">
                 <span className="font-medium text-sm text-[var(--ui-text)] truncate">{client.name}</span>
                 <span className="text-sm text-[var(--ui-muted)] truncate">{client.contact_name ?? '—'}</span>
                 <span className="text-sm text-[var(--ui-muted)] truncate">{client.email ?? '—'}</span>
                 <span className="text-sm text-[var(--ui-muted)] truncate">{client.phone ?? '—'}</span>
+                <span className="text-sm text-[var(--ui-muted)] truncate">
+                  {client.account_manager
+                    ? `${client.account_manager.first_name} ${client.account_manager.last_name}`
+                    : '—'}
+                </span>
               </div>
             </button>
           ))

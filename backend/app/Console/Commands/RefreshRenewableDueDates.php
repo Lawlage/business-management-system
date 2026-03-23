@@ -26,6 +26,9 @@ class RefreshRenewableDueDates extends Command
             try {
                 Renewable::query()
                     ->with('renewableProduct')
+                    ->where(function ($q): void {
+                        $q->where('service_type', 'recurring')->orWhereNull('service_type');
+                    })
                     ->chunk(200, function ($renewables): void {
                         foreach ($renewables as $renewable) {
                             $computed = $this->statusService->computeForRenewable($renewable);

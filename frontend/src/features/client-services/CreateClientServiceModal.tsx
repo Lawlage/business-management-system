@@ -50,6 +50,8 @@ export function CreateClientServiceModal({
   const [notes, setNotes] = useState('')
   const today = new Date().toISOString().split('T')[0]
 
+  const [serviceType, setServiceType] = useState<'recurring' | 'one_off'>('recurring')
+
   const [frequency, setFrequency] = useState<FrequencyValue | null>(
     initialProduct?.frequency_type && initialProduct?.frequency_value != null
       ? { type: initialProduct.frequency_type, value: initialProduct.frequency_value, startDate: today }
@@ -168,10 +170,11 @@ export function CreateClientServiceModal({
           price_override: priceOverride,
           invoice_date: invoiceDate || null,
           workflow_status: workflowStatus || null,
+          service_type: serviceType,
           notes: notes || null,
-          frequency_type: frequency?.type ?? null,
-          frequency_value: frequency?.value ?? null,
-          frequency_start_date: frequency?.startDate ?? null,
+          frequency_type: serviceType === 'recurring' ? (frequency?.type ?? null) : null,
+          frequency_value: serviceType === 'recurring' ? (frequency?.value ?? null) : null,
+          frequency_start_date: serviceType === 'recurring' ? (frequency?.startDate ?? null) : null,
         }),
         tenantScoped: true,
       }),
@@ -185,7 +188,7 @@ export function CreateClientServiceModal({
     },
   })
 
-  const canSubmit = !!selectedProduct && !!clientId && !!frequency
+  const canSubmit = !!selectedProduct && !!clientId && (serviceType === 'recurring' ? !!frequency : true)
 
   return (
     <Modal
@@ -205,6 +208,30 @@ export function CreateClientServiceModal({
       }
     >
       <div className="grid gap-4 md:grid-cols-2">
+        {/* Service type selector */}
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
+            Service Type
+          </label>
+          <div className="flex rounded overflow-hidden border border-[var(--ui-border)] text-sm w-fit">
+            {(['recurring', 'one_off'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setServiceType(type)}
+                className={[
+                  'px-4 py-1.5 transition',
+                  serviceType === type
+                    ? 'bg-[var(--ui-button-bg)] text-[var(--ui-button-text)]'
+                    : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]',
+                ].join(' ')}
+              >
+                {type === 'one_off' ? 'One-off' : 'Recurring'}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Product picker */}
         {!initialProduct ? (
           <div className="md:col-span-2">
@@ -414,16 +441,18 @@ export function CreateClientServiceModal({
           </div>
         )}
 
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
-            Renewal Frequency <span className="ml-0.5 text-red-400">*</span>
-          </label>
-          <FrequencyPicker
-            value={frequency}
-            onChange={setFrequency}
-            showStartDate
-          />
-        </div>
+        {serviceType === 'recurring' && (
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
+              Renewal Schedule <span className="ml-0.5 text-red-400">*</span>
+            </label>
+            <FrequencyPicker
+              value={frequency}
+              onChange={setFrequency}
+              showStartDate
+            />
+          </div>
+        )}
 
         <Select
           label="Workflow Status"

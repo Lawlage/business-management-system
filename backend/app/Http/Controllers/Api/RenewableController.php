@@ -92,6 +92,7 @@ class RenewableController extends Controller
             'frequency_type'         => ['nullable', 'string', 'in:days,months,years,day_of_month'],
             'frequency_value'        => ['nullable', 'integer', 'min:1'],
             'frequency_start_date'   => ['nullable', 'date'],
+            'service_type'           => ['nullable', 'string', 'in:recurring,one_off'],
             'notes'                  => ['nullable', 'string'],
         ]);
 
@@ -142,6 +143,7 @@ class RenewableController extends Controller
             'frequency_type'         => ['nullable', 'string', 'in:days,months,years,day_of_month'],
             'frequency_value'        => ['nullable', 'integer', 'min:1'],
             'frequency_start_date'   => ['nullable', 'date'],
+            'service_type'           => ['sometimes', 'nullable', 'string', 'in:recurring,one_off'],
             'notes'                  => ['nullable', 'string'],
         ]);
 

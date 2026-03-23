@@ -31,7 +31,6 @@ const ClientServicesPage = lazy(() => import('./features/client-services/ClientS
 const InventoryPage = lazy(() => import('./features/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })))
 const ClientsPage = lazy(() => import('./features/clients/ClientsPage').then((m) => ({ default: m.ClientsPage })))
 const ClientDetailPage = lazy(() => import('./features/clients/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })))
-const SlaItemsPage = lazy(() => import('./features/sla-items/SlaItemsPage').then((m) => ({ default: m.SlaItemsPage })))
 const DepartmentsPage = lazy(() => import('./features/admin/departments/DepartmentsPage').then((m) => ({ default: m.DepartmentsPage })))
 const RecycleBinPage = lazy(() => import('./features/recycle-bin/RecycleBinPage').then((m) => ({ default: m.RecycleBinPage })))
 const UsersPage = lazy(() => import('./features/admin/users/UsersPage').then((m) => ({ default: m.UsersPage })))
@@ -268,14 +267,6 @@ function AppContent() {
                     role === 'global_superadmin' && !isSuperadminTenantWorkspace
                       ? <Navigate to="/superadmin/access" replace />
                       : <ClientDetailPage />
-                  }
-                />
-                <Route
-                  path="/app/sla-items"
-                  element={
-                    role === 'global_superadmin' && !isSuperadminTenantWorkspace
-                      ? <Navigate to="/superadmin/access" replace />
-                      : <SlaItemsPage />
                   }
                 />
                 <Route
