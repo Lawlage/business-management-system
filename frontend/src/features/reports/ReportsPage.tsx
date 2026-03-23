@@ -63,6 +63,7 @@ function ReportsContent() {
   const [movementsTo, setMovementsTo] = useState(today)
   const [portfolioClientId, setPortfolioClientId] = useState('')
   const [allocationStatus, setAllocationStatus] = useState('')
+  const [byClientClientId, setByClientClientId] = useState('')
 
   // Modal state for clickable rows
   const [selectedRenewal, setSelectedRenewal] = useState<Renewable | null>(null)
@@ -90,9 +91,12 @@ function ReportsContent() {
   const { data: byClient, isLoading: loadingBC } = useQuery<
     { client_name: string; count: number; renewables: Renewable[] }[]
   >({
-    queryKey: ['report', 'renewals-by-client', selectedTenantId],
-    queryFn: () =>
-      authedFetch(buildUrl('renewals-by-client'), { tenantScoped: true }),
+    queryKey: ['report', 'renewals-by-client', selectedTenantId, byClientClientId],
+    queryFn: () => {
+      const params: Record<string, string> = {}
+      if (byClientClientId) params.client_id = byClientClientId
+      return authedFetch(buildUrl('renewals-by-client', params), { tenantScoped: true })
+    },
     enabled: !!selectedTenantId && tab === 'renewals-by-client',
     staleTime: 0,
   })
@@ -161,11 +165,11 @@ function ReportsContent() {
     staleTime: 0,
   })
 
-  // Shared client list used by SLA allocations and client-portfolio tabs
+  // Shared client list used by By Client, SLA allocations and client-portfolio tabs
   const { data: clientsList = [] } = useQuery<Client[]>({
     queryKey: ['clients-all', selectedTenantId],
     queryFn: () => authedFetch<Client[]>('/api/clients?all=true', { tenantScoped: true }),
-    enabled: !!selectedTenantId && (tab === 'sla-allocations' || tab === 'client-portfolio'),
+    enabled: !!selectedTenantId && (tab === 'renewals-by-client' || tab === 'sla-allocations' || tab === 'client-portfolio'),
     staleTime: 30000,
   })
 
@@ -280,8 +284,29 @@ function ReportsContent() {
       {/* ── Renewals By Client ── */}
       {tab === 'renewals-by-client' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button size="sm" variant="secondary" onClick={() => exportCsv('renewals-by-client')}>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-[var(--ui-muted)] whitespace-nowrap">Client:</label>
+              <select
+                value={byClientClientId}
+                onChange={(e) => setByClientClientId(e.target.value)}
+                className="rounded-md border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-text)] min-w-[180px]"
+              >
+                <option value="">All clients</option>
+                {clientsList.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {byClientClientId && (
+                <button
+                  onClick={() => setByClientClientId('')}
+                  className="text-xs text-[var(--ui-muted)] hover:text-[var(--ui-text)] transition"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => exportCsv('renewals-by-client', byClientClientId ? { client_id: byClientClientId } : {})}>
               Export CSV
             </Button>
           </div>
@@ -291,10 +316,12 @@ function ReportsContent() {
             <EmptyState message="No renewals found." />
           ) : (
             byClient.map((group) => (
-              <div key={group.client_name} className="rounded-md border border-[var(--ui-border)] overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 bg-[var(--ui-inner-bg)]">
+              <div key={group.client_name} className="rounded-md border border-[var(--ui-accent)]/40 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2.5 bg-[var(--ui-accent)]/10 border-b border-[var(--ui-accent)]/30">
                   <span className="text-sm font-semibold text-[var(--ui-text)]">{group.client_name}</span>
-                  <span className="text-sm text-[var(--ui-muted)]">{group.count}</span>
+                  <span className="text-xs font-medium text-[var(--ui-muted)] bg-[var(--ui-inner-bg)] px-2 py-0.5 rounded-full border border-[var(--ui-border)]">
+                    {group.count} service{group.count !== 1 ? 's' : ''}
+                  </span>
                 </div>
                 {group.renewables.map((r) => (
                   <button
@@ -663,11 +690,11 @@ function ReportsContent() {
                 </div>
               </div>
 
-              {portfolio.renewals.length > 0 && (
+              {(portfolio.renewals ?? []).length > 0 && (
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">Renewals</p>
                   <div className="space-y-2">
-                    {portfolio.renewals.map((r) => (
+                    {(portfolio.renewals ?? []).map((r) => (
                       <button
                         key={r.id}
                         onClick={() => setSelectedRenewal(r)}
@@ -689,11 +716,11 @@ function ReportsContent() {
                 </div>
               )}
 
-              {portfolio.allocations.length > 0 && (
+              {(portfolio.allocations ?? []).length > 0 && (
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">Stock Allocations</p>
                   <div className="space-y-2">
-                    {portfolio.allocations.map((a) => (
+                    {(portfolio.allocations ?? []).map((a) => (
                       <div key={a.id} className="app-inner-box flex items-center justify-between gap-4 rounded-md border border-[var(--ui-border)] p-3">
                         <div>
                           <p className="text-sm font-medium text-[var(--ui-text)]">{a.inventory_item?.name}</p>

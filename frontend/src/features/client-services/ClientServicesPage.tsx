@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
@@ -16,6 +16,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import { LoadMoreButton } from '../../components/LoadMoreButton'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { CreateClientServiceModal } from './CreateClientServiceModal'
 import { ClientServiceDetailModal } from './ClientServiceDetailModal'
 import type { ClientService, Product, PaginatedResponse } from '../../types'
@@ -167,6 +168,48 @@ function ClientServicesContent() {
     setAllClientServices([])
   }
 
+  const [sortField, setSortField] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const SortIcon = ({ field }: { field: string }) =>
+    sortField === field ? (
+      sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+    ) : (
+      <ChevronsUpDown size={10} className="opacity-30 group-hover:opacity-60" />
+    )
+
+  const sortedClientServices = useMemo(() => {
+    if (!sortField) return allClientServices
+    return [...allClientServices].sort((a, b) => {
+      let aVal: string | number | null | undefined
+      let bVal: string | number | null | undefined
+      if (sortField === 'description') { aVal = a.description ?? a.renewable_product?.name; bVal = b.description ?? b.renewable_product?.name }
+      else if (sortField === 'client') { aVal = a.client?.name; bVal = b.client?.name }
+      else if (sortField === 'product') { aVal = a.renewable_product?.name; bVal = b.renewable_product?.name }
+      else if (sortField === 'next_due_date') { aVal = a.next_due_date; bVal = b.next_due_date }
+      else if (sortField === 'status') { aVal = a.status; bVal = b.status }
+      else if (sortField === 'quantity') { aVal = a.quantity ?? 1; bVal = b.quantity ?? 1 }
+      else if (sortField === 'sale_price') { aVal = a.sale_price ? parseFloat(a.sale_price) : null; bVal = b.sale_price ? parseFloat(b.sale_price) : null }
+      else if (sortField === 'total') {
+        aVal = a.sale_price ? (a.quantity ?? 1) * parseFloat(a.sale_price) : null
+        bVal = b.sale_price ? (b.quantity ?? 1) * parseFloat(b.sale_price) : null
+      }
+      if (aVal == null) return sortDir === 'asc' ? 1 : -1
+      if (bVal == null) return sortDir === 'asc' ? -1 : 1
+      if (typeof aVal === 'number' && typeof bVal === 'number') return sortDir === 'asc' ? aVal - bVal : bVal - aVal
+      return sortDir === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal))
+    })
+  }, [allClientServices, sortField, sortDir])
+
   const isFirstLoad = isLoading && page === 1
 
   return (
@@ -256,14 +299,11 @@ function ClientServicesContent() {
 
       {allClientServices.length > 0 && (
         <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_0.5fr_0.8fr_0.8fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
-          <span>Description</span>
-          <span>Client</span>
-          <span>Product</span>
-          <span>Next Due</span>
-          <span>Status / Workflow</span>
-          <span>Qty</span>
-          <span>Sale Price</span>
-          <span>Total</span>
+          {([['description','Description'],['client','Client'],['product','Product'],['next_due_date','Next Due'],['status','Status / Workflow'],['quantity','Qty'],['sale_price','Sale Price'],['total','Total']] as const).map(([field, label]) => (
+            <button key={field} onClick={() => handleSort(field)} className="inline-flex items-center gap-0.5 py-0.5 px-1.5 -mx-1.5 rounded hover:text-[var(--ui-text)] transition group">
+              {label}<SortIcon field={field} />
+            </button>
+          ))}
         </div>
       )}
 
@@ -282,7 +322,7 @@ function ClientServicesContent() {
             }
           />
         ) : (
-          allClientServices.map((r) => {
+          sortedClientServices.map((r) => {
             const belowCost =
               r.sale_price != null &&
               r.renewable_product?.cost_price != null &&

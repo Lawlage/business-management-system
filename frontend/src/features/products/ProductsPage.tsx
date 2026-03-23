@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useDebounce } from '../../hooks/useDebounce'
@@ -11,6 +11,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import { LoadMoreButton } from '../../components/LoadMoreButton'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { formatRenewalCategory, formatFrequency } from '../../lib/format'
 import { CreateProductModal } from './CreateProductModal'
 import { ProductDetailModal } from './ProductDetailModal'
@@ -75,6 +76,44 @@ function ProductsContent() {
     setAllItems([])
   }
 
+  const [sortField, setSortField] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const SortIcon = ({ field }: { field: string }) =>
+    sortField === field ? (
+      sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+    ) : (
+      <ChevronsUpDown size={10} className="opacity-30 group-hover:opacity-60" />
+    )
+
+  const sortedItems = useMemo(() => {
+    if (!sortField) return allItems
+    return [...allItems].sort((a, b) => {
+      let aVal: string | number | null | undefined
+      let bVal: string | number | null | undefined
+      if (sortField === 'name') { aVal = a.name; bVal = b.name }
+      else if (sortField === 'category') { aVal = a.category; bVal = b.category }
+      else if (sortField === 'vendor') { aVal = a.vendor; bVal = b.vendor }
+      else if (sortField === 'cost_price') { aVal = a.cost_price ? parseFloat(a.cost_price) : null; bVal = b.cost_price ? parseFloat(b.cost_price) : null }
+      else if (sortField === 'sale_price') { aVal = a.sale_price ? parseFloat(a.sale_price) : null; bVal = b.sale_price ? parseFloat(b.sale_price) : null }
+      else if (sortField === 'frequency') { aVal = a.frequency_value ?? null; bVal = b.frequency_value ?? null }
+      else if (sortField === 'count') { aVal = a.renewables_count ?? 0; bVal = b.renewables_count ?? 0 }
+      if (aVal == null) return sortDir === 'asc' ? 1 : -1
+      if (bVal == null) return sortDir === 'asc' ? -1 : 1
+      if (typeof aVal === 'number' && typeof bVal === 'number') return sortDir === 'asc' ? aVal - bVal : bVal - aVal
+      return sortDir === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal))
+    })
+  }, [allItems, sortField, sortDir])
+
   const isFirstLoad = isLoading && page === 1
 
   return (
@@ -107,13 +146,11 @@ function ProductsContent() {
 
       {allItems.length > 0 && (
         <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1.2fr_0.6fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
-          <span>Name</span>
-          <span>Category</span>
-          <span>Vendor</span>
-          <span>Cost Price</span>
-          <span>Sale Price</span>
-          <span>Default Duration</span>
-          <span># Applied</span>
+          {([['name','Name'],['category','Category'],['vendor','Vendor'],['cost_price','Cost Price'],['sale_price','Sale Price'],['frequency','Default Duration'],['count','# Applied']] as const).map(([field, label]) => (
+            <button key={field} onClick={() => handleSort(field)} className="inline-flex items-center gap-0.5 py-0.5 px-1.5 -mx-1.5 rounded hover:text-[var(--ui-text)] transition group">
+              {label}<SortIcon field={field} />
+            </button>
+          ))}
         </div>
       )}
 
@@ -132,7 +169,7 @@ function ProductsContent() {
             }
           />
         ) : (
-          allItems.map((item) => (
+          sortedItems.map((item) => (
             <button
               key={item.id}
               className="app-inner-box w-full rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60"

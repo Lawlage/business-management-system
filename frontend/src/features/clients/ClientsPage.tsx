@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
@@ -12,6 +12,7 @@ import { SkeletonRow } from '../../components/SkeletonRow'
 import { LoadMoreButton } from '../../components/LoadMoreButton'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { Input } from '../../components/Input'
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { CreateClientModal } from './CreateClientModal'
 import type { Client, PaginatedResponse } from '../../types'
 
@@ -26,6 +27,8 @@ function ClientsContent() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search)
+  const [sortField, setSortField] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   const canCreate = role !== 'standard_user'
 
@@ -71,6 +74,41 @@ function ClientsContent() {
     setAllClients([])
   }
 
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const SortIcon = ({ field }: { field: string }) =>
+    sortField === field ? (
+      sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+    ) : (
+      <ChevronsUpDown size={10} className="opacity-30 group-hover:opacity-60" />
+    )
+
+  const sortedClients = useMemo(() => {
+    if (!sortField) return allClients
+    return [...allClients].sort((a, b) => {
+      let aVal: string | null | undefined
+      let bVal: string | null | undefined
+      if (sortField === 'name') { aVal = a.name; bVal = b.name }
+      else if (sortField === 'contact_name') { aVal = a.contact_name; bVal = b.contact_name }
+      else if (sortField === 'email') { aVal = a.email; bVal = b.email }
+      else if (sortField === 'phone') { aVal = a.phone; bVal = b.phone }
+      else if (sortField === 'account_manager') {
+        aVal = a.account_manager ? `${a.account_manager.last_name} ${a.account_manager.first_name}` : null
+        bVal = b.account_manager ? `${b.account_manager.last_name} ${b.account_manager.first_name}` : null
+      }
+      if (aVal == null) return sortDir === 'asc' ? 1 : -1
+      if (bVal == null) return sortDir === 'asc' ? -1 : 1
+      return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
+    })
+  }, [allClients, sortField, sortDir])
+
   const isFirstLoad = isLoading && page === 1
 
   return (
@@ -104,11 +142,16 @@ function ClientsContent() {
       {/* Table header -- hidden on mobile */}
       {allClients.length > 0 && (
         <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.5fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
-          <span>Name</span>
-          <span>Contact Name</span>
-          <span>Email</span>
-          <span>Phone</span>
-          <span>Account Manager</span>
+          {(['name', 'contact_name', 'email', 'phone', 'account_manager'] as const).map((field) => (
+            <button
+              key={field}
+              onClick={() => handleSort(field)}
+              className="inline-flex items-center gap-0.5 py-0.5 px-1.5 -mx-1.5 rounded hover:text-[var(--ui-text)] transition group"
+            >
+              {field === 'name' ? 'Name' : field === 'contact_name' ? 'Contact Name' : field === 'email' ? 'Email' : field === 'phone' ? 'Phone' : 'Account Manager'}
+              <SortIcon field={field} />
+            </button>
+          ))}
         </div>
       )}
 
@@ -127,7 +170,7 @@ function ClientsContent() {
             }
           />
         ) : (
-          allClients.map((client) => (
+          sortedClients.map((client) => (
             <button
               key={client.id}
               className="app-inner-box w-full rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60"

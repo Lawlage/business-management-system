@@ -24,7 +24,8 @@ class DepartmentController extends Controller
     public function store(Request $request): JsonResponse
     {
         $payload = $request->validate([
-            'name' => ['required', 'string', 'max:150', 'unique:departments,name'],
+            'name'       => ['required', 'string', 'max:150', 'unique:departments,name'],
+            'manager_id' => ['nullable', 'integer'],
         ]);
 
         $department = Department::query()->create($payload);
@@ -35,7 +36,7 @@ class DepartmentController extends Controller
             'entity_title' => $department->name,
         ]);
 
-        return new JsonResponse($department, 201);
+        return new JsonResponse($department->fresh()->load('manager:id,first_name,last_name'), 201);
     }
 
     public function update(Request $request, int $id): JsonResponse

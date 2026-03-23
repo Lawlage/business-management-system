@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useTenant } from '../../contexts/TenantContext'
 import { useNotice } from '../../contexts/NoticeContext'
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { formatDate } from '../../lib/format'
 import { Card } from '../../components/Card'
 import { PageHeader } from '../../components/PageHeader'
@@ -112,6 +113,41 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
     setAllItems([])
   }
 
+  const [sortField, setSortField] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const SortIcon = ({ field }: { field: string }) =>
+    sortField === field ? (
+      sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+    ) : (
+      <ChevronsUpDown size={10} className="opacity-30 group-hover:opacity-60" />
+    )
+
+  const sortedItems = useMemo(() => {
+    if (!sortField) return allItems
+    return [...allItems].sort((a, b) => {
+      let aVal: string | number | null | undefined
+      let bVal: string | number | null | undefined
+      if (sortField === 'name') { aVal = a.name; bVal = b.name }
+      else if (sortField === 'quantity_on_hand') { aVal = a.quantity_on_hand; bVal = b.quantity_on_hand }
+      else if (sortField === 'minimum_on_hand') { aVal = a.minimum_on_hand; bVal = b.minimum_on_hand }
+      else if (sortField === 'created_at') { aVal = a.created_at; bVal = b.created_at }
+      if (aVal == null) return sortDir === 'asc' ? 1 : -1
+      if (bVal == null) return sortDir === 'asc' ? -1 : 1
+      if (typeof aVal === 'number' && typeof bVal === 'number') return sortDir === 'asc' ? aVal - bVal : bVal - aVal
+      return sortDir === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal))
+    })
+  }, [allItems, sortField, sortDir])
+
   const isFirstLoad = isLoading && page === 1
 
   return (
@@ -146,10 +182,11 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
       {allItems.length > 0 && (
         <div className="mb-2 hidden md:flex md:items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
           <div className="flex-1 grid grid-cols-[minmax(0,2fr)_110px_110px_220px] gap-3">
-            <span>Item</span>
-            <span>On Hand</span>
-            <span>Minimum</span>
-            <span>Created</span>
+            {([['name','Item'],['quantity_on_hand','On Hand'],['minimum_on_hand','Minimum'],['created_at','Created']] as const).map(([field, label]) => (
+              <button key={field} onClick={() => handleSort(field)} className="inline-flex items-center gap-0.5 py-0.5 px-1.5 -mx-1.5 rounded hover:text-[var(--ui-text)] transition group">
+                {label}<SortIcon field={field} />
+              </button>
+            ))}
           </div>
           <div className="w-[220px] shrink-0 text-right pr-1">Adjust Stock</div>
         </div>
@@ -170,7 +207,7 @@ function InventoryContent({ onOpenItem }: InventoryPageProps) {
             }
           />
         ) : (
-          allItems.map((item) => (
+          sortedItems.map((item) => (
             <div key={item.id} className="flex items-center gap-2">
               {/* Clickable row */}
               <button

@@ -11,7 +11,7 @@ import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { Button } from '../../components/Button'
 import { SearchCombobox } from '../../components/SearchCombobox'
 import { formatDate } from '../../lib/format'
-import type { DashboardData, Renewable, InventoryItem, SlaAllocation, Client, PaginatedResponse } from '../../types'
+import type { DashboardData, Renewable, InventoryItem, Client, PaginatedResponse } from '../../types'
 
 type DashboardPageProps = {
   onOpenRenewal: (renewable: Renewable) => void
@@ -83,7 +83,7 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
     <Card>
       <PageHeader
         title="Dashboard"
-        description="An overview of upcoming renewals, critical items, and low stock alerts."
+        description="An overview of upcoming client services, critical items, and low stock alerts."
         action={
           <Button variant="secondary" size="sm" onClick={() => void refetch()}>
             Refresh
@@ -111,11 +111,11 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
         </div>
       </div>
 
-      {/* ── Renewals row ──────────────────────────────────────────────────── */}
-      <div className="mt-4 grid gap-4 md:grid-cols-3">
-        {/* Critical Renewals */}
+      {/* ── Client Services row ───────────────────────────────────────────── */}
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {/* Critical Client Services */}
         <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
-          <h3 className="font-semibold text-[var(--ui-text)]">Critical Renewals</h3>
+          <h3 className="font-semibold text-[var(--ui-text)]">Critical Client Services</h3>
           <div className="mt-2 space-y-3">
             {isLoading ? (
               <>
@@ -124,7 +124,7 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
                 <SkeletonRow cols={3} />
               </>
             ) : !data || data.critical_renewals.length === 0 ? (
-              <EmptyState message="No critical renewals." />
+              <EmptyState message="No critical client services." />
             ) : (
               data.critical_renewals.map((r) => (
                 <RenewalRow
@@ -138,9 +138,9 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
           </div>
         </div>
 
-        {/* Upcoming Renewals */}
+        {/* Upcoming Client Services */}
         <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
-          <h3 className="font-semibold text-[var(--ui-text)]">Upcoming Renewals</h3>
+          <h3 className="font-semibold text-[var(--ui-text)]">Upcoming Client Services</h3>
           <div className="mt-2 space-y-3">
             {isLoading ? (
               <>
@@ -149,7 +149,7 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
                 <SkeletonRow cols={3} />
               </>
             ) : !data || data.upcoming_renewals.length === 0 ? (
-              <EmptyState message="No upcoming renewals." />
+              <EmptyState message="No upcoming client services." />
             ) : (
               data.upcoming_renewals.map((r) => (
                 <RenewalRow
@@ -158,45 +158,6 @@ function DashboardContent({ onOpenRenewal, onOpenInventory }: DashboardPageProps
                   onClick={() => onOpenRenewal(r)}
                   tenantTimezone={tenantTimezone}
                 />
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Upcoming SLA Renewals */}
-        <div className="app-inner-box rounded-md border border-[var(--ui-border)] p-3">
-          <h3 className="font-semibold text-[var(--ui-text)]">Upcoming SLA Renewals</h3>
-          <div className="mt-2 space-y-3">
-            {isLoading ? (
-              <>
-                <SkeletonRow cols={3} />
-                <SkeletonRow cols={3} />
-                <SkeletonRow cols={3} />
-              </>
-            ) : !data || data.upcoming_sla_allocations.length === 0 ? (
-              <EmptyState message="No upcoming SLA renewals." />
-            ) : (
-              data.upcoming_sla_allocations.map((a: SlaAllocation) => (
-                <div key={a.id} className="app-inner-box rounded-md border border-[var(--ui-border)] p-2">
-                  <p className="font-medium text-sm text-[var(--ui-text)]">{a.sla_item?.name ?? `SLA #${a.sla_item_id}`}</p>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                    {a.client && (
-                      <span className="text-xs text-[var(--ui-muted)]">
-                        Client: <span className="text-[var(--ui-text)]">{a.client.name}</span>
-                      </span>
-                    )}
-                    {a.department && (
-                      <span className="text-xs text-[var(--ui-muted)]">
-                        Dept: <span className="text-[var(--ui-text)]">{a.department.name}</span>
-                      </span>
-                    )}
-                    {a.renewal_date && (
-                      <span className="text-xs text-[var(--ui-muted)]">
-                        Renews: <span className="text-[var(--ui-text)]">{formatDate(a.renewal_date, tenantTimezone)}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
               ))
             )}
           </div>

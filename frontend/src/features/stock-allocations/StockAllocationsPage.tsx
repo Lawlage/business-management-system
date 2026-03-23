@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
 import { useNotice } from '../../contexts/NoticeContext'
 import { useConfirm } from '../../contexts/ConfirmContext'
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { formatDate } from '../../lib/format'
 import { Card } from '../../components/Card'
 import { PageHeader } from '../../components/PageHeader'
@@ -86,6 +87,46 @@ function StockAllocationsContent() {
     if (confirmed) cancelMutation.mutate(allocation.id)
   }
 
+  const [sortField, setSortField] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const SortIcon = ({ field }: { field: string }) =>
+    sortField === field ? (
+      sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+    ) : (
+      <ChevronsUpDown size={10} className="opacity-30 group-hover:opacity-60" />
+    )
+
+  const sortedAllocations = useMemo(() => {
+    if (!sortField) return allAllocations
+    return [...allAllocations].sort((a, b) => {
+      let aVal: string | number | null | undefined
+      let bVal: string | number | null | undefined
+      if (sortField === 'item') { aVal = a.inventory_item?.name; bVal = b.inventory_item?.name }
+      else if (sortField === 'client') { aVal = a.client?.name; bVal = b.client?.name }
+      else if (sortField === 'quantity') { aVal = a.quantity; bVal = b.quantity }
+      else if (sortField === 'unit_price') { aVal = a.unit_price ? parseFloat(a.unit_price) : null; bVal = b.unit_price ? parseFloat(b.unit_price) : null }
+      else if (sortField === 'total') {
+        aVal = a.unit_price ? a.quantity * parseFloat(a.unit_price) : null
+        bVal = b.unit_price ? b.quantity * parseFloat(b.unit_price) : null
+      }
+      else if (sortField === 'date') { aVal = a.created_at; bVal = b.created_at }
+      if (aVal == null) return sortDir === 'asc' ? 1 : -1
+      if (bVal == null) return sortDir === 'asc' ? -1 : 1
+      if (typeof aVal === 'number' && typeof bVal === 'number') return sortDir === 'asc' ? aVal - bVal : bVal - aVal
+      return sortDir === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal))
+    })
+  }, [allAllocations, sortField, sortDir])
+
   const isFirstLoad = isLoading && page === 1
 
   return (
@@ -100,7 +141,7 @@ function StockAllocationsContent() {
             className={[
               'rounded-full px-3 py-1 text-xs font-medium transition',
               statusFilter === s
-                ? 'bg-[var(--ui-button-bg)] text-[var(--ui-button-text)]'
+                ? 'bg-[var(--ui-button-bg)] text-white'
                 : 'bg-[var(--ui-inner-bg)] text-[var(--ui-muted)] hover:text-[var(--ui-text)]',
             ].join(' ')}
           >
@@ -111,12 +152,11 @@ function StockAllocationsContent() {
 
       {allAllocations.length > 0 && (
         <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_2fr_1fr_1fr_1fr_1fr_80px] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
-          <span>Item</span>
-          <span>Client</span>
-          <span>Qty</span>
-          <span>Unit Price</span>
-          <span>Total</span>
-          <span>Date</span>
+          {([['item','Item'],['client','Client'],['quantity','Qty'],['unit_price','Unit Price'],['total','Total'],['date','Date']] as const).map(([field, label]) => (
+            <button key={field} onClick={() => handleSort(field)} className="inline-flex items-center gap-0.5 py-0.5 px-1.5 -mx-1.5 rounded hover:text-[var(--ui-text)] transition group">
+              {label}<SortIcon field={field} />
+            </button>
+          ))}
           <span />
         </div>
       )}
@@ -127,7 +167,7 @@ function StockAllocationsContent() {
         ) : allAllocations.length === 0 ? (
           <EmptyState message="No stock allocations found." />
         ) : (
-          allAllocations.map((a) => (
+          sortedAllocations.map((a) => (
             <div
               key={a.id}
               className="app-inner-box grid items-center gap-3 rounded-md border border-[var(--ui-border)] p-3 md:grid-cols-[2fr_2fr_1fr_1fr_1fr_1fr_80px]"

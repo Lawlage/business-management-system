@@ -9,21 +9,101 @@ import { Card } from '../../../components/Card'
 import { PageHeader } from '../../../components/PageHeader'
 import { Button } from '../../../components/Button'
 import { Input } from '../../../components/Input'
+import { Modal } from '../../../components/Modal'
 import { EmptyState } from '../../../components/EmptyState'
 import { ErrorBoundary } from '../../../components/ErrorBoundary'
 import type { Department, TenantUserMembership } from '../../../types'
 
+function CreateDepartmentModal({
+  tenantUsers,
+  onClose,
+  onCreated,
+}: {
+  tenantUsers: TenantUserMembership[]
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const { authedFetch } = useApi()
+  const { showNotice } = useNotice()
+  const [name, setName] = useState('')
+  const [managerId, setManagerId] = useState<string>('')
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      authedFetch('/api/departments', {
+        method: 'POST',
+        body: JSON.stringify({ name: name.trim(), manager_id: managerId ? Number(managerId) : null }),
+        tenantScoped: true,
+      }),
+    onSuccess: () => {
+      showNotice('Department created.')
+      onCreated()
+      onClose()
+    },
+    onError: (err: unknown) => {
+      showNotice((err as { message?: string })?.message ?? 'Failed to create department.', 'error')
+    },
+  })
+
+  return (
+    <Modal title="Create Department" onClose={onClose}>
+      <div className="space-y-4">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-[var(--ui-text)]">Name</label>
+          <Input
+            placeholder="Department name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) createMutation.mutate() }}
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-[var(--ui-text)]">Manager</label>
+          <select
+            value={managerId}
+            onChange={(e) => setManagerId(e.target.value)}
+            className="w-full rounded-md border border-[var(--ui-border)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)]/60"
+            style={{ background: 'var(--ui-bg)', color: 'var(--ui-text)' }}
+          >
+            <option value="">No manager</option>
+            {tenantUsers.map((m) => (
+              <option key={m.user.id} value={m.user.id}>
+                {m.user.first_name} {m.user.last_name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => createMutation.mutate()}
+            isLoading={createMutation.isPending}
+            disabled={!name.trim()}
+          >
+            Create Department
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 function DepartmentsContent() {
   const { authedFetch } = useApi()
-  const { selectedTenantId } = useTenant()
+  const { selectedTenantId, role } = useTenant()
   const { showNotice } = useNotice()
   const confirm = useConfirm()
   const queryClient = useQueryClient()
 
-  const [newName, setNewName] = useState('')
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState('')
   const [editingManagerId, setEditingManagerId] = useState<number | null>(null)
+
+  const canCreate = role !== 'standard_user'
 
   const { data: departments = [], isLoading } = useQuery<Department[]>({
     queryKey: ['departments', selectedTenantId],
@@ -55,23 +135,6 @@ function DepartmentsContent() {
     },
   })
 
-  const createMutation = useMutation({
-    mutationFn: (name: string) =>
-      authedFetch('/api/departments', {
-        method: 'POST',
-        body: JSON.stringify({ name }),
-        tenantScoped: true,
-      }),
-    onSuccess: () => {
-      showNotice('Department created.')
-      setNewName('')
-      void queryClient.invalidateQueries({ queryKey: ['departments', selectedTenantId] })
-    },
-    onError: (err: unknown) => {
-      showNotice((err as { message?: string })?.message ?? 'Failed to create department.', 'error')
-    },
-  })
-
   const deleteMutation = useMutation({
     mutationFn: (id: number) =>
       authedFetch(`/api/departments/${id}`, { method: 'DELETE', tenantScoped: true }),
@@ -83,12 +146,6 @@ function DepartmentsContent() {
       showNotice((err as { message?: string })?.message ?? 'Failed to delete department.', 'error')
     },
   })
-
-  const handleCreate = () => {
-    const trimmed = newName.trim()
-    if (!trimmed) return
-    createMutation.mutate(trimmed)
-  }
 
   const handleDelete = async (dept: Department) => {
     const confirmed = await confirm({
@@ -102,33 +159,32 @@ function DepartmentsContent() {
 
   return (
     <Card>
-      <PageHeader title="Departments" description="Organise users and records by department." />
-
-      {/* Add department form */}
-      <div className="mb-6 flex gap-2">
-        <Input
-          placeholder="New department name..."
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
-          className="flex-1"
-        />
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleCreate}
-          isLoading={createMutation.isPending}
-          disabled={!newName.trim()}
-        >
-          Add
-        </Button>
-      </div>
+      <PageHeader
+        title="Departments"
+        description="Organise users and records by department."
+        action={
+          canCreate ? (
+            <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
+              + New Department
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Department list */}
       {isLoading ? (
         <p className="text-sm text-[var(--ui-muted)]">Loading...</p>
       ) : departments.length === 0 ? (
-        <EmptyState message="No departments yet. Add one above." />
+        <EmptyState
+          message="No departments yet."
+          action={
+            canCreate ? (
+              <Button onClick={() => setIsCreateOpen(true)} variant="primary" size="sm">
+                New Department
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="space-y-2">
           {departments.map((dept) => (
@@ -186,31 +242,41 @@ function DepartmentsContent() {
                       </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => {
-                        setEditingId(dept.id)
-                        setEditingName(dept.name)
-                        setEditingManagerId(dept.manager_id ?? null)
-                      }}
-                      className="text-[var(--ui-muted)] hover:text-[var(--ui-text)] transition p-1 rounded"
-                      aria-label={`Edit ${dept.name}`}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      onClick={() => void handleDelete(dept)}
-                      className="text-[var(--ui-muted)] hover:text-red-500 transition p-1 rounded"
-                      aria-label={`Delete ${dept.name}`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  {canCreate && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingId(dept.id)
+                          setEditingName(dept.name)
+                          setEditingManagerId(dept.manager_id ?? null)
+                        }}
+                        className="text-[var(--ui-muted)] hover:text-[var(--ui-text)] transition p-1 rounded"
+                        aria-label={`Edit ${dept.name}`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => void handleDelete(dept)}
+                        className="text-[var(--ui-muted)] hover:text-red-500 transition p-1 rounded"
+                        aria-label={`Delete ${dept.name}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           ))}
         </div>
+      )}
+
+      {isCreateOpen && (
+        <CreateDepartmentModal
+          tenantUsers={tenantUsers}
+          onClose={() => setIsCreateOpen(false)}
+          onCreated={() => void queryClient.invalidateQueries({ queryKey: ['departments', selectedTenantId] })}
+        />
       )}
     </Card>
   )

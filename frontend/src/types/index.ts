@@ -248,7 +248,6 @@ export type DashboardData = {
   upcoming_renewals: Renewable[]
   critical_renewals: Renewable[]
   low_stock_items: InventoryItem[]
-  upcoming_sla_allocations: SlaAllocation[]
 }
 
 export type RecycleBinData = {
