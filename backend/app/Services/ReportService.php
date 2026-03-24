@@ -170,11 +170,11 @@ class ReportService
         $activeAllocatedQty = $allocations->where('status', 'allocated')->sum('quantity');
 
         return [
-            'client'                   => $client,
-            'renewables'               => $renewables->toArray(),
-            'allocations'              => $allocations->toArray(),
-            'renewable_count'          => $renewables->count(),
-            'allocation_count'         => $allocations->count(),
+            'client'                    => $client,
+            'renewables'                => $renewables->toArray(),
+            'allocations'               => $allocations->toArray(),
+            'client_service_count'      => $renewables->count(),
+            'allocation_count'          => $allocations->count(),
             'active_allocated_quantity' => (int) $activeAllocatedQty,
         ];
     }

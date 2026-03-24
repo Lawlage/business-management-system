@@ -660,11 +660,11 @@ class ReportControllerTest extends TestCase
         $this->assertArrayHasKey('client', $json);
         $this->assertArrayHasKey('renewables', $json);
         $this->assertArrayHasKey('allocations', $json);
-        $this->assertArrayHasKey('renewable_count', $json);
+        $this->assertArrayHasKey('client_service_count', $json);
         $this->assertArrayHasKey('allocation_count', $json);
         $this->assertArrayHasKey('active_allocated_quantity', $json);
 
-        $this->assertSame(1, $json['renewable_count']);
+        $this->assertSame(1, $json['client_service_count']);
         $this->assertSame(1, $json['allocation_count']);
         $this->assertSame(3, $json['active_allocated_quantity']);
     }

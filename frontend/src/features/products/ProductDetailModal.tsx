@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
 import { useTenant } from '../../contexts/TenantContext'
 import { useNotice } from '../../contexts/NoticeContext'
@@ -14,7 +14,7 @@ import { Select } from '../../components/Select'
 import { AttachmentList } from '../../components/AttachmentList'
 import FrequencyPicker from '../../components/FrequencyPicker'
 import { renewableCategoryOptions } from '../../types'
-import type { Product, FrequencyValue } from '../../types'
+import type { Department, Product, FrequencyValue } from '../../types'
 
 type ProductForm = {
   name: string
@@ -53,6 +53,16 @@ export function ProductDetailModal({ product, onClose, onUpdated, canEdit, canDe
     sale_price: product.sale_price ?? '',
     notes: product.notes ?? '',
   })
+
+  const [departmentId, setDepartmentId] = useState<number | null>(product.department_id ?? null)
+
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments', selectedTenantId],
+    queryFn: () => authedFetch<Department[]>('/api/departments', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
+  const departments = departmentsData ?? []
 
   const [frequency, setFrequency] = useState<FrequencyValue | null>(
     product.frequency_type && product.frequency_value != null
@@ -119,6 +129,7 @@ export function ProductDetailModal({ product, onClose, onUpdated, canEdit, canDe
         method: 'PUT',
         body: JSON.stringify({
           ...form,
+          department_id: departmentId || null,
           cost_price: form.cost_price || null,
           sale_price: form.sale_price || null,
           frequency_type: frequency?.type ?? null,
@@ -265,6 +276,31 @@ export function ProductDetailModal({ product, onClose, onUpdated, canEdit, canDe
             disabled={!canEdit}
           />
 
+          {departments.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
+                Default Department
+              </label>
+              {canEdit ? (
+                <select
+                  value={departmentId ?? ''}
+                  onChange={(e) => setDepartmentId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm focus:border-[var(--ui-button-bg)] focus:outline-none"
+                  style={{ background: 'var(--ui-panel-bg)', color: 'var(--ui-text)' }}
+                >
+                  <option value="">No department</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-sm text-[var(--ui-text)] px-3 py-2 rounded border border-[var(--ui-border)] bg-[var(--ui-input-bg)]">
+                  {departments.find((d) => d.id === departmentId)?.name ?? '—'}
+                </p>
+              )}
+            </div>
+          )}
+
           <CurrencyInput
             label="Cost Price"
             value={form.cost_price}
@@ -371,7 +407,7 @@ export function ProductDetailModal({ product, onClose, onUpdated, canEdit, canDe
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
-              Default Duration
+              Default Renewal Period
             </label>
             <FrequencyPicker
               value={frequency}

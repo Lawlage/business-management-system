@@ -27,7 +27,7 @@ class RenewableProductController extends Controller
             });
         }
 
-        return new JsonResponse($query->orderBy('name')->paginate(20));
+        return new JsonResponse($query->with('department:id,name')->orderBy('name')->paginate(20));
     }
 
     public function store(Request $request): JsonResponse
@@ -36,6 +36,7 @@ class RenewableProductController extends Controller
             'name'            => ['required', 'string', 'max:255'],
             'category'        => ['nullable', 'string', 'max:100'],
             'vendor'          => ['nullable', 'string', 'max:255'],
+            'department_id'   => ['nullable', 'integer', 'exists:departments,id'],
             'cost_price'      => ['nullable', 'numeric', 'min:0'],
             'sale_price'      => ['nullable', 'numeric', 'min:0'],
             'frequency_type'  => ['nullable', 'string', 'in:days,months,years'],
@@ -54,7 +55,7 @@ class RenewableProductController extends Controller
             'entity_title' => $product->name,
         ]);
 
-        return new JsonResponse($product->fresh(), 201);
+        return new JsonResponse($product->fresh()->load('department:id,name'), 201);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -65,6 +66,7 @@ class RenewableProductController extends Controller
             'name'            => ['sometimes', 'string', 'max:255'],
             'category'        => ['nullable', 'string', 'max:100'],
             'vendor'          => ['nullable', 'string', 'max:255'],
+            'department_id'   => ['nullable', 'integer', 'exists:departments,id'],
             'cost_price'      => ['nullable', 'numeric', 'min:0'],
             'sale_price'      => ['nullable', 'numeric', 'min:0'],
             'frequency_type'  => ['nullable', 'string', 'in:days,months,years'],
@@ -97,7 +99,10 @@ class RenewableProductController extends Controller
                 ->update(['sale_price' => $payload['sale_price']]);
         }
 
-        return new JsonResponse(array_merge($product->fresh()->toArray(), ['skipped_count' => $skippedCount]));
+        return new JsonResponse(array_merge(
+            $product->fresh()->load('department:id,name')->toArray(),
+            ['skipped_count' => $skippedCount]
+        ));
     }
 
     public function destroy(Request $request, int $id): JsonResponse

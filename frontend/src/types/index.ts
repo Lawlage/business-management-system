@@ -73,6 +73,8 @@ export type RenewableProduct = {
   name: string
   category?: string | null
   vendor?: string | null
+  department_id?: number | null
+  department?: { id: number; name: string } | null
   cost_price: string | null
   sale_price?: string | null
   frequency_type?: 'days' | 'months' | 'years' | null

@@ -197,7 +197,7 @@ class ReportController extends Controller
                     $qty = (int) ($r['quantity'] ?? 1);
                     $price = $r['sale_price'] ?? null;
                     $total = $price !== null ? number_format($qty * (float) $price, 2) : '';
-                    $rows[] = ['renewable', $r['description'], $r['status'] ?? '', substr((string) ($r['next_due_date'] ?? ''), 0, 10), $qty, $price ?? '', $total];
+                    $rows[] = ['client_service', $r['description'], $r['status'] ?? '', substr((string) ($r['next_due_date'] ?? ''), 0, 10), $qty, $price ?? '', $total];
                 }
                 foreach ($data['allocations'] as $a) {
                     $total = $a['unit_price'] ? number_format($a['quantity'] * (float) $a['unit_price'], 2) : '';
@@ -234,7 +234,7 @@ class ReportController extends Controller
         $data = $this->reportService->departmentsReport();
 
         return $this->respondWithFormat($request, $data, 'departments',
-            ['Department', 'Manager', 'Renewal Count'],
+            ['Department', 'Manager', 'Client Service Count'],
             fn (array $data): array => array_map(fn ($d) => [
                 $d['name'],
                 isset($d['manager']) ? (($d['manager']['first_name'] ?? '') . ' ' . ($d['manager']['last_name'] ?? '')) : '',

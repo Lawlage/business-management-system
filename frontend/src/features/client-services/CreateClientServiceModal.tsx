@@ -39,7 +39,7 @@ export function CreateClientServiceModal({
   const [description, setDescription] = useState(initialProduct?.name ?? '')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [clientId, setClientId] = useState<number | null>(presetClientId ?? null)
-  const [departmentId, setDepartmentId] = useState<number | null>(null)
+  const [departmentId, setDepartmentId] = useState<number | null>(initialProduct?.department_id ?? null)
   const [salePrice, setSalePrice] = useState(initialProduct?.sale_price ?? '')
   const [priceOverride, setPriceOverride] = useState(false)
   const [priceMode, setPriceMode] = useState<PriceMode>('value')
@@ -156,6 +156,9 @@ export function CreateClientServiceModal({
     } else {
       setFrequency(null)
     }
+    if (p.department_id) {
+      setDepartmentId(p.department_id)
+    }
   }
 
   const createMutation = useMutation({
@@ -190,7 +193,7 @@ export function CreateClientServiceModal({
     },
   })
 
-  const canSubmit = !!selectedProduct && !!clientId && (serviceType === 'recurring' ? !!frequency : true)
+  const canSubmit = !!selectedProduct && !!clientId
 
   return (
     <Modal
@@ -466,7 +469,7 @@ export function CreateClientServiceModal({
         {serviceType === 'recurring' && (
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
-              Renewal Schedule <span className="ml-0.5 text-red-400">*</span>
+              Renewal Schedule
             </label>
             <FrequencyPicker
               value={frequency}

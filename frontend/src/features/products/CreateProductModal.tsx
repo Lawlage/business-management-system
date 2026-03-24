@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useApi } from '../../hooks/useApi'
+import { useTenant } from '../../contexts/TenantContext'
 import { Modal } from '../../components/Modal'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
@@ -10,7 +11,7 @@ import { Select } from '../../components/Select'
 import FrequencyPicker from '../../components/FrequencyPicker'
 import { useNotice } from '../../contexts/NoticeContext'
 import { renewableProductDefaults, renewableCategoryOptions } from '../../types'
-import type { FrequencyValue } from '../../types'
+import type { Department, FrequencyValue } from '../../types'
 
 type Props = {
   onClose: () => void
@@ -23,13 +24,23 @@ type PriceMode = 'value' | 'margin'
 
 export function CreateProductModal({ onClose, onCreated }: Props) {
   const { authedFetch } = useApi()
+  const { selectedTenantId } = useTenant()
   const { showNotice } = useNotice()
 
   const [form, setForm] = useState<ProductForm>({ ...renewableProductDefaults })
+  const [departmentId, setDepartmentId] = useState<number | null>(null)
   const [frequency, setFrequency] = useState<FrequencyValue | null>(null)
   const [priceMode, setPriceMode] = useState<PriceMode>('value')
   const [marginPct, setMarginPct] = useState('')
   const [profitEdit, setProfitEdit] = useState<string | null>(null)
+
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments', selectedTenantId],
+    queryFn: () => authedFetch<Department[]>('/api/departments', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
+  const departments = departmentsData ?? []
 
   const setField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -86,6 +97,7 @@ export function CreateProductModal({ onClose, onCreated }: Props) {
         method: 'POST',
         body: JSON.stringify({
           ...form,
+          department_id: departmentId || null,
           cost_price: form.cost_price || null,
           sale_price: form.sale_price || null,
           frequency_type: frequency?.type ?? null,
@@ -141,6 +153,25 @@ export function CreateProductModal({ onClose, onCreated }: Props) {
           value={form.vendor}
           onChange={(e) => setField('vendor', e.target.value)}
         />
+
+        {departments.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ui-text)' }}>
+              Default Department
+            </label>
+            <select
+              value={departmentId ?? ''}
+              onChange={(e) => setDepartmentId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-3 py-2 rounded border border-[var(--ui-border)] text-sm focus:border-[var(--ui-button-bg)] focus:outline-none"
+              style={{ background: 'var(--ui-panel-bg)', color: 'var(--ui-text)' }}
+            >
+              <option value="">No department</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <CurrencyInput
           label="Cost Price"
@@ -239,7 +270,7 @@ export function CreateProductModal({ onClose, onCreated }: Props) {
 
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-2" style={{ color: 'var(--ui-text)' }}>
-            Default Duration
+            Default Renewal Period
           </label>
           <FrequencyPicker
             value={frequency}

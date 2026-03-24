@@ -279,6 +279,99 @@ class RenewableProductControllerTest extends TestCase
             ->assertForbidden();
     }
 
+    // ── Department association ─────────────────────────────────────────────────
+
+    public function test_create_with_department_id_links_department(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        // Create department via API (tenant admin has manage_users permission).
+        $dept = $this->actingAs($user)
+            ->postJson('/api/departments', ['name' => 'Engineering'], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json();
+
+        $response = $this->actingAs($user)
+            ->postJson('/api/products', [
+                'name'          => 'Dept Product',
+                'department_id' => $dept['id'],
+            ], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json();
+
+        $this->assertSame($dept['id'], $response['department_id']);
+        $this->assertSame('Engineering', $response['department']['name']);
+    }
+
+    public function test_create_with_invalid_department_id_is_rejected(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $this->actingAs($user)
+            ->postJson('/api/products', [
+                'name'          => 'Bad Dept Product',
+                'department_id' => 99999,
+            ], $this->tenantHeaders($tenant))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['department_id']);
+    }
+
+    public function test_update_sets_and_clears_department_id(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $dept = $this->actingAs($user)
+            ->postJson('/api/departments', ['name' => 'Sales'], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json();
+
+        $product = $this->makeProduct($user, $tenant);
+
+        // Set department.
+        $response = $this->actingAs($user)
+            ->putJson("/api/products/{$product['id']}", [
+                'name'          => $product['name'],
+                'department_id' => $dept['id'],
+            ], $this->tenantHeaders($tenant))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame($dept['id'], $response['department_id']);
+        $this->assertSame('Sales', $response['department']['name']);
+
+        // Clear department.
+        $response = $this->actingAs($user)
+            ->putJson("/api/products/{$product['id']}", [
+                'name'          => $product['name'],
+                'department_id' => null,
+            ], $this->tenantHeaders($tenant))
+            ->assertOk()
+            ->json();
+
+        $this->assertNull($response['department_id']);
+        $this->assertNull($response['department']);
+    }
+
+    public function test_index_includes_department_relation(): void
+    {
+        [$user, $tenant] = $this->createTenantAdminContext();
+
+        $dept = $this->actingAs($user)
+            ->postJson('/api/departments', ['name' => 'Marketing'], $this->tenantHeaders($tenant))
+            ->assertCreated()
+            ->json();
+
+        $this->makeProduct($user, $tenant, ['name' => 'Marketing Product', 'department_id' => $dept['id']]);
+
+        $data = $this->actingAs($user)
+            ->getJson('/api/products', $this->tenantHeaders($tenant))
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame($dept['id'], $data[0]['department_id']);
+        $this->assertSame('Marketing', $data[0]['department']['name']);
+    }
+
     // ── Cross-tenant isolation ─────────────────────────────────────────────────
 
     public function test_cannot_read_other_tenants_renewable_products(): void

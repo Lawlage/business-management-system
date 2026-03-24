@@ -28,7 +28,7 @@ type TabId =
   | 'client-portfolio'
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'renewal-status', label: 'Renewal Status' },
+  { id: 'renewal-status', label: 'Service Status' },
   { id: 'renewals-by-client', label: 'By Client' },
   { id: 'renewals-expiring', label: 'Expiring' },
   { id: 'inventory-summary', label: 'Inventory' },
@@ -157,7 +157,7 @@ function ReportsContent() {
     staleTime: 0,
   })
 
-  type DeptRow = { id: number; name: string; renewals_count: number; manager: { first_name: string; last_name: string } | null }
+  type DeptRow = { id: number; name: string; renewables_count: number; manager: { first_name: string; last_name: string } | null }
   const { data: departments, isLoading: loadingDepts } = useQuery<DeptRow[]>({
     queryKey: ['report', 'departments', selectedTenantId],
     queryFn: () => authedFetch(buildUrl('departments'), { tenantScoped: true }),
@@ -177,9 +177,9 @@ function ReportsContent() {
 
   const { data: portfolio, isLoading: loadingPort } = useQuery<{
     client: { id: number; name: string }
-    renewals: Renewable[]
+    renewables: Renewable[]
     allocations: StockAllocation[]
-    renewal_count: number
+    client_service_count: number
     active_allocated_quantity: number
   }>({
     queryKey: ['report', 'client-portfolio', selectedTenantId, portfolioClientId, runKey],
@@ -250,13 +250,13 @@ function ReportsContent() {
           {loadingRS ? (
             Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} cols={3} />)
           ) : !renewalStatus || renewalStatus.length === 0 ? (
-            <EmptyState message="No renewals found." />
+            <EmptyState message="No client services found." />
           ) : (
             renewalStatus.map((group) => (
               <div key={group.status} className="rounded-md border border-[var(--ui-border)] overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2 bg-[var(--ui-inner-bg)]">
                   <Badge status={group.status} />
-                  <span className="text-sm text-[var(--ui-muted)]">{group.count} renewal{group.count !== 1 ? 's' : ''}</span>
+                  <span className="text-sm text-[var(--ui-muted)]">{group.count} client service{group.count !== 1 ? 's' : ''}</span>
                 </div>
                 {group.renewables.map((r) => (
                   <button
@@ -266,7 +266,7 @@ function ReportsContent() {
                   >
                     <div>
                       <p className="text-sm font-medium text-[var(--ui-text)]">
-                        {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+                        {r.description ?? r.renewable_product?.name ?? `Service #${r.id}`}
                       </p>
                       <p className="text-xs text-[var(--ui-muted)]">
                         {r.client?.name ?? 'No client'} · {r.renewable_product?.category ?? '—'}
@@ -313,14 +313,14 @@ function ReportsContent() {
           {loadingBC ? (
             Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} cols={3} />)
           ) : !byClient || byClient.length === 0 ? (
-            <EmptyState message="No renewals found." />
+            <EmptyState message="No client services found." />
           ) : (
             byClient.map((group) => (
               <div key={group.client_name} className="rounded-md border border-[var(--ui-accent)]/40 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2.5 bg-[var(--ui-accent)]/10 border-b border-[var(--ui-accent)]/30">
                   <span className="text-sm font-semibold text-[var(--ui-text)]">{group.client_name}</span>
                   <span className="text-xs font-medium text-[var(--ui-muted)] bg-[var(--ui-inner-bg)] px-2 py-0.5 rounded-full border border-[var(--ui-border)]">
-                    {group.count} service{group.count !== 1 ? 's' : ''}
+                    {group.count} client service{group.count !== 1 ? 's' : ''}
                   </span>
                 </div>
                 {group.renewables.map((r) => (
@@ -331,7 +331,7 @@ function ReportsContent() {
                   >
                     <div>
                       <p className="text-sm text-[var(--ui-text)]">
-                        {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+                        {r.description ?? r.renewable_product?.name ?? `Service #${r.id}`}
                       </p>
                       <p className="text-xs text-[var(--ui-muted)]">{r.renewable_product?.category ?? '—'}</p>
                     </div>
@@ -373,7 +373,7 @@ function ReportsContent() {
           {loadingExp ? (
             Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={4} />)
           ) : !expiring ? null : expiring.length === 0 ? (
-            <EmptyState message="No renewals expiring in this range." />
+            <EmptyState message="No client services expiring in this range." />
           ) : (
             <div className="space-y-2">
               {expiring.map((r) => (
@@ -384,7 +384,7 @@ function ReportsContent() {
                 >
                   <div>
                     <p className="text-sm font-medium text-[var(--ui-text)]">
-                      {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+                      {r.description ?? r.renewable_product?.name ?? `Service #${r.id}`}
                     </p>
                     <p className="text-xs text-[var(--ui-muted)]">
                       {r.client?.name ?? 'No client'} · {r.renewable_product?.category ?? '—'}
@@ -634,7 +634,7 @@ function ReportsContent() {
               <div className="hidden md:grid md:grid-cols-[2fr_2fr_1fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
                 <span>Department</span>
                 <span>Manager</span>
-                <span>Renewals</span>
+                <span>Client Services</span>
               </div>
               <div className="space-y-2">
                 {departments.map((d) => (
@@ -643,7 +643,7 @@ function ReportsContent() {
                     <span className="text-sm text-[var(--ui-muted)]">
                       {d.manager ? `${d.manager.first_name} ${d.manager.last_name}` : '—'}
                     </span>
-                    <span className="text-sm text-[var(--ui-muted)]">{d.renewals_count}</span>
+                    <span className="text-sm text-[var(--ui-muted)]">{d.renewables_count}</span>
                   </div>
                 ))}
               </div>
@@ -685,16 +685,16 @@ function ReportsContent() {
               <div className="flex items-center justify-between rounded-md border border-[var(--ui-border)] bg-[var(--ui-inner-bg)] px-4 py-3">
                 <span className="font-semibold text-[var(--ui-text)]">{portfolio.client.name}</span>
                 <div className="flex gap-4 text-sm text-[var(--ui-muted)]">
-                  <span>{portfolio.renewal_count} renewals</span>
+                  <span>{portfolio.client_service_count} client service{portfolio.client_service_count !== 1 ? 's' : ''}</span>
                   <span>{portfolio.active_allocated_quantity} units allocated</span>
                 </div>
               </div>
 
-              {(portfolio.renewals ?? []).length > 0 && (
+              {(portfolio.renewables ?? []).length > 0 && (
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">Renewals</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">Client Services</p>
                   <div className="space-y-2">
-                    {(portfolio.renewals ?? []).map((r) => (
+                    {(portfolio.renewables ?? []).map((r) => (
                       <button
                         key={r.id}
                         onClick={() => setSelectedRenewal(r)}
@@ -702,7 +702,7 @@ function ReportsContent() {
                       >
                         <div>
                           <p className="text-sm font-medium text-[var(--ui-text)]">
-                            {r.description ?? r.renewable_product?.name ?? `Renewable #${r.id}`}
+                            {r.description ?? r.renewable_product?.name ?? `Service #${r.id}`}
                           </p>
                           <p className="text-xs text-[var(--ui-muted)]">{r.renewable_product?.category ?? '—'}</p>
                         </div>
