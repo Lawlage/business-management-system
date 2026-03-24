@@ -58,7 +58,7 @@ function SlaItemsContent() {
   })
 
   // Accumulate paginated data
-  const [prevData, setPrevData] = useState(data)
+  const [prevData, setPrevData] = useState<typeof data>()
   if (data !== prevData) {
     setPrevData(data)
     if (data) {
