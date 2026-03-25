@@ -27,7 +27,31 @@ class RenewableProductController extends Controller
             });
         }
 
+        if ($request->filled('category')) {
+            $query->where('category', $request->string('category'));
+        }
+
+        if ($request->filled('vendor')) {
+            $query->where('vendor', $request->string('vendor'));
+        }
+
+        if ($request->filled('department_id')) {
+            $query->where('department_id', (int) $request->input('department_id'));
+        }
+
         return new JsonResponse($query->with('department:id,name')->orderBy('name')->paginate(20));
+    }
+
+    public function vendors(): JsonResponse
+    {
+        $vendors = RenewableProduct::query()
+            ->whereNotNull('vendor')
+            ->where('vendor', '!=', '')
+            ->distinct()
+            ->orderBy('vendor')
+            ->pluck('vendor');
+
+        return new JsonResponse($vendors);
     }
 
     public function store(Request $request): JsonResponse

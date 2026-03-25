@@ -54,6 +54,10 @@ class RenewableController extends Controller
             $query->where('renewable_product_id', (int) $request->input('renewable_product_id'));
         }
 
+        if ($request->filled('department_id')) {
+            $query->where('department_id', (int) $request->input('department_id'));
+        }
+
         if ($request->filled('expiry_preset')) {
             $preset = (string) $request->string('expiry_preset');
             $today = Carbon::today();

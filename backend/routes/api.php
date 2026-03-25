@@ -74,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         // Products (catalog; previously "Renewable Products")
         Route::get('/products', [RenewableProductController::class, 'index']);
+        Route::get('/products/vendors', [RenewableProductController::class, 'vendors']);
         Route::post('/products', [RenewableProductController::class, 'store'])->middleware('tenant.permission:create_inventory');
         Route::put('/products/{id}', [RenewableProductController::class, 'update'])->middleware('tenant.permission:edit_existing');
         Route::delete('/products/{id}', [RenewableProductController::class, 'destroy'])->middleware('tenant.permission:delete_record');

@@ -7,6 +7,7 @@ import { Card } from '../../components/Card'
 import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
+import { Select } from '../../components/Select'
 import { EmptyState } from '../../components/EmptyState'
 import { SkeletonRow } from '../../components/SkeletonRow'
 import { LoadMoreButton } from '../../components/LoadMoreButton'
@@ -15,7 +16,8 @@ import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { formatRenewalCategory, formatFrequency } from '../../lib/format'
 import { CreateProductModal } from './CreateProductModal'
 import { ProductDetailModal } from './ProductDetailModal'
-import type { Product, PaginatedResponse } from '../../types'
+import type { Product, Department, PaginatedResponse } from '../../types'
+import { renewableCategoryOptions } from '../../types'
 
 function ProductsContent() {
   const { selectedTenantId, role } = useTenant()
@@ -26,6 +28,9 @@ function ProductsContent() {
   const [allItems, setAllItems] = useState<Product[]>([])
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search)
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterVendor, setFilterVendor] = useState('')
+  const [filterDepartmentId, setFilterDepartmentId] = useState('')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<Product | null>(null)
 
@@ -37,21 +42,52 @@ function ProductsContent() {
     setPrevTenantId(selectedTenantId)
     setPage(1)
     setAllItems([])
+    setSearch('')
+    setFilterCategory('')
+    setFilterVendor('')
+    setFilterDepartmentId('')
   }
 
-  // Reset pagination on search change
-  const [prevSearch, setPrevSearch] = useState(debouncedSearch)
-  if (debouncedSearch !== prevSearch) {
-    setPrevSearch(debouncedSearch)
+  // Reset pagination on filter change
+  const filterKey = `${debouncedSearch}|${filterCategory}|${filterVendor}|${filterDepartmentId}`
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey)
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey)
     setPage(1)
     setAllItems([])
   }
 
+  const hasActiveFilters = !!(debouncedSearch || filterCategory || filterVendor || filterDepartmentId)
+
+  const clearFilters = () => {
+    setSearch('')
+    setFilterCategory('')
+    setFilterVendor('')
+    setFilterDepartmentId('')
+  }
+
+  const { data: vendorList } = useQuery({
+    queryKey: ['product-vendors', selectedTenantId],
+    queryFn: () => authedFetch<string[]>('/api/products/vendors', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
+
+  const { data: departmentList } = useQuery({
+    queryKey: ['departments-all', selectedTenantId],
+    queryFn: () => authedFetch<Department[]>('/api/departments', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
+
   const { data, isLoading, isFetching, isError, error } = useQuery({
-    queryKey: ['products', selectedTenantId, debouncedSearch, page],
+    queryKey: ['products', selectedTenantId, debouncedSearch, filterCategory, filterVendor, filterDepartmentId, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page) })
       if (debouncedSearch) params.set('search', debouncedSearch)
+      if (filterCategory) params.set('category', filterCategory)
+      if (filterVendor) params.set('vendor', filterVendor)
+      if (filterDepartmentId) params.set('department_id', filterDepartmentId)
       return authedFetch<PaginatedResponse<Product>>(`/api/products?${params.toString()}`, {
         tenantScoped: true,
       })
@@ -76,12 +112,14 @@ function ProductsContent() {
 
   const handleCreated = () => {
     void queryClient.invalidateQueries({ queryKey: ['products', selectedTenantId] })
+    void queryClient.invalidateQueries({ queryKey: ['product-vendors', selectedTenantId] })
     setPage(1)
     setAllItems([])
   }
 
   const handleUpdated = () => {
     void queryClient.invalidateQueries({ queryKey: ['products', selectedTenantId] })
+    void queryClient.invalidateQueries({ queryKey: ['product-vendors', selectedTenantId] })
     setPage(1)
     setAllItems([])
   }
@@ -113,6 +151,7 @@ function ProductsContent() {
       if (sortField === 'name') { aVal = a.name; bVal = b.name }
       else if (sortField === 'category') { aVal = a.category; bVal = b.category }
       else if (sortField === 'vendor') { aVal = a.vendor; bVal = b.vendor }
+      else if (sortField === 'department') { aVal = a.department?.name; bVal = b.department?.name }
       else if (sortField === 'cost_price') { aVal = a.cost_price ? parseFloat(a.cost_price) : null; bVal = b.cost_price ? parseFloat(b.cost_price) : null }
       else if (sortField === 'sale_price') { aVal = a.sale_price ? parseFloat(a.sale_price) : null; bVal = b.sale_price ? parseFloat(b.sale_price) : null }
       else if (sortField === 'frequency') { aVal = a.frequency_value ?? null; bVal = b.frequency_value ?? null }
@@ -140,12 +179,50 @@ function ProductsContent() {
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-3">
         <Input
           placeholder="Search by name or vendor..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-2 items-end">
+        <div className="min-w-[9rem]">
+          <Select label="Category" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+            <option value="">All</option>
+            {renewableCategoryOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </Select>
+        </div>
+
+        <div className="min-w-[9rem] max-w-[200px]">
+          <Select label="Vendor" value={filterVendor} onChange={(e) => setFilterVendor(e.target.value)}>
+            <option value="">All</option>
+            {(vendorList ?? []).map((v) => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </Select>
+        </div>
+
+        <div className="min-w-[9rem] max-w-[200px]">
+          <Select label="Department" value={filterDepartmentId} onChange={(e) => setFilterDepartmentId(e.target.value)}>
+            <option value="">All</option>
+            {(departmentList ?? []).map((d) => (
+              <option key={d.id} value={String(d.id)}>{d.name}</option>
+            ))}
+          </Select>
+        </div>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={clearFilters}
+          disabled={!hasActiveFilters}
+        >
+          Clear filters
+        </Button>
       </div>
 
       {isError && (
@@ -155,8 +232,8 @@ function ProductsContent() {
       )}
 
       {allItems.length > 0 && (
-        <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1.2fr_0.6fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
-          {([['name','Name'],['category','Category'],['vendor','Vendor'],['cost_price','Cost Price'],['sale_price','Sale Price'],['frequency','Default Duration'],['count','# Applied']] as const).map(([field, label]) => (
+        <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1.2fr_0.6fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+          {([['name','Name'],['category','Category'],['vendor','Vendor'],['department','Department'],['cost_price','Cost Price'],['sale_price','Sale Price'],['frequency','Default Duration'],['count','# Applied']] as const).map(([field, label]) => (
             <button key={field} onClick={() => handleSort(field)} className="inline-flex items-center gap-0.5 py-0.5 px-1.5 -mx-1.5 rounded hover:text-[var(--ui-text)] transition group">
               {label}<SortIcon field={field} />
             </button>
@@ -166,12 +243,12 @@ function ProductsContent() {
 
       <div className="space-y-2">
         {isFirstLoad ? (
-          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={7} />)
+          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={8} />)
         ) : allItems.length === 0 ? (
           <EmptyState
-            message={debouncedSearch ? 'No products match your search.' : 'No products found. Create your first product to get started.'}
+            message={hasActiveFilters ? 'No products match your filters.' : 'No products found. Create your first product to get started.'}
             action={
-              canCreate && !debouncedSearch ? (
+              canCreate && !hasActiveFilters ? (
                 <Button onClick={() => setIsCreateOpen(true)} variant="primary" size="sm">
                   New Product
                 </Button>
@@ -185,10 +262,11 @@ function ProductsContent() {
               className="app-inner-box w-full rounded-md border border-[var(--ui-border)] p-3 text-left transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]/60"
               onClick={() => setSelectedItem(item)}
             >
-              <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1.2fr_0.6fr]">
+              <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1.2fr_0.6fr]">
                 <span className="font-medium text-sm text-[var(--ui-text)] truncate">{item.name}</span>
                 <span className="text-sm text-[var(--ui-muted)] truncate">{formatRenewalCategory(item.category)}</span>
                 <span className="text-sm text-[var(--ui-muted)] truncate">{item.vendor ?? '—'}</span>
+                <span className="text-sm text-[var(--ui-muted)] truncate">{item.department?.name ?? '—'}</span>
                 <span className="text-sm text-[var(--ui-muted)]">{item.cost_price ? `$${item.cost_price}` : '—'}</span>
                 <span className="text-sm text-[var(--ui-muted)]">{item.sale_price ? `$${item.sale_price}` : '—'}</span>
                 <span className="text-sm text-[var(--ui-muted)]">

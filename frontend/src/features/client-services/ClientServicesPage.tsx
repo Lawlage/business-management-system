@@ -19,7 +19,7 @@ import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { CreateClientServiceModal } from './CreateClientServiceModal'
 import { ClientServiceDetailModal } from './ClientServiceDetailModal'
-import type { ClientService, Product, PaginatedResponse } from '../../types'
+import type { ClientService, Product, Department, PaginatedResponse } from '../../types'
 import { renewableWorkflowOptions } from '../../types'
 
 const expiryPresets = [
@@ -73,6 +73,7 @@ function ClientServicesContent() {
   const [filterWorkflow, setFilterWorkflow] = useState('')
   const [filterClientId, setFilterClientId] = useState('')
   const [filterExpiryPreset, setFilterExpiryPreset] = useState('')
+  const [filterDepartmentId, setFilterDepartmentId] = useState('')
 
   const canCreate = role !== 'standard_user'
   const canEdit = role !== 'standard_user'
@@ -87,6 +88,7 @@ function ClientServicesContent() {
       setFilterWorkflow('')
       setFilterClientId('')
       setFilterExpiryPreset('')
+      setFilterDepartmentId('')
       setPage(1)
       setAllClientServices([])
       setSearchParams((prev) => {
@@ -99,7 +101,7 @@ function ClientServicesContent() {
   }
 
   // Reset pagination on filter change
-  const filterKey = `${debouncedSearch}|${filterStatus}|${filterWorkflow}|${filterClientId}|${filterProductId}|${filterExpiryPreset}`
+  const filterKey = `${debouncedSearch}|${filterStatus}|${filterWorkflow}|${filterClientId}|${filterProductId}|${filterExpiryPreset}|${filterDepartmentId}`
   const [prevFilterKey, setPrevFilterKey] = useState(filterKey)
   if (filterKey !== prevFilterKey) {
     setPrevFilterKey(filterKey)
@@ -107,7 +109,7 @@ function ClientServicesContent() {
     setAllClientServices([])
   }
 
-  const hasActiveFilters = !!(debouncedSearch || filterStatus || filterWorkflow || filterClientId || filterProductId || filterExpiryPreset)
+  const hasActiveFilters = !!(debouncedSearch || filterStatus || filterWorkflow || filterClientId || filterProductId || filterExpiryPreset || filterDepartmentId)
 
   const clearFilters = () => {
     setSearch('')
@@ -115,6 +117,7 @@ function ClientServicesContent() {
     setFilterWorkflow('')
     setFilterClientId('')
     setFilterExpiryPreset('')
+    setFilterDepartmentId('')
     setFilterProductId('')
   }
 
@@ -132,8 +135,15 @@ function ClientServicesContent() {
     staleTime: 30_000,
   })
 
+  const { data: departmentList } = useQuery({
+    queryKey: ['departments-all', selectedTenantId],
+    queryFn: () => authedFetch<Department[]>('/api/departments', { tenantScoped: true }),
+    enabled: !!selectedTenantId,
+    staleTime: 30_000,
+  })
+
   const { data, isLoading, isFetching, isError, error } = useQuery({
-    queryKey: ['client-services', selectedTenantId, debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterProductId, filterExpiryPreset, page],
+    queryKey: ['client-services', selectedTenantId, debouncedSearch, filterStatus, filterWorkflow, filterClientId, filterProductId, filterExpiryPreset, filterDepartmentId, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page) })
       if (debouncedSearch) params.set('search', debouncedSearch)
@@ -142,6 +152,7 @@ function ClientServicesContent() {
       if (filterClientId) params.set('client_id', filterClientId)
       if (filterProductId) params.set('renewable_product_id', filterProductId)
       if (filterExpiryPreset) params.set('expiry_preset', filterExpiryPreset)
+      if (filterDepartmentId) params.set('department_id', filterDepartmentId)
       return authedFetch<PaginatedResponse<ClientService>>(`/api/client-services?${params.toString()}`, {
         tenantScoped: true,
       })
@@ -203,6 +214,7 @@ function ClientServicesContent() {
       if (sortField === 'description') { aVal = a.description ?? a.renewable_product?.name; bVal = b.description ?? b.renewable_product?.name }
       else if (sortField === 'client') { aVal = a.client?.name; bVal = b.client?.name }
       else if (sortField === 'product') { aVal = a.renewable_product?.name; bVal = b.renewable_product?.name }
+      else if (sortField === 'department') { aVal = a.department?.name; bVal = b.department?.name }
       else if (sortField === 'next_due_date') { aVal = a.next_due_date; bVal = b.next_due_date }
       else if (sortField === 'status') { aVal = a.status; bVal = b.status }
       else if (sortField === 'quantity') { aVal = a.quantity ?? 1; bVal = b.quantity ?? 1 }
@@ -289,6 +301,15 @@ function ClientServicesContent() {
           </Select>
         </div>
 
+        <div className="min-w-[9rem] max-w-[200px]">
+          <Select label="Department" value={filterDepartmentId} onChange={(e) => setFilterDepartmentId(e.target.value)}>
+            <option value="">All</option>
+            {(departmentList ?? []).map((d) => (
+              <option key={d.id} value={String(d.id)}>{d.name}</option>
+            ))}
+          </Select>
+        </div>
+
         <Button
           variant="secondary"
           size="sm"
@@ -306,8 +327,8 @@ function ClientServicesContent() {
       )}
 
       {allClientServices.length > 0 && (
-        <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_0.5fr_0.8fr_0.8fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
-          {([['description','Description'],['client','Client'],['product','Product'],['next_due_date','Next Due'],['status','Status / Workflow'],['quantity','Qty'],['sale_price','Sale Price'],['total','Total']] as const).map(([field, label]) => (
+        <div className="sticky-list-header mb-2 hidden md:grid md:grid-cols-[2fr_1.2fr_1.2fr_1fr_1fr_1.3fr_0.5fr_0.8fr_0.8fr] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)]">
+          {([['description','Description'],['client','Client'],['product','Product'],['department','Department'],['next_due_date','Next Due'],['status','Status / Workflow'],['quantity','Qty'],['sale_price','Sale Price'],['total','Total']] as const).map(([field, label]) => (
             <button key={field} onClick={() => handleSort(field)} className="inline-flex items-center gap-0.5 py-0.5 px-1.5 -mx-1.5 rounded hover:text-[var(--ui-text)] transition group">
               {label}<SortIcon field={field} />
             </button>
@@ -317,7 +338,7 @@ function ClientServicesContent() {
 
       <div className="space-y-2">
         {isFirstLoad ? (
-          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={8} />)
+          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={9} />)
         ) : allClientServices.length === 0 ? (
           <EmptyState
             message={hasActiveFilters ? 'No client services match your filters.' : 'No client services found. Apply a product to a client to get started.'}
@@ -347,7 +368,7 @@ function ClientServicesContent() {
                 ].join(' ')}
                 onClick={() => setSelectedClientService(r)}
               >
-                <div className="grid gap-2 md:grid-cols-[2fr_1.5fr_1.5fr_1fr_1.3fr_0.5fr_0.8fr_0.8fr]">
+                <div className="grid gap-2 md:grid-cols-[2fr_1.2fr_1.2fr_1fr_1fr_1.3fr_0.5fr_0.8fr_0.8fr]">
                   <span className="font-medium text-sm text-[var(--ui-text)] truncate">
                     {r.description ?? r.renewable_product?.name ?? '—'}
                     {belowCost && (
@@ -359,6 +380,9 @@ function ClientServicesContent() {
                   </span>
                   <span className="text-sm text-[var(--ui-muted)] truncate">
                     {r.renewable_product?.name ?? '—'}
+                  </span>
+                  <span className="text-sm text-[var(--ui-muted)] truncate">
+                    {r.department?.name ?? '—'}
                   </span>
                   <span className="text-sm text-[var(--ui-muted)]">
                     {r.next_due_date ? formatDate(r.next_due_date, tenantTimezone) : '—'}
